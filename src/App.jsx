@@ -27,7 +27,7 @@ function scoreForDistance(distanceMeters) {
   return Math.min(100, Math.max(0, score))
 }
 
-const SHARE_DOMAIN = 'cabatap.vercel.app'
+const SHARE_DOMAIN = 'https://cabatap.vercel.app'
 
 function pickRoundIndices(poolLength, n) {
   const indices = Array.from({ length: poolLength }, (_, i) => i)
@@ -61,7 +61,7 @@ function scoreEmoji(points) {
 function buildShareText(shareLink, results, totalScore) {
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
   const emojiLine = results.map((r) => `${r.points}${scoreEmoji(r.points)}`).join(' ')
-  return `${shareLink} ${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
+  return `${shareLink}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
 function App() {
