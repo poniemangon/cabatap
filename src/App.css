@@ -1,0 +1,141 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  width: 100%;
+}
+
+.hud {
+  padding: 12px 20px;
+  background: var(--bg, #fff);
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  flex-shrink: 0;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text, #6b6375);
+  margin-bottom: 6px;
+}
+
+.round-label {
+  font-weight: 600;
+}
+
+.score-label {
+  font-weight: 600;
+}
+
+.prompt {
+  font-size: 18px;
+  color: var(--text-h, #08060d);
+}
+
+.prompt strong {
+  color: #1d4ed8;
+}
+
+.map-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+  cursor: crosshair;
+}
+
+.controls {
+  flex-shrink: 0;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border, #e5e4e7);
+  background: var(--bg, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hint,
+.result {
+  font-size: 15px;
+  color: var(--text, #6b6375);
+}
+
+.result {
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+}
+
+.primary-btn {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #1d4ed8;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primary-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.primary-btn:not(:disabled):hover {
+  background: #1e40af;
+}
+
+.controls-gameover {
+  flex-direction: column;
+  align-items: stretch;
+  max-height: 45svh;
+}
+
+.breakdown {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  text-align: left;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 8px;
+  overflow-y: auto;
+}
+
+.breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+}
+
+.breakdown li:last-child {
+  border-bottom: none;
+}
+
+.breakdown-streets {
+  color: var(--text-h, #08060d);
+}
+
+.breakdown-detail {
+  color: var(--text, #6b6375);
+  white-space: nowrap;
+}
+
+.round-tooltip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: #fff;
+  color: #111827;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
