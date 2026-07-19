@@ -27,20 +27,54 @@ function scoreForDistance(distanceMeters) {
   return Math.min(100, Math.max(0, score))
 }
 
-function pickRounds(pool, n) {
-  const copy = [...pool]
-  for (let i = copy.length - 1; i > 0; i--) {
+const SHARE_DOMAIN = 'cabatap.vercel.app'
+
+function pickRoundIndices(poolLength, n) {
+  const indices = Array.from({ length: poolLength }, (_, i) => i)
+  for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+    ;[indices[i], indices[j]] = [indices[j], indices[i]]
   }
-  return copy.slice(0, n)
+  return indices.slice(0, n)
+}
+
+function parseShareIndices(poolLength) {
+  const raw = new URLSearchParams(window.location.search).get('share')
+  if (!raw) return null
+  const parts = raw.split('-')
+  if (parts.length !== TOTAL_ROUNDS) return null
+  const indices = parts.map((p) => Number(p) - 1)
+  const valid = indices.every((i) => Number.isInteger(i) && i >= 0 && i < poolLength)
+  return valid ? indices : null
+}
+
+function scoreEmoji(points) {
+  if (points === 100) return '🎯'
+  if (points >= 90) return '🔥'
+  if (points >= 80) return '🏆'
+  if (points >= 60) return '👍'
+  if (points >= 40) return '🤙'
+  if (points >= 20) return '😛'
+  return '😂'
+}
+
+function buildShareText(shareLink, results, totalScore) {
+  const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  const emojiLine = results.map((r) => `${r.points}${scoreEmoji(r.points)}`).join(' ')
+  return `${shareLink} ${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
 function App() {
-  const [rounds, setRounds] = useState(() => pickRounds(intersectionsPool, TOTAL_ROUNDS))
+  const [roundIndices, setRoundIndices] = useState(
+    () => parseShareIndices(intersectionsPool.length) ?? pickRoundIndices(intersectionsPool.length, TOTAL_ROUNDS),
+  )
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
+  const [shareCopied, setShareCopied] = useState(false)
+
+  const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
+  const shareLink = useMemo(() => `${SHARE_DOMAIN}/?share=${roundIndices.map((i) => i + 1).join('-')}`, [roundIndices])
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
@@ -76,10 +110,22 @@ function App() {
   }, [phase])
 
   const handleRestart = () => {
-    setRounds(pickRounds(intersectionsPool, TOTAL_ROUNDS))
+    setRoundIndices(pickRoundIndices(intersectionsPool.length, TOTAL_ROUNDS))
     setRoundIndex(0)
     setResults([])
+    setShareCopied(false)
     setPhase('guessing')
+  }
+
+  const handleShare = async () => {
+    const text = buildShareText(shareLink, results, totalScore)
+    try {
+      await navigator.clipboard.writeText(text)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      // clipboard not available; ignore
+    }
   }
 
   if (phase === 'gameOver') {
@@ -109,9 +155,14 @@ function App() {
               </li>
             ))}
           </ul>
-          <button className="primary-btn" onClick={handleRestart}>
-            Jugar de nuevo
-          </button>
+          <div className="gameover-actions">
+            <button className="primary-btn secondary-btn" onClick={handleShare}>
+              {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
+            </button>
+            <button className="primary-btn" onClick={handleRestart}>
+              Jugar de nuevo
+            </button>
+          </div>
         </footer>
       </div>
     )

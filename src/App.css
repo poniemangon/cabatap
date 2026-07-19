@@ -97,6 +97,25 @@
   max-height: 45svh;
 }
 
+.gameover-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.gameover-actions .primary-btn {
+  flex: 1;
+}
+
+.secondary-btn {
+  background: transparent;
+  border: 1px solid var(--border, #e5e4e7);
+  color: var(--text-h, #08060d);
+}
+
+.secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .breakdown {
   list-style: none;
   padding: 0;
