@@ -91,6 +91,7 @@ function App() {
     if (fromShare) return fromShare
     return indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length)
   })
+  const [gameMode, setGameMode] = useState(() => (parseShareIndices(intersectionsPool.length) ? 'linked' : 'daily'))
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
@@ -99,6 +100,7 @@ function App() {
 
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
   const shareLink = useMemo(() => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices)}`, [roundIndices])
+  const resultShareLink = gameMode === 'daily' ? SHARE_DOMAIN : shareLink
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
@@ -133,13 +135,14 @@ function App() {
     return () => clearTimeout(timer)
   }, [phase])
 
-  const startGame = (indices, { copyInvite } = {}) => {
+  const startGame = (indices, mode, { copyInvite } = {}) => {
     setRoundIndices(indices)
+    setGameMode(mode)
     setRoundIndex(0)
     setResults([])
     setShareCopied(false)
     setPhase('guessing')
-    window.history.replaceState(null, '', shareIndicesToUrl(indices))
+    window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices))
 
     if (copyInvite) {
       const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices)}`
@@ -154,11 +157,11 @@ function App() {
   }
 
   const handleRestart = () => {
-    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS))
+    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), 'linked')
   }
 
   const handleShare = async () => {
-    const text = buildShareText(shareLink, results, totalScore)
+    const text = buildShareText(resultShareLink, results, totalScore)
     try {
       await navigator.clipboard.writeText(text)
       setShareCopied(true)
@@ -169,11 +172,15 @@ function App() {
   }
 
   const handlePractice = () => {
-    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), { copyInvite: true })
+    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), 'linked')
   }
 
   const handleSelectArchiveDay = (dayNumber) => {
-    startGame(indicesForDay(dayNumber, intersectionsPool.length), { copyInvite: true })
+    startGame(indicesForDay(dayNumber, intersectionsPool.length), 'linked', { copyInvite: true })
+  }
+
+  const handleDaily = () => {
+    startGame(indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length), 'daily')
   }
 
   const menu = (
@@ -181,6 +188,7 @@ function App() {
       <MenuArchive
         dayNumberForDate={dayNumberForDate}
         todayDayNumber={dayNumberForDate(new Date())}
+        onDaily={handleDaily}
         onPractice={handlePractice}
         onSelectDay={handleSelectArchiveDay}
       />

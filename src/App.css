@@ -154,7 +154,6 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text-h, #f5f5f5);
-  text-transform: capitalize;
 }
 
 .calendar-weekdays {

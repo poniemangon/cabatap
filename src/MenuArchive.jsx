@@ -15,7 +15,8 @@ function CalendarPicker({ dayNumberForDate, todayDayNumber, onSelectDay }) {
   for (let i = 0; i < startWeekday; i++) cells.push(null)
   for (let d = 1; d <= daysInThisMonth; d++) cells.push(d)
 
-  const monthLabel = viewDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  const rawMonthLabel = viewDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1)
 
   return (
     <div className="calendar">
@@ -67,7 +68,7 @@ function CalendarPicker({ dayNumberForDate, todayDayNumber, onSelectDay }) {
   )
 }
 
-export default function MenuArchive({ dayNumberForDate, todayDayNumber, onPractice, onSelectDay }) {
+export default function MenuArchive({ dayNumberForDate, todayDayNumber, onDaily, onPractice, onSelectDay }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const menuRef = useRef(null)
@@ -88,6 +89,16 @@ export default function MenuArchive({ dayNumberForDate, todayDayNumber, onPracti
       </button>
       {menuOpen && (
         <div className="menu-dropdown">
+          <button
+            type="button"
+            className="menu-item"
+            onClick={() => {
+              setMenuOpen(false)
+              onDaily()
+            }}
+          >
+            Mapa del día
+          </button>
           <button
             type="button"
             className="menu-item"
