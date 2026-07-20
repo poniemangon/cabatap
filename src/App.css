@@ -24,20 +24,31 @@
   font-weight: 600;
 }
 
-.invite-btn {
+.menu-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-select {
   font-size: 13px;
   font-weight: 600;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--border, #e5e4e7);
   background: transparent;
   color: var(--text-h, #08060d);
   cursor: pointer;
-  white-space: nowrap;
 }
 
-.invite-btn:hover {
+.menu-select:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-copied {
+  font-size: 12px;
+  color: var(--text, #9ca3af);
+  white-space: nowrap;
 }
 
 .score-label {

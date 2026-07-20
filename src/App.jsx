@@ -4,6 +4,10 @@ import intersectionsPool from './data/intersections.json'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
+const SHARE_DOMAIN = 'https://cabatap.vercel.app'
+const DAY_MS = 24 * 60 * 60 * 1000
+const EPOCH_UTC = Date.UTC(2024, 0, 1)
+const ARCHIVE_DAYS = 14
 
 function toRad(deg) {
   return (deg * Math.PI) / 180
@@ -27,9 +31,22 @@ function scoreForDistance(distanceMeters) {
   return Math.min(100, Math.max(0, score))
 }
 
-const SHARE_DOMAIN = 'https://cabatap.vercel.app'
+function dayNumberForDate(date) {
+  const utcMidnight = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
+}
 
-function pickRoundIndices(poolLength, n) {
+// The pool is a fixed, pre-shuffled order (baked in at data-generation time), so
+// slicing consecutive windows of TOTAL_ROUNDS gives a stable daily rotation with
+// zero repeats until the whole pool has been used once.
+function indicesForDay(dayNumber, poolLength) {
+  const cycleLength = Math.floor(poolLength / TOTAL_ROUNDS)
+  const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
+  const start = cyclePos * TOTAL_ROUNDS
+  return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
+}
+
+function pickRandomIndices(poolLength, n) {
   const indices = Array.from({ length: poolLength }, (_, i) => i)
   for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -64,18 +81,37 @@ function buildShareText(shareLink, results, totalScore) {
   return `${shareLink}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
+function buildArchiveOptions() {
+  const today = new Date()
+  const todayDayNumber = dayNumberForDate(today)
+  const options = []
+  for (let i = 0; i < ARCHIVE_DAYS; i++) {
+    const date = new Date(today.getTime() - i * DAY_MS)
+    const label = i === 0 ? 'Hoy' : date.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+    options.push({ dayNumber: todayDayNumber - i, label })
+  }
+  return options
+}
+
+function shareIndicesToUrl(indices) {
+  return `/?share=${indices.map((i) => i + 1).join('-')}`
+}
+
 function App() {
-  const [roundIndices, setRoundIndices] = useState(
-    () => parseShareIndices(intersectionsPool.length) ?? pickRoundIndices(intersectionsPool.length, TOTAL_ROUNDS),
-  )
+  const [roundIndices, setRoundIndices] = useState(() => {
+    const fromShare = parseShareIndices(intersectionsPool.length)
+    if (fromShare) return fromShare
+    return indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length)
+  })
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
-  const [inviteCopied, setInviteCopied] = useState(false)
+  const [menuCopied, setMenuCopied] = useState(false)
 
+  const archiveOptions = useMemo(() => buildArchiveOptions(), [])
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
-  const shareLink = useMemo(() => `${SHARE_DOMAIN}/?share=${roundIndices.map((i) => i + 1).join('-')}`, [roundIndices])
+  const shareLink = useMemo(() => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices)}`, [roundIndices])
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
@@ -110,12 +146,28 @@ function App() {
     return () => clearTimeout(timer)
   }, [phase])
 
-  const handleRestart = () => {
-    setRoundIndices(pickRoundIndices(intersectionsPool.length, TOTAL_ROUNDS))
+  const startGame = (indices, { copyInvite } = {}) => {
+    setRoundIndices(indices)
     setRoundIndex(0)
     setResults([])
     setShareCopied(false)
     setPhase('guessing')
+    window.history.replaceState(null, '', shareIndicesToUrl(indices))
+
+    if (copyInvite) {
+      const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices)}`
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          setMenuCopied(true)
+          setTimeout(() => setMenuCopied(false), 2000)
+        })
+        .catch(() => {})
+    }
+  }
+
+  const handleRestart = () => {
+    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS))
   }
 
   const handleShare = async () => {
@@ -129,16 +181,35 @@ function App() {
     }
   }
 
-  const handleInvite = async () => {
-    const text = `Unite a mi partida en el link ${shareLink}`
-    try {
-      await navigator.clipboard.writeText(text)
-      setInviteCopied(true)
-      setTimeout(() => setInviteCopied(false), 2000)
-    } catch {
-      // clipboard not available; ignore
+  const handleMenuChange = (e) => {
+    const value = e.target.value
+    e.target.value = ''
+    if (value === 'practice') {
+      startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), { copyInvite: true })
+    } else if (value.startsWith('day-')) {
+      const dayNumber = Number(value.slice(4))
+      startGame(indicesForDay(dayNumber, intersectionsPool.length), { copyInvite: true })
     }
   }
+
+  const menu = (
+    <div className="menu-wrap">
+      <select className="menu-select" value="" onChange={handleMenuChange}>
+        <option value="" disabled>
+          Menú ▾
+        </option>
+        <option value="practice">Modo práctica</option>
+        <optgroup label="Partidas por fecha">
+          {archiveOptions.map((o) => (
+            <option key={o.dayNumber} value={`day-${o.dayNumber}`}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+      {menuCopied && <span className="menu-copied">¡Link copiado!</span>}
+    </div>
+  )
 
   if (phase === 'gameOver') {
     return (
@@ -146,6 +217,7 @@ function App() {
         <header className="hud">
           <div className="hud-row">
             <span className="round-label">¡Juego terminado!</span>
+            {menu}
             <span className="score-label">Puntaje final: {totalScore} / {TOTAL_ROUNDS * 100}</span>
           </div>
         </header>
@@ -185,9 +257,7 @@ function App() {
       <header className="hud">
         <div className="hud-row">
           <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
-          <button className="invite-btn" onClick={handleInvite}>
-            {inviteCopied ? '¡Copiado!' : 'Compartir partida'}
-          </button>
+          {menu}
           <span className="score-label">Puntaje: {totalScore}</span>
         </div>
         <div className="prompt">
