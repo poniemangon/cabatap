@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ResultsMap from './ResultsMap'
+import MenuArchive from './MenuArchive'
 import intersectionsPool from './data/intersections.json'
 import './App.css'
 
@@ -7,7 +8,6 @@ const TOTAL_ROUNDS = 5
 const SHARE_DOMAIN = 'https://cabatap.vercel.app'
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
-const ARCHIVE_DAYS = 14
 
 function toRad(deg) {
   return (deg * Math.PI) / 180
@@ -81,18 +81,6 @@ function buildShareText(shareLink, results, totalScore) {
   return `${shareLink}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
-function buildArchiveOptions() {
-  const today = new Date()
-  const todayDayNumber = dayNumberForDate(today)
-  const options = []
-  for (let i = 0; i < ARCHIVE_DAYS; i++) {
-    const date = new Date(today.getTime() - i * DAY_MS)
-    const label = i === 0 ? 'Hoy' : date.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
-    options.push({ dayNumber: todayDayNumber - i, label })
-  }
-  return options
-}
-
 function shareIndicesToUrl(indices) {
   return `/?share=${indices.map((i) => i + 1).join('-')}`
 }
@@ -109,7 +97,6 @@ function App() {
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
 
-  const archiveOptions = useMemo(() => buildArchiveOptions(), [])
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
   const shareLink = useMemo(() => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices)}`, [roundIndices])
 
@@ -181,34 +168,24 @@ function App() {
     }
   }
 
-  const handleMenuChange = (e) => {
-    const value = e.target.value
-    e.target.value = ''
-    if (value === 'practice') {
-      startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), { copyInvite: true })
-    } else if (value.startsWith('day-')) {
-      const dayNumber = Number(value.slice(4))
-      startGame(indicesForDay(dayNumber, intersectionsPool.length), { copyInvite: true })
-    }
+  const handlePractice = () => {
+    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), { copyInvite: true })
+  }
+
+  const handleSelectArchiveDay = (dayNumber) => {
+    startGame(indicesForDay(dayNumber, intersectionsPool.length), { copyInvite: true })
   }
 
   const menu = (
-    <div className="menu-wrap">
-      <select className="menu-select" value="" onChange={handleMenuChange}>
-        <option value="" disabled>
-          Menú ▾
-        </option>
-        <option value="practice">Modo práctica</option>
-        <optgroup label="Partidas por fecha">
-          {archiveOptions.map((o) => (
-            <option key={o.dayNumber} value={`day-${o.dayNumber}`}>
-              {o.label}
-            </option>
-          ))}
-        </optgroup>
-      </select>
+    <>
+      <MenuArchive
+        dayNumberForDate={dayNumberForDate}
+        todayDayNumber={dayNumberForDate(new Date())}
+        onPractice={handlePractice}
+        onSelectDay={handleSelectArchiveDay}
+      />
       {menuCopied && <span className="menu-copied">¡Link copiado!</span>}
-    </div>
+    </>
   )
 
   if (phase === 'gameOver') {
