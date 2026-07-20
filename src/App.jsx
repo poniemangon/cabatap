@@ -72,6 +72,7 @@ function App() {
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
+  const [inviteCopied, setInviteCopied] = useState(false)
 
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
   const shareLink = useMemo(() => `${SHARE_DOMAIN}/?share=${roundIndices.map((i) => i + 1).join('-')}`, [roundIndices])
@@ -128,6 +129,17 @@ function App() {
     }
   }
 
+  const handleInvite = async () => {
+    const text = `Unite a mi partida en el link ${shareLink}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setInviteCopied(true)
+      setTimeout(() => setInviteCopied(false), 2000)
+    } catch {
+      // clipboard not available; ignore
+    }
+  }
+
   if (phase === 'gameOver') {
     return (
       <div className="app">
@@ -173,6 +185,9 @@ function App() {
       <header className="hud">
         <div className="hud-row">
           <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
+          <button className="invite-btn" onClick={handleInvite}>
+            {inviteCopied ? '¡Copiado!' : 'Compartir partida'}
+          </button>
           <span className="score-label">Puntaje: {totalScore}</span>
         </div>
         <div className="prompt">
