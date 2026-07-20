@@ -25,10 +25,10 @@ function haversineMeters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h))
 }
 
-// 100 - (distance - 60) / 30, clamped to [0, 100].
+// <=50m: 100 pts. Beyond 50m: -1 pt every 66m.
 function scoreForDistance(distanceMeters) {
-  const score = 100 - Math.floor((distanceMeters - 60) / 30)
-  return Math.min(100, Math.max(0, score))
+  if (distanceMeters <= 50) return 100
+  return Math.max(0, 100 - Math.floor((distanceMeters - 50) / 66))
 }
 
 function dayNumberForDate(date) {
