@@ -73,6 +73,21 @@ function parseShareIndices(poolLength) {
   return valid ? indices : null
 }
 
+// A share link is only treated as a custom (barrio-filtered) game if: the share
+// indices are valid, the barrios= ids all exist, AND every one of the 5 rounds'
+// actual barrio_id is among those requested barrios. Otherwise it degrades to a
+// normal shared/practice link (share indices still used, barrios= ignored).
+function parseCustomShareBarrios(indices, pool, barrios) {
+  const raw = new URLSearchParams(window.location.search).get('barrios')
+  if (!raw || !indices) return null
+  const barrioIds = raw.split('-').map(Number)
+  const validIds = barrioIds.length > 0 && barrioIds.every((id) => barrios.some((b) => b.barrio_id === id))
+  if (!validIds) return null
+  const barrioIdSet = new Set(barrioIds)
+  const allRoundsMatch = indices.every((i) => barrioIdSet.has(pool[i]?.barrio_id))
+  return allRoundsMatch ? barrioIds : null
+}
+
 function scoreEmoji(points) {
   if (points === 100) return '🎯'
   if (points >= 90) return '🔥'
@@ -83,31 +98,52 @@ function scoreEmoji(points) {
   return '😂'
 }
 
-function buildShareText(shareLink, results, totalScore) {
+function buildShareText(shareLink, results, totalScore, customLine) {
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
   const emojiLine = results.map((r) => `${r.points}${scoreEmoji(r.points)}`).join(' ')
-  return `${shareLink}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
+  const customPart = customLine ? `\n${customLine}` : ''
+  return `${shareLink}${customPart}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
-function shareIndicesToUrl(indices) {
-  return `/?share=${indices.map((i) => i + 1).join('-')}`
+function shareIndicesToUrl(indices, barrioIds) {
+  const base = `/?share=${indices.map((i) => i + 1).join('-')}`
+  return barrioIds && barrioIds.length ? `${base}&barrios=${barrioIds.join('-')}` : base
+}
+
+function getInitialGame() {
+  const fromShare = parseShareIndices(intersectionsPool.length)
+  if (fromShare) {
+    const barrioIds = parseCustomShareBarrios(fromShare, intersectionsPool, barriosData)
+    if (barrioIds) return { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
+    return { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
+  }
+  return {
+    roundIndices: indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length),
+    gameMode: 'daily',
+    customBarrioIds: [],
+  }
 }
 
 function App() {
-  const [roundIndices, setRoundIndices] = useState(() => {
-    const fromShare = parseShareIndices(intersectionsPool.length)
-    if (fromShare) return fromShare
-    return indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length)
-  })
-  const [gameMode, setGameMode] = useState(() => (parseShareIndices(intersectionsPool.length) ? 'linked' : 'daily'))
+  const [roundIndices, setRoundIndices] = useState(() => getInitialGame().roundIndices)
+  const [gameMode, setGameMode] = useState(() => getInitialGame().gameMode)
+  const [customBarrioIds, setCustomBarrioIds] = useState(() => getInitialGame().customBarrioIds)
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
 
+  const customBarrioNames = useMemo(
+    () => barriosData.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre),
+    [customBarrioIds],
+  )
+
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
-  const shareLink = useMemo(() => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices)}`, [roundIndices])
+  const shareLink = useMemo(
+    () => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices, gameMode === 'custom' ? customBarrioIds : undefined)}`,
+    [roundIndices, gameMode, customBarrioIds],
+  )
   const resultShareLink = gameMode === 'daily' ? SHARE_DOMAIN : shareLink
 
   const barrioCounts = useMemo(() => {
@@ -151,17 +187,19 @@ function App() {
     return () => clearTimeout(timer)
   }, [phase])
 
-  const startGame = (indices, mode, { copyInvite } = {}) => {
+  const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
     setRoundIndices(indices)
     setGameMode(mode)
+    setCustomBarrioIds(barrioIds)
     setRoundIndex(0)
     setResults([])
     setShareCopied(false)
     setPhase('guessing')
-    window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices))
+    const urlBarrioIds = mode === 'custom' ? barrioIds : undefined
+    window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices, urlBarrioIds))
 
     if (copyInvite) {
-      const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices)}`
+      const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices, urlBarrioIds)}`
       navigator.clipboard
         .writeText(text)
         .then(() => {
@@ -177,7 +215,9 @@ function App() {
   }
 
   const handleShare = async () => {
-    const text = buildShareText(resultShareLink, results, totalScore)
+    const customLine =
+      gameMode === 'custom' ? `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}` : null
+    const text = buildShareText(resultShareLink, results, totalScore, customLine)
     try {
       await navigator.clipboard.writeText(text)
       setShareCopied(true)
@@ -205,7 +245,7 @@ function App() {
     intersectionsPool.forEach((it, i) => {
       if (selectedSet.has(it.barrio_id)) candidateIndices.push(i)
     })
-    startGame(shuffleSample(candidateIndices, TOTAL_ROUNDS), 'linked')
+    startGame(shuffleSample(candidateIndices, TOTAL_ROUNDS), 'custom', { barrioIds: selectedBarrioIds })
   }
 
   const menu = (
