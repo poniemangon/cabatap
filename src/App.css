@@ -214,6 +214,92 @@
   background: #1d4ed8;
 }
 
+.custom-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 80svh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid var(--border, #333);
+  background: #111;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.custom-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h, #f5f5f5);
+}
+
+.deselect-all-btn {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #333);
+  background: transparent;
+  color: var(--text-h, #f5f5f5);
+  cursor: pointer;
+}
+
+.deselect-all-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.barrios-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 12px;
+}
+
+.comuna-group {
+  margin-bottom: 14px;
+}
+
+.comuna-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.barrio-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.barrio-chip {
+  border: 1.5px solid var(--comuna-color);
+  color: var(--comuna-color);
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.barrio-chip.selected {
+  background: var(--comuna-color);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.start-custom-btn {
+  width: 100%;
+}
+
 .score-label {
   font-weight: 600;
 }

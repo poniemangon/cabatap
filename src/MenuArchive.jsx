@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import CustomGamePicker from './CustomGamePicker'
 
 const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
@@ -68,9 +69,19 @@ function CalendarPicker({ dayNumberForDate, todayDayNumber, onSelectDay }) {
   )
 }
 
-export default function MenuArchive({ dayNumberForDate, todayDayNumber, onDaily, onPractice, onSelectDay }) {
+export default function MenuArchive({
+  dayNumberForDate,
+  todayDayNumber,
+  onDaily,
+  onPractice,
+  onSelectDay,
+  barrios,
+  barrioCounts,
+  onStartCustom,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [customOpen, setCustomOpen] = useState(false)
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -119,6 +130,32 @@ export default function MenuArchive({ dayNumberForDate, todayDayNumber, onDaily,
           >
             Archivo
           </button>
+          <button
+            type="button"
+            className="menu-item"
+            onClick={() => {
+              setMenuOpen(false)
+              setCustomOpen(true)
+            }}
+          >
+            Partida personalizada
+          </button>
+        </div>
+      )}
+
+      {customOpen && (
+        <div className="modal-backdrop" onClick={() => setCustomOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <CustomGamePicker
+              barrios={barrios}
+              barrioCounts={barrioCounts}
+              onClose={() => setCustomOpen(false)}
+              onStart={(selectedBarrioIds) => {
+                setCustomOpen(false)
+                onStartCustom(selectedBarrioIds)
+              }}
+            />
+          </div>
         </div>
       )}
 

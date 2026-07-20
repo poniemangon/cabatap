@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
 import intersectionsPool from './data/intersections.json'
+import barriosData from './data/barrios.json'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
@@ -46,13 +47,20 @@ function indicesForDay(dayNumber, poolLength) {
   return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
 }
 
-function pickRandomIndices(poolLength, n) {
-  const indices = Array.from({ length: poolLength }, (_, i) => i)
-  for (let i = indices.length - 1; i > 0; i--) {
+function shuffleSample(arr, n) {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[indices[i], indices[j]] = [indices[j], indices[i]]
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
   }
-  return indices.slice(0, n)
+  return copy.slice(0, n)
+}
+
+function pickRandomIndices(poolLength, n) {
+  return shuffleSample(
+    Array.from({ length: poolLength }, (_, i) => i),
+    n,
+  )
 }
 
 function parseShareIndices(poolLength) {
@@ -101,6 +109,14 @@ function App() {
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
   const shareLink = useMemo(() => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices)}`, [roundIndices])
   const resultShareLink = gameMode === 'daily' ? SHARE_DOMAIN : shareLink
+
+  const barrioCounts = useMemo(() => {
+    const counts = new Map()
+    for (const it of intersectionsPool) {
+      counts.set(it.barrio_id, (counts.get(it.barrio_id) || 0) + 1)
+    }
+    return counts
+  }, [])
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
@@ -183,6 +199,15 @@ function App() {
     startGame(indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length), 'daily')
   }
 
+  const handleStartCustom = (selectedBarrioIds) => {
+    const selectedSet = new Set(selectedBarrioIds)
+    const candidateIndices = []
+    intersectionsPool.forEach((it, i) => {
+      if (selectedSet.has(it.barrio_id)) candidateIndices.push(i)
+    })
+    startGame(shuffleSample(candidateIndices, TOTAL_ROUNDS), 'linked')
+  }
+
   const menu = (
     <>
       <MenuArchive
@@ -191,6 +216,9 @@ function App() {
         onDaily={handleDaily}
         onPractice={handlePractice}
         onSelectDay={handleSelectArchiveDay}
+        barrios={barriosData}
+        barrioCounts={barrioCounts}
+        onStartCustom={handleStartCustom}
       />
       {menuCopied && <span className="menu-copied">¡Link copiado!</span>}
     </>
