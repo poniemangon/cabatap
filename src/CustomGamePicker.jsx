@@ -27,7 +27,7 @@ export default function CustomGamePicker({ barrios, barrioCounts, onStart, onClo
   // entry point in the menu, so they're excluded from this picker entirely.
   const normalBarrios = useMemo(() => barrios.filter((b) => b.comuna !== 0), [barrios])
 
-  const [selected, setSelected] = useState(() => new Set(normalBarrios.map((b) => b.barrio_id)))
+  const [selected, setSelected] = useState(() => new Set())
 
   const grouped = useMemo(() => {
     const byComuna = new Map()
@@ -97,7 +97,7 @@ export default function CustomGamePicker({ barrios, barrioCounts, onStart, onClo
       </div>
 
       <button type="button" className="primary-btn start-custom-btn" disabled={!canStart} onClick={() => onStart([...selected])}>
-        {canStart ? 'Comenzar' : 'Elegí al menos 5 ubicaciones'}
+        {canStart ? 'Comenzar' : 'Elegí al menos un barrio para comenzar'}
       </button>
     </div>
   )
