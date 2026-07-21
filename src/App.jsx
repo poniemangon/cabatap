@@ -264,6 +264,16 @@ function App() {
     </>
   )
 
+  const credits = (
+    <div className="credits-bar">
+      Hecho por{' '}
+      <a href="https://www.instagram.com/poniemangon" target="_blank" rel="noopener noreferrer">
+        @poniemangon
+      </a>{' '}
+      - mandame un mensaje si tenés sugerencias o simplemente dar amor
+    </div>
+  )
+
   if (phase === 'gameOver') {
     return (
       <div className="app">
@@ -301,6 +311,7 @@ function App() {
             </button>
           </div>
         </footer>
+        {credits}
       </div>
     )
   }
@@ -332,6 +343,7 @@ function App() {
           </span>
         )}
       </footer>
+      {credits}
     </div>
   )
 }

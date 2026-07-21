@@ -5,6 +5,21 @@
   width: 100%;
 }
 
+.credits-bar {
+  flex-shrink: 0;
+  padding: 6px 20px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--text, #9ca3af);
+  background: var(--bg, #000);
+}
+
+.credits-bar a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .hud {
   padding: 12px 20px;
   background: var(--bg, #fff);
@@ -335,7 +350,11 @@
   gap: 16px;
 }
 
-.hint,
+.hint {
+  font-size: 13px;
+  color: var(--text, #6b6375);
+}
+
 .result {
   font-size: 15px;
   color: var(--text, #6b6375);
