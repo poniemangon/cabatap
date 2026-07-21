@@ -6,7 +6,7 @@ import barriosData from './data/barrios.json'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
-const SHARE_DOMAIN = 'https://cabatap.vercel.app'
+const SHARE_DOMAIN = 'https://ubicaba.com'
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
 
@@ -277,7 +277,7 @@ function App() {
       <a href="https://www.instagram.com/poniemangon" target="_blank" rel="noopener noreferrer">
         @poniemangon
       </a>{' '}
-      - mandame un mensaje si tenés sugerencias o simplemente dar amor
+      - mandame un mensaje si querés que te haga una página o tenés sugerencias
     </div>
   )
 
