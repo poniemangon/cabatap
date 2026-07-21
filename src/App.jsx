@@ -98,11 +98,10 @@ function scoreEmoji(points) {
   return '😂'
 }
 
-function buildShareText(shareLink, results, totalScore, customLine) {
-  const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+function buildShareText(shareLink, results, totalScore, modeLine, dateLine) {
   const emojiLine = results.map((r) => `${r.points}${scoreEmoji(r.points)}`).join(' ')
-  const customPart = customLine ? `\n${customLine}` : ''
-  return `${shareLink}${customPart}\n${dateStr}\n${emojiLine}\nFinal score: ${totalScore}`
+  const datePart = dateLine ? `\n${dateLine}` : ''
+  return `${shareLink}\n${modeLine}${datePart}\n${emojiLine}\nFinal score: ${totalScore}`
 }
 
 function shareIndicesToUrl(indices, barrioIds) {
@@ -215,9 +214,17 @@ function App() {
   }
 
   const handleShare = async () => {
-    const customLine =
-      gameMode === 'custom' ? `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}` : null
-    const text = buildShareText(resultShareLink, results, totalScore, customLine)
+    let modeLine
+    let dateLine = null
+    if (gameMode === 'daily') {
+      modeLine = 'Partida del día'
+      dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+    } else if (gameMode === 'custom') {
+      modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
+    } else {
+      modeLine = 'Modo práctica'
+    }
+    const text = buildShareText(resultShareLink, results, totalScore, modeLine, dateLine)
     try {
       await navigator.clipboard.writeText(text)
       setShareCopied(true)
