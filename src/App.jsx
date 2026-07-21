@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
 import intersectionsPool from './data/intersections.json'
@@ -132,6 +134,7 @@ function App() {
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
+  const [socialsOpen, setSocialsOpen] = useState(false)
 
   const customBarrioNames = useMemo(
     () => barriosData.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre),
@@ -274,10 +277,40 @@ function App() {
   const credits = (
     <div className="credits-bar">
       Hecho por{' '}
-      <a href="https://www.instagram.com/poniemangon" target="_blank" rel="noopener noreferrer">
+      <button type="button" className="credits-link" onClick={() => setSocialsOpen(true)}>
         @poniemangon
-      </a>{' '}
+      </button>{' '}
       - mandame un mensaje si querés que te haga una página o tenés sugerencias
+      {socialsOpen && (
+        <div className="modal-backdrop" onClick={() => setSocialsOpen(false)}>
+          <div className="socials-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="calendar-modal-header">
+              <span>Mis redes</span>
+              <button type="button" className="calendar-close" onClick={() => setSocialsOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <a
+              className="social-option"
+              href="https://x.com/poniemangon"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setSocialsOpen(false)}
+            >
+              <FontAwesomeIcon icon={faXTwitter} /> Twitter
+            </a>
+            <a
+              className="social-option"
+              href="https://www.instagram.com/poniemangon"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setSocialsOpen(false)}
+            >
+              <FontAwesomeIcon icon={faInstagram} /> Instagram
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   )
 
