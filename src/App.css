@@ -368,6 +368,66 @@
   color: #1d4ed8;
 }
 
+.prompt strong.special {
+  color: #eab308;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #eab308;
+  margin-bottom: 2px;
+}
+
+.special-image-reopen {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #eab308;
+  background: transparent;
+  color: #eab308;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.special-image-reopen:hover {
+  background: rgba(234, 179, 8, 0.12);
+}
+
+.special-image-modal {
+  position: relative;
+  max-width: min(90vw, 500px);
+  max-height: 85svh;
+  border-radius: 14px;
+  border: 1px solid var(--border, #333);
+  background: #111;
+  padding: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.special-image-modal img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(85svh - 20px);
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.special-image-modal .calendar-close {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #111;
+  border: 1px solid var(--border, #333);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+}
+
 .map-wrap {
   flex: 1;
   min-height: 0;

@@ -90,6 +90,10 @@ function parseCustomShareBarrios(indices, pool, barrios) {
   return allRoundsMatch ? barrioIds : null
 }
 
+function formatStreets(street1, street2) {
+  return street2 ? `${street1} y ${street2}` : street1
+}
+
 function scoreEmoji(points) {
   if (points === 100) return '🎯'
   if (points >= 90) return '🔥'
@@ -111,27 +115,63 @@ function shareIndicesToUrl(indices, barrioIds) {
   return barrioIds && barrioIds.length ? `${base}&barrios=${barrioIds.join('-')}` : base
 }
 
+const SESSION_STORAGE_KEY = 'ubicaba-game-session'
+
+function loadStoredSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function sameIndices(a, b) {
+  return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i])
+}
+
+// Resolves what game *should* be showing right now from the URL/daily rotation,
+// then checks sessionStorage: if it matches that same game, resume its progress
+// (round index, phase, results) instead of restarting from scratch — so a page
+// refresh keeps you on the results screen if you'd already finished.
 function getInitialGame() {
   const fromShare = parseShareIndices(intersectionsPool.length)
+  let fresh
   if (fromShare) {
     const barrioIds = parseCustomShareBarrios(fromShare, intersectionsPool, barriosData)
-    if (barrioIds) return { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
-    return { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
+    fresh = barrioIds
+      ? { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
+      : { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
+  } else {
+    fresh = {
+      roundIndices: indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length),
+      gameMode: 'daily',
+      customBarrioIds: [],
+    }
   }
-  return {
-    roundIndices: indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length),
-    gameMode: 'daily',
-    customBarrioIds: [],
+
+  const stored = loadStoredSession()
+  if (stored && stored.gameMode === fresh.gameMode && sameIndices(stored.roundIndices, fresh.roundIndices)) {
+    return {
+      roundIndices: stored.roundIndices,
+      gameMode: stored.gameMode,
+      customBarrioIds: stored.customBarrioIds || [],
+      roundIndex: stored.roundIndex ?? 0,
+      phase: stored.phase ?? 'guessing',
+      results: stored.results ?? [],
+    }
   }
+
+  return { ...fresh, roundIndex: 0, phase: 'guessing', results: [] }
 }
 
 function App() {
   const [roundIndices, setRoundIndices] = useState(() => getInitialGame().roundIndices)
   const [gameMode, setGameMode] = useState(() => getInitialGame().gameMode)
   const [customBarrioIds, setCustomBarrioIds] = useState(() => getInitialGame().customBarrioIds)
-  const [roundIndex, setRoundIndex] = useState(0)
-  const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
-  const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
+  const [roundIndex, setRoundIndex] = useState(() => getInitialGame().roundIndex)
+  const [phase, setPhase] = useState(() => getInitialGame().phase) // 'guessing' | 'revealed' | 'gameOver'
+  const [results, setResults] = useState(() => getInitialGame().results) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
@@ -140,6 +180,17 @@ function App() {
     () => barriosData.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre),
     [customBarrioIds],
   )
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({ roundIndices, gameMode, customBarrioIds, roundIndex, phase, results }),
+      )
+    } catch {
+      // sessionStorage unavailable (private browsing, etc.); ignore
+    }
+  }, [roundIndices, gameMode, customBarrioIds, roundIndex, phase, results])
 
   const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
   const shareLink = useMemo(
@@ -158,6 +209,24 @@ function App() {
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
+
+  const currentBarrio = useMemo(
+    () => barriosData.find((b) => b.barrio_id === current?.barrio_id),
+    [current],
+  )
+  const isSpecial = currentBarrio?.comuna === 0
+
+  const [specialImageOpen, setSpecialImageOpen] = useState(false)
+
+  useEffect(() => {
+    if (isSpecial && current?.image_url) {
+      setSpecialImageOpen(true)
+      const timer = setTimeout(() => setSpecialImageOpen(false), 4000)
+      return () => clearTimeout(timer)
+    }
+    setSpecialImageOpen(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current])
 
   const handlePick = useCallback(
     (pos) => {
@@ -334,7 +403,7 @@ function App() {
             {results.map((r, i) => (
               <li key={i}>
                 <span className="breakdown-streets">
-                  R{i + 1}: {r.street1} y {r.street2}
+                  R{i + 1}: {formatStreets(r.street1, r.street2)}
                 </span>
                 <span className="breakdown-detail">
                   {Math.round(r.distance)} m — {r.points} pts
@@ -364,10 +433,33 @@ function App() {
           {menu}
           <span className="score-label">Puntaje: {totalScore}</span>
         </div>
+        {isSpecial && <div className="eyebrow">Ubicación especial</div>}
         <div className="prompt">
-          Encontrá: <strong>{current.street1}</strong> y <strong>{current.street2}</strong>
+          Encontrá: <strong className={isSpecial ? 'special' : ''}>{current.street1}</strong>
+          {current.street2 && (
+            <>
+              {' '}
+              y <strong className={isSpecial ? 'special' : ''}>{current.street2}</strong>
+            </>
+          )}
+          {isSpecial && current.image_url && !specialImageOpen && (
+            <button type="button" className="special-image-reopen" onClick={() => setSpecialImageOpen(true)}>
+              👁 Ver imagen
+            </button>
+          )}
         </div>
       </header>
+
+      {isSpecial && current.image_url && specialImageOpen && (
+        <div className="modal-backdrop" onClick={() => setSpecialImageOpen(false)}>
+          <div className="special-image-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="calendar-close" onClick={() => setSpecialImageOpen(false)}>
+              ✕
+            </button>
+            <img src={current.image_url} alt={current.street1} />
+          </div>
+        </div>
+      )}
 
       <div className="map-wrap">
         <ResultsMap results={results} clickEnabled={phase === 'guessing'} onPick={handlePick} />
