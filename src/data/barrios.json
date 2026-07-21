@@ -238,5 +238,10 @@
     "barrio_id": 48,
     "nombre": "Villa Ortúzar",
     "comuna": 15
+  },
+  {
+    "barrio_id": 49,
+    "nombre": "Especial",
+    "comuna": 0
   }
 ]

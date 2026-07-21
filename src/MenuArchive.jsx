@@ -78,6 +78,7 @@ export default function MenuArchive({
   barrios,
   barrioCounts,
   onStartCustom,
+  onSpecialOnly,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -139,6 +140,17 @@ export default function MenuArchive({
             }}
           >
             Partida personalizada
+          </button>
+          <button
+            type="button"
+            className="menu-item menu-item-special"
+            onClick={() => {
+              setMenuOpen(false)
+              onSpecialOnly()
+            }}
+          >
+            Solo ubicaciones especiales
+            <span className="menu-item-eyebrow">En desarrollo</span>
           </button>
         </div>
       )}

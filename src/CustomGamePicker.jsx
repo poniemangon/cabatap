@@ -23,16 +23,20 @@ function comunaColor(comuna) {
 }
 
 export default function CustomGamePicker({ barrios, barrioCounts, onStart, onClose }) {
-  const [selected, setSelected] = useState(() => new Set(barrios.map((b) => b.barrio_id)))
+  // Special (comuna 0) locations get their own dedicated "solo especiales"
+  // entry point in the menu, so they're excluded from this picker entirely.
+  const normalBarrios = useMemo(() => barrios.filter((b) => b.comuna !== 0), [barrios])
+
+  const [selected, setSelected] = useState(() => new Set(normalBarrios.map((b) => b.barrio_id)))
 
   const grouped = useMemo(() => {
     const byComuna = new Map()
-    for (const b of barrios) {
+    for (const b of normalBarrios) {
       if (!byComuna.has(b.comuna)) byComuna.set(b.comuna, [])
       byComuna.get(b.comuna).push(b)
     }
     return [...byComuna.entries()].sort((a, b) => a[0] - b[0])
-  }, [barrios])
+  }, [normalBarrios])
 
   const toggleBarrio = (id) => {
     setSelected((prev) => {
@@ -43,12 +47,12 @@ export default function CustomGamePicker({ barrios, barrioCounts, onStart, onClo
     })
   }
 
-  const allSelected = selected.size === barrios.length
+  const allSelected = selected.size === normalBarrios.length
   const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(barrios.map((b) => b.barrio_id)))
+    setSelected(allSelected ? new Set() : new Set(normalBarrios.map((b) => b.barrio_id)))
   }
 
-  const availableCount = barrios.reduce(
+  const availableCount = normalBarrios.reduce(
     (sum, b) => (selected.has(b.barrio_id) ? sum + (barrioCounts.get(b.barrio_id) || 0) : sum),
     0,
   )
@@ -93,7 +97,7 @@ export default function CustomGamePicker({ barrios, barrioCounts, onStart, onClo
       </div>
 
       <button type="button" className="primary-btn start-custom-btn" disabled={!canStart} onClick={() => onStart([...selected])}>
-        {canStart ? 'Comenzar' : 'Elegí al menos un barrio'}
+        {canStart ? 'Comenzar' : 'Elegí al menos 5 ubicaciones'}
       </button>
     </div>
   )

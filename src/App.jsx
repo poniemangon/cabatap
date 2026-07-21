@@ -3,14 +3,22 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
-import intersectionsPool from './data/intersections.json'
-import barriosData from './data/barrios.json'
+import { fetchAllRows } from './supabaseClient'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
 const SHARE_DOMAIN = 'https://ubicaba.com'
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
+
+// The daily/archive rotation is pinned to this fixed count, NOT the live pool
+// size. The pool now grows over time (special locations added via the admin
+// panel), and if the cycle length tracked that live count, every new row would
+// reshuffle which corners map to which past/future day. Anything at index
+// DAILY_CYCLE_POOL_SIZE or beyond simply never participates in the daily
+// cycle — it's still fully reachable via practice mode, custom-barrio games,
+// and direct share links, exactly like the original static-JSON behavior.
+const DAILY_CYCLE_POOL_SIZE = 4000
 
 function toRad(deg) {
   return (deg * Math.PI) / 180
@@ -39,11 +47,12 @@ function dayNumberForDate(date) {
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 
-// The pool is a fixed, pre-shuffled order (baked in at data-generation time), so
-// slicing consecutive windows of TOTAL_ROUNDS gives a stable daily rotation with
-// zero repeats until the whole pool has been used once.
-function indicesForDay(dayNumber, poolLength) {
-  const cycleLength = Math.floor(poolLength / TOTAL_ROUNDS)
+// The first DAILY_CYCLE_POOL_SIZE rows are a fixed, pre-shuffled order (baked
+// in when the dataset was generated), so slicing consecutive windows of
+// TOTAL_ROUNDS gives a stable daily rotation with zero repeats until that
+// portion of the pool has been used once.
+function indicesForDay(dayNumber) {
+  const cycleLength = Math.floor(DAILY_CYCLE_POOL_SIZE / TOTAL_ROUNDS)
   const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
   const start = cyclePos * TOTAL_ROUNDS
   return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
@@ -56,6 +65,20 @@ function shuffleSample(arr, n) {
     ;[copy[i], copy[j]] = [copy[j], copy[i]]
   }
   return copy.slice(0, n)
+}
+
+// Picks n rounds from the given candidate indices. If there are fewer than n
+// candidates (e.g. a barrio with only 1-4 locations so far), it fills the
+// remaining rounds by repeating random picks from that same small pool rather
+// than refusing to start.
+function sampleRoundIndices(candidates, n) {
+  if (candidates.length === 0) return []
+  if (candidates.length >= n) return shuffleSample(candidates, n)
+  const result = shuffleSample(candidates, candidates.length)
+  while (result.length < n) {
+    result.push(candidates[Math.floor(Math.random() * candidates.length)])
+  }
+  return result
 }
 
 function pickRandomIndices(poolLength, n) {
@@ -130,58 +153,101 @@ function sameIndices(a, b) {
   return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i])
 }
 
-// Resolves what game *should* be showing right now from the URL/daily rotation,
-// then checks sessionStorage: if it matches that same game, resume its progress
-// (round index, phase, results) instead of restarting from scratch — so a page
-// refresh keeps you on the results screen if you'd already finished.
-function getInitialGame() {
-  const fromShare = parseShareIndices(intersectionsPool.length)
-  let fresh
-  if (fromShare) {
-    const barrioIds = parseCustomShareBarrios(fromShare, intersectionsPool, barriosData)
-    fresh = barrioIds
-      ? { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
-      : { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
-  } else {
-    fresh = {
-      roundIndices: indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length),
-      gameMode: 'daily',
-      customBarrioIds: [],
-    }
-  }
-
-  const stored = loadStoredSession()
-  if (stored && stored.gameMode === fresh.gameMode && sameIndices(stored.roundIndices, fresh.roundIndices)) {
-    return {
-      roundIndices: stored.roundIndices,
-      gameMode: stored.gameMode,
-      customBarrioIds: stored.customBarrioIds || [],
-      roundIndex: stored.roundIndex ?? 0,
-      phase: stored.phase ?? 'guessing',
-      results: stored.results ?? [],
-    }
-  }
-
-  return { ...fresh, roundIndex: 0, phase: 'guessing', results: [] }
+function isAllSpecialSelection(barrioIds, barrios) {
+  if (!barrioIds || barrioIds.length === 0 || !barrios) return false
+  return barrioIds.every((id) => barrios.find((b) => b.barrio_id === id)?.comuna === 0)
 }
 
 function App() {
-  const [roundIndices, setRoundIndices] = useState(() => getInitialGame().roundIndices)
-  const [gameMode, setGameMode] = useState(() => getInitialGame().gameMode)
-  const [customBarrioIds, setCustomBarrioIds] = useState(() => getInitialGame().customBarrioIds)
-  const [roundIndex, setRoundIndex] = useState(() => getInitialGame().roundIndex)
-  const [phase, setPhase] = useState(() => getInitialGame().phase) // 'guessing' | 'revealed' | 'gameOver'
-  const [results, setResults] = useState(() => getInitialGame().results) // {street1, street2, guess, actual, distance, points}
+  const [pool, setPool] = useState(null)
+  const [barrios, setBarrios] = useState(null)
+  const [loadError, setLoadError] = useState(null)
+  const [initialized, setInitialized] = useState(false)
+
+  const [roundIndices, setRoundIndices] = useState([])
+  const [gameMode, setGameMode] = useState('daily')
+  const [customBarrioIds, setCustomBarrioIds] = useState([])
+  const [roundIndex, setRoundIndex] = useState(0)
+  const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
+  const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
+  const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
 
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [poolRows, barrioRows] = await Promise.all([
+          fetchAllRows('intersections', 'street1, street2, lat, lng, barrio_id, image_url', 'pool_index'),
+          fetchAllRows('barrios', '*', 'barrio_id'),
+        ])
+        if (cancelled) return
+        setPool(poolRows)
+        setBarrios(barrioRows)
+      } catch (e) {
+        if (!cancelled) setLoadError(e.message)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!pool || !barrios || initialized) return
+
+    const fromShare = parseShareIndices(pool.length)
+    let fresh
+    if (fromShare) {
+      const barrioIds = parseCustomShareBarrios(fromShare, pool, barrios)
+      fresh = barrioIds
+        ? { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
+        : { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
+    } else {
+      fresh = {
+        roundIndices: indicesForDay(dayNumberForDate(new Date())),
+        gameMode: 'daily',
+        customBarrioIds: [],
+      }
+    }
+
+    const stored = loadStoredSession()
+    const isResume = stored && stored.gameMode === fresh.gameMode && sameIndices(stored.roundIndices, fresh.roundIndices)
+    const initial = isResume
+      ? {
+          roundIndices: stored.roundIndices,
+          gameMode: stored.gameMode,
+          customBarrioIds: stored.customBarrioIds || [],
+          roundIndex: stored.roundIndex ?? 0,
+          phase: stored.phase ?? 'guessing',
+          results: stored.results ?? [],
+        }
+      : { ...fresh, roundIndex: 0, phase: 'guessing', results: [] }
+
+    setRoundIndices(initial.roundIndices)
+    setGameMode(initial.gameMode)
+    setCustomBarrioIds(initial.customBarrioIds)
+    setRoundIndex(initial.roundIndex)
+    setPhase(initial.phase)
+    setResults(initial.results)
+    if (!isResume && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
+      setSpecialSuggestOpen(true)
+    }
+    setInitialized(true)
+  }, [pool, barrios, initialized])
+
+  const isReady = !!pool && !!barrios && initialized
+
   const customBarrioNames = useMemo(
-    () => barriosData.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre),
-    [customBarrioIds],
+    () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
+    [barrios, customBarrioIds],
   )
 
   useEffect(() => {
+    if (!isReady) return
     try {
       sessionStorage.setItem(
         SESSION_STORAGE_KEY,
@@ -190,9 +256,9 @@ function App() {
     } catch {
       // sessionStorage unavailable (private browsing, etc.); ignore
     }
-  }, [roundIndices, gameMode, customBarrioIds, roundIndex, phase, results])
+  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results])
 
-  const rounds = useMemo(() => roundIndices.map((i) => intersectionsPool[i]), [roundIndices])
+  const rounds = useMemo(() => (pool ? roundIndices.map((i) => pool[i]) : []), [pool, roundIndices])
   const shareLink = useMemo(
     () => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices, gameMode === 'custom' ? customBarrioIds : undefined)}`,
     [roundIndices, gameMode, customBarrioIds],
@@ -201,18 +267,19 @@ function App() {
 
   const barrioCounts = useMemo(() => {
     const counts = new Map()
-    for (const it of intersectionsPool) {
+    if (!pool) return counts
+    for (const it of pool) {
       counts.set(it.barrio_id, (counts.get(it.barrio_id) || 0) + 1)
     }
     return counts
-  }, [])
+  }, [pool])
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
 
   const currentBarrio = useMemo(
-    () => barriosData.find((b) => b.barrio_id === current?.barrio_id),
-    [current],
+    () => barrios?.find((b) => b.barrio_id === current?.barrio_id),
+    [barrios, current],
   )
   const isSpecial = currentBarrio?.comuna === 0
 
@@ -266,6 +333,7 @@ function App() {
     setResults([])
     setShareCopied(false)
     setPhase('guessing')
+    setSpecialSuggestOpen(mode === 'custom' && isAllSpecialSelection(barrioIds, barrios))
     const urlBarrioIds = mode === 'custom' ? barrioIds : undefined
     window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices, urlBarrioIds))
 
@@ -282,7 +350,7 @@ function App() {
   }
 
   const handleRestart = () => {
-    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), 'linked')
+    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
   }
 
   const handleShare = async () => {
@@ -307,24 +375,45 @@ function App() {
   }
 
   const handlePractice = () => {
-    startGame(pickRandomIndices(intersectionsPool.length, TOTAL_ROUNDS), 'linked')
+    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
   }
 
   const handleSelectArchiveDay = (dayNumber) => {
-    startGame(indicesForDay(dayNumber, intersectionsPool.length), 'linked', { copyInvite: true })
+    startGame(indicesForDay(dayNumber), 'linked', { copyInvite: true })
   }
 
   const handleDaily = () => {
-    startGame(indicesForDay(dayNumberForDate(new Date()), intersectionsPool.length), 'daily')
+    startGame(indicesForDay(dayNumberForDate(new Date())), 'daily')
   }
 
   const handleStartCustom = (selectedBarrioIds) => {
     const selectedSet = new Set(selectedBarrioIds)
     const candidateIndices = []
-    intersectionsPool.forEach((it, i) => {
+    pool.forEach((it, i) => {
       if (selectedSet.has(it.barrio_id)) candidateIndices.push(i)
     })
-    startGame(shuffleSample(candidateIndices, TOTAL_ROUNDS), 'custom', { barrioIds: selectedBarrioIds })
+    startGame(sampleRoundIndices(candidateIndices, TOTAL_ROUNDS), 'custom', { barrioIds: selectedBarrioIds })
+  }
+
+  const handleSpecialOnly = () => {
+    const specialBarrioIds = barrios.filter((b) => b.comuna === 0).map((b) => b.barrio_id)
+    handleStartCustom(specialBarrioIds)
+  }
+
+  if (loadError) {
+    return (
+      <div className="app">
+        <div className="loading-screen">No se pudo cargar el juego: {loadError}</div>
+      </div>
+    )
+  }
+
+  if (!isReady) {
+    return (
+      <div className="app">
+        <div className="loading-screen">Cargando...</div>
+      </div>
+    )
   }
 
   const menu = (
@@ -335,12 +424,36 @@ function App() {
         onDaily={handleDaily}
         onPractice={handlePractice}
         onSelectDay={handleSelectArchiveDay}
-        barrios={barriosData}
+        barrios={barrios}
         barrioCounts={barrioCounts}
         onStartCustom={handleStartCustom}
+        onSpecialOnly={handleSpecialOnly}
       />
       {menuCopied && <span className="menu-copied">¡Link copiado!</span>}
     </>
+  )
+
+  const specialSuggestPopup = specialSuggestOpen && (
+    <div className="modal-backdrop" onClick={() => setSpecialSuggestOpen(false)}>
+      <div className="socials-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="calendar-modal-header">
+          <span>Atención</span>
+          <button type="button" className="calendar-close" onClick={() => setSpecialSuggestOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="special-suggest-text">
+          Actualmente en desarrollo, mandame sugerencias de lugares{' '}
+          <a
+            href="https://x.com/poniemangon/status/2079606489325482234?s=20"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            a este tuit
+          </a>
+        </p>
+      </div>
+    </div>
   )
 
   const credits = (
@@ -460,6 +573,8 @@ function App() {
           </div>
         </div>
       )}
+
+      {specialSuggestPopup}
 
       <div className="map-wrap">
         <ResultsMap results={results} clickEnabled={phase === 'guessing'} onPick={handlePick} />
