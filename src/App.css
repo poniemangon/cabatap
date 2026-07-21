@@ -397,6 +397,12 @@
   gap: 12px;
 }
 
+@media (max-width: 600px) {
+  .gameover-actions {
+    flex-direction: column;
+  }
+}
+
 .gameover-actions .primary-btn {
   flex: 1;
 }
