@@ -150,7 +150,7 @@ export default function MenuArchive({
             }}
           >
             Solo ubicaciones especiales
-            <span className="menu-item-eyebrow">En desarrollo</span>
+            <span className="menu-item-eyebrow">En desarrollo, probalo!</span>
           </button>
         </div>
       )}
