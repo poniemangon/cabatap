@@ -32,6 +32,8 @@ export default async function handler(req, res) {
   // of client-side) means the cached response is already label-free.
   style.layers = (style.layers || []).filter((l) => l.type !== 'symbol')
 
-  res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400')
+  // Shorter than the tile cache: this response embeds our own proxy URLs, so
+  // a bug fix here should reach browsers within the hour, not stuck a full day.
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600')
   res.status(200).json(style)
 }

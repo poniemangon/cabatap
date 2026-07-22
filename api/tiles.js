@@ -30,6 +30,8 @@ export default async function handler(req, res) {
   const origin = `${proto}://${req.headers.host}`
   json.tiles = [`${origin}/api/tile?source=${source}&z={z}&x={x}&y={y}`]
 
-  res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400')
+  // Shorter than the tile cache: this response embeds our own proxy URLs, so
+  // a bug fix here should reach browsers within the hour, not stuck a full day.
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600')
   res.status(200).json(json)
 }
