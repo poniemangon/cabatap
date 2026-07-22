@@ -4,7 +4,7 @@ import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
 import { fetchAllRows } from './supabaseClient'
-import gigachadImg from './assets/The_Gigachad.webp.png'
+import donateImg from './assets/la-bestia-de-calchin.webp'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
@@ -481,7 +481,7 @@ function App() {
             ✕
           </button>
         </div>
-        <img src={gigachadImg} alt="" className="donate-image" />
+        <img src={donateImg} alt="" className="donate-image" />
         <p className="special-suggest-text">
           Necesito tu ayuda para costear el servidor
           <br />
