@@ -97,7 +97,7 @@ export default function MenuArchive({
   return (
     <div className="menu-wrap" ref={menuRef}>
       <button type="button" className="menu-btn" onClick={() => setMenuOpen((o) => !o)}>
-        Menú ▾
+        Modos de juego ▾
       </button>
       {menuOpen && (
         <div className="menu-dropdown">
