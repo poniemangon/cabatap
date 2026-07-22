@@ -58,7 +58,7 @@ export default function ResultsMap({ results, clickEnabled, onPick }) {
         center: BA_CENTER_LNGLAT,
         zoom: 13,
         minZoom: 11,
-        maxZoom: 19,
+        maxZoom: 15,
       })
       map.setMaxBounds(MAX_BOUNDS_LNGLAT)
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left')
