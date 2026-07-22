@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 
-const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY
 const BA_CENTER_LNGLAT = [-58.4025, -34.5975]
 const MAX_BOUNDS_LNGLAT = [
   [-58.55, -34.72],
@@ -49,9 +48,8 @@ export default function ResultsMap({ results, clickEnabled, onPick }) {
     let cancelled = false
 
     async function init() {
-      const res = await fetch(`https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`)
+      const res = await fetch('/api/style/hybrid')
       const style = await res.json()
-      style.layers = style.layers.filter((l) => l.type !== 'symbol')
       if (cancelled) return
 
       const map = new maplibregl.Map({
