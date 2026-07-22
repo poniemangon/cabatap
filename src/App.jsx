@@ -506,13 +506,14 @@ function App() {
       </button>{' '}
       - mandame un mensaje si querés que te haga una página o tenés sugerencias
       {' - '}
+      ayudame a sostener el proyecto{' '}
       <a
         className="credits-link"
         href="https://cafecito.app/poniemangon"
         target="_blank"
         rel="noopener noreferrer"
       >
-        ayudame a costear el servidor
+        en este link
       </a>
       {socialsOpen && (
         <div className="modal-backdrop" onClick={() => setSocialsOpen(false)}>
@@ -540,6 +541,15 @@ function App() {
               onClick={() => setSocialsOpen(false)}
             >
               <FontAwesomeIcon icon={faInstagram} /> Instagram
+            </a>
+            <a
+              className="social-option"
+              href="https://cafecito.app/poniemangon"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setSocialsOpen(false)}
+            >
+              ☕ Cafecito
             </a>
           </div>
         </div>
