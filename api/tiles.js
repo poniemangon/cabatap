@@ -22,9 +22,13 @@ export default async function handler(req, res) {
   }
 
   const json = await upstreamRes.json()
-  // Flat query-param template — MapLibre does plain string substitution of
-  // {z}/{x}/{y}, so it works the same whether they sit in the path or query.
-  json.tiles = [`/api/tile?source=${source}&z={z}&x={x}&y={y}`]
+  // Absolute URL: the actual tile fetch happens inside MapLibre's worker,
+  // which can't resolve a relative "/api/..." path. Query-param template —
+  // MapLibre does plain string substitution of {z}/{x}/{y}, so it works the
+  // same whether they sit in the path or query.
+  const proto = req.headers['x-forwarded-proto'] || 'https'
+  const origin = `${proto}://${req.headers.host}`
+  json.tiles = [`${origin}/api/tile?source=${source}&z={z}&x={x}&y={y}`]
 
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400')
   res.status(200).json(json)
