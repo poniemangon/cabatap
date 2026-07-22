@@ -4,7 +4,7 @@ import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
 import { fetchAllRows } from './supabaseClient'
-import donateImg from './assets/la-bestia-de-calchin.webp'
+import donateImg from './assets/la-bestia-de-calchin.jpg'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
