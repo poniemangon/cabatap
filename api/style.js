@@ -1,17 +1,9 @@
 const MAPTILER_KEY = process.env.MAPTILER_KEY
-const ALLOWED_STYLES = new Set(['hybrid'])
 
 export default async function handler(req, res) {
-  const { id } = req.query
-
-  if (!ALLOWED_STYLES.has(id)) {
-    res.status(404).end()
-    return
-  }
-
   let upstreamRes
   try {
-    upstreamRes = await fetch(`https://api.maptiler.com/maps/${id}/style.json?key=${MAPTILER_KEY}`)
+    upstreamRes = await fetch(`https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`)
   } catch {
     res.status(502).json({ error: 'upstream fetch failed' })
     return
@@ -24,12 +16,11 @@ export default async function handler(req, res) {
 
   const style = await upstreamRes.json()
 
-  // Point each source at our own tile proxy instead of MapTiler directly, so
-  // the actual tile requests (the ones that count against the API quota) get
-  // cached at the edge instead of hitting MapTiler on every game load.
+  // Point each source at our own tiles.json proxy (flat, query-param based —
+  // nested dynamic routes like /api/tiles/[...path] 404'd in production).
   for (const source of Object.values(style.sources || {})) {
     const match = source.url?.match(/\/tiles\/([^/]+)\/tiles\.json/)
-    if (match) source.url = `/api/tiles/${match[1]}/tiles.json`
+    if (match) source.url = `/api/tiles?source=${match[1]}`
   }
 
   // Street/place labels stay hidden in the game map; filtering here (instead
