@@ -4,6 +4,7 @@ import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import MenuArchive from './MenuArchive'
 import { fetchAllRows } from './supabaseClient'
+import gigachadImg from './assets/The_Gigachad.webp.png'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
@@ -139,6 +140,7 @@ function shareIndicesToUrl(indices, barrioIds) {
 }
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
+const DONATE_POPUP_SESSION_KEY = 'ubicaba-donate-popup-shown'
 
 function loadStoredSession() {
   try {
@@ -174,6 +176,7 @@ function App() {
   const [menuCopied, setMenuCopied] = useState(false)
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
+  const [donatePopupOpen, setDonatePopupOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -240,6 +243,19 @@ function App() {
   }, [pool, barrios, initialized])
 
   const isReady = !!pool && !!barrios && initialized
+
+  useEffect(() => {
+    if (!isReady) return
+    try {
+      if (!sessionStorage.getItem(DONATE_POPUP_SESSION_KEY)) {
+        sessionStorage.setItem(DONATE_POPUP_SESSION_KEY, '1')
+        setDonatePopupOpen(true)
+      }
+    } catch {
+      // sessionStorage unavailable (private browsing, etc.); just skip the popup
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -456,6 +472,32 @@ function App() {
     </div>
   )
 
+  const donatePopup = donatePopupOpen && (
+    <div className="modal-backdrop" onClick={() => setDonatePopupOpen(false)}>
+      <div className="socials-modal donate-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="calendar-modal-header">
+          <span>Aguante Messi</span>
+          <button type="button" className="calendar-close" onClick={() => setDonatePopupOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <img src={gigachadImg} alt="" className="donate-image" />
+        <p className="special-suggest-text">
+          Necesito tu ayuda para costear el servidor
+          <br />
+          <a
+            href="https://cafecito.app/poniemangon"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setDonatePopupOpen(false)}
+          >
+            en este link
+          </a>
+        </p>
+      </div>
+    </div>
+  )
+
   const credits = (
     <div className="credits-bar">
       Hecho por{' '}
@@ -463,6 +505,15 @@ function App() {
         @poniemangon
       </button>{' '}
       - mandame un mensaje si querés que te haga una página o tenés sugerencias
+      {' - '}
+      <a
+        className="credits-link"
+        href="https://cafecito.app/poniemangon"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        ayudame a costear el servidor
+      </a>
       {socialsOpen && (
         <div className="modal-backdrop" onClick={() => setSocialsOpen(false)}>
           <div className="socials-modal" onClick={(e) => e.stopPropagation()}>
@@ -533,6 +584,7 @@ function App() {
             </button>
           </div>
         </footer>
+        {donatePopup}
         {credits}
       </div>
     )
@@ -575,6 +627,7 @@ function App() {
       )}
 
       {specialSuggestPopup}
+      {donatePopup}
 
       <div className="map-wrap">
         <ResultsMap results={results} clickEnabled={phase === 'guessing'} onPick={handlePick} />

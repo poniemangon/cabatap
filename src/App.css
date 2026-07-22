@@ -55,6 +55,19 @@
   font-size: 14px;
 }
 
+.donate-modal {
+  max-width: 320px;
+  align-items: center;
+  text-align: center;
+}
+
+.donate-image {
+  width: 100%;
+  max-width: 220px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
 .special-suggest-text {
   margin: 0;
   font-size: 14px;
