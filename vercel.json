@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/tiles/:path*", "destination": "/api/tiles/[...path]" }
+    { "source": "/api/tiles/:path*", "destination": "/api/tiles/:path*" }
   ]
 }
