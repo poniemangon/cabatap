@@ -481,8 +481,48 @@
 }
 
 .map-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+
+.map-wrap-dimmed .map {
+  filter: blur(6px) brightness(0.45);
+}
+
+.final-score-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.final-score-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.final-score-value {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+}
+
+.final-score-max {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .map {

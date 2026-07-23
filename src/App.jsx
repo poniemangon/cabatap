@@ -564,12 +564,16 @@ function App() {
           <div className="hud-row">
             <span className="round-label">¡Juego terminado!</span>
             {menu}
-            <span className="score-label">Puntaje final: {totalScore} / {TOTAL_ROUNDS * 100}</span>
           </div>
         </header>
 
-        <div className="map-wrap">
+        <div className="map-wrap map-wrap-dimmed">
           <ResultsMap results={results} clickEnabled={false} onPick={() => {}} />
+          <div className="final-score-overlay">
+            <span className="final-score-label">Puntaje final</span>
+            <span className="final-score-value">{totalScore}</span>
+            <span className="final-score-max">/ {TOTAL_ROUNDS * 100}</span>
+          </div>
         </div>
 
         <footer className="controls controls-gameover">
