@@ -177,6 +177,7 @@ function App() {
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
   const [donatePopupOpen, setDonatePopupOpen] = useState(false)
+  const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -348,6 +349,7 @@ function App() {
     setRoundIndex(0)
     setResults([])
     setShareCopied(false)
+    setScoreOverlayOpen(true)
     setPhase('guessing')
     setSpecialSuggestOpen(mode === 'custom' && isAllSpecialSelection(barrioIds, barrios))
     const urlBarrioIds = mode === 'custom' ? barrioIds : undefined
@@ -567,13 +569,30 @@ function App() {
           </div>
         </header>
 
-        <div className="map-wrap map-wrap-dimmed">
+        <div className={`map-wrap${scoreOverlayOpen ? ' map-wrap-dimmed' : ''}`}>
           <ResultsMap results={results} clickEnabled={false} onPick={() => {}} />
-          <div className="final-score-overlay">
-            <span className="final-score-label">Puntaje final</span>
-            <span className="final-score-value">{totalScore}</span>
-            <span className="final-score-max">/ {TOTAL_ROUNDS * 100}</span>
-          </div>
+          {scoreOverlayOpen ? (
+            <div className="final-score-overlay">
+              <button
+                type="button"
+                className="final-score-close"
+                onClick={() => setScoreOverlayOpen(false)}
+              >
+                ✕
+              </button>
+              <span className="final-score-label">Puntaje final</span>
+              <span className="final-score-value">{totalScore}</span>
+              <span className="final-score-max">/ {TOTAL_ROUNDS * 100}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="final-score-reopen"
+              onClick={() => setScoreOverlayOpen(true)}
+            >
+              🏆 {totalScore} / {TOTAL_ROUNDS * 100}
+            </button>
+          )}
         </div>
 
         <footer className="controls controls-gameover">
