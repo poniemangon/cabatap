@@ -195,6 +195,7 @@ function App() {
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -645,6 +646,8 @@ function App() {
       currentScore={totalScore}
       bestSessionScore={bestSessionScore}
       avgAccuracy={avgAccuracy}
+      mobileOpen={sidebarOpen}
+      onClose={() => setSidebarOpen(false)}
     />
   )
 
@@ -786,7 +789,11 @@ function App() {
     <div className="app-shell">
       {sidebar}
       <div className="app-main">
-        <TopBar onShare={handleShareInvite} shareCopied={menuCopied} />
+        <TopBar
+          onShare={handleShareInvite}
+          shareCopied={menuCopied}
+          onToggleSidebar={() => setSidebarOpen((o) => !o)}
+        />
         {mainContent}
         {credits}
       </div>

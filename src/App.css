@@ -109,9 +109,57 @@
   border-bottom: 1px solid var(--border, #262626);
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .topbar-logo {
   height: 28px;
   width: 28px;
+}
+
+.topbar-burger {
+  display: none;
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-h, #f5f5f5);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .topbar-burger {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(0, 0, 0, 0.5);
+  }
 }
 
 .topbar-share-btn {
