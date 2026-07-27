@@ -33,10 +33,11 @@ function createActualMarkerEl(label) {
   return wrap
 }
 
-export default function ResultsMap({ results, clickEnabled, onPick }) {
+export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])
+  const pendingMarkerRef = useRef(null)
   const clickEnabledRef = useRef(clickEnabled)
   const onPickRef = useRef(onPick)
   const [loaded, setLoaded] = useState(false)
@@ -98,11 +99,36 @@ export default function ResultsMap({ results, clickEnabled, onPick }) {
       cancelled = true
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
+      pendingMarkerRef.current?.remove()
+      pendingMarkerRef.current = null
       mapRef.current?.remove()
       mapRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pending guess (tapped but not yet confirmed) gets its own marker, moved
+  // in place on subsequent taps rather than rebuilt alongside the confirmed
+  // results markers/lines below.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded) return
+
+    if (!pendingGuess) {
+      pendingMarkerRef.current?.remove()
+      pendingMarkerRef.current = null
+      return
+    }
+
+    const lngLat = [pendingGuess[1], pendingGuess[0]]
+    if (pendingMarkerRef.current) {
+      pendingMarkerRef.current.setLngLat(lngLat)
+    } else {
+      pendingMarkerRef.current = new maplibregl.Marker({ element: createDot('#007aff', '#0056b3') })
+        .setLngLat(lngLat)
+        .addTo(map)
+    }
+  }, [pendingGuess, loaded])
 
   useEffect(() => {
     const map = mapRef.current
@@ -112,7 +138,7 @@ export default function ResultsMap({ results, clickEnabled, onPick }) {
     markersRef.current = []
 
     const features = results.map((r, i) => {
-      const guessMarker = new maplibregl.Marker({ element: createDot('#3b82f6', '#1d4ed8') })
+      const guessMarker = new maplibregl.Marker({ element: createDot('#007aff', '#0056b3') })
         .setLngLat([r.guess[1], r.guess[0]])
         .addTo(map)
       const actualMarker = new maplibregl.Marker({ element: createActualMarkerEl(`R${i + 1}`), anchor: 'bottom' })

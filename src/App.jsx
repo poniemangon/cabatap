@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
-import MenuArchive from './MenuArchive'
+import Sidebar from './Sidebar'
+import TopBar from './TopBar'
+import Dashboard from './Dashboard'
+import RoundResultModal from './RoundResultModal'
+import CalendarPicker from './CalendarPicker'
+import CustomGamePicker from './CustomGamePicker'
 import { fetchAllRows } from './supabaseClient'
 import donateImg from './assets/la-bestia-de-calchin.jpg'
 import './App.css'
@@ -141,6 +146,15 @@ function shareIndicesToUrl(indices, barrioIds) {
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const DONATE_POPUP_SESSION_KEY = 'ubicaba-donate-popup-shown'
+const BEST_SCORE_KEY = 'ubicaba-best-session-score'
+
+function loadBestSessionScore() {
+  try {
+    return Number(sessionStorage.getItem(BEST_SCORE_KEY)) || 0
+  } catch {
+    return 0
+  }
+}
 
 function loadStoredSession() {
   try {
@@ -171,6 +185,7 @@ function App() {
   const [customBarrioIds, setCustomBarrioIds] = useState([])
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
+  const [view, setView] = useState('dashboard') // 'dashboard' | 'game'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
@@ -178,6 +193,8 @@ function App() {
   const [socialsOpen, setSocialsOpen] = useState(false)
   const [donatePopupOpen, setDonatePopupOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [customOpen, setCustomOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -228,8 +245,11 @@ function App() {
           roundIndex: stored.roundIndex ?? 0,
           phase: stored.phase ?? 'guessing',
           results: stored.results ?? [],
+          // Older stored sessions (saved before "view" existed) were always
+          // mid-game, so they default to 'game' rather than the dashboard.
+          view: stored.view ?? 'game',
         }
-      : { ...fresh, roundIndex: 0, phase: 'guessing', results: [] }
+      : { ...fresh, roundIndex: 0, phase: 'guessing', results: [], view: fromShare ? 'game' : 'dashboard' }
 
     setRoundIndices(initial.roundIndices)
     setGameMode(initial.gameMode)
@@ -237,6 +257,7 @@ function App() {
     setRoundIndex(initial.roundIndex)
     setPhase(initial.phase)
     setResults(initial.results)
+    setView(initial.view)
     if (!isResume && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
       setSpecialSuggestOpen(true)
     }
@@ -268,12 +289,12 @@ function App() {
     try {
       sessionStorage.setItem(
         SESSION_STORAGE_KEY,
-        JSON.stringify({ roundIndices, gameMode, customBarrioIds, roundIndex, phase, results }),
+        JSON.stringify({ roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view }),
       )
     } catch {
       // sessionStorage unavailable (private browsing, etc.); ignore
     }
-  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results])
+  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view])
 
   const rounds = useMemo(() => (pool ? roundIndices.map((i) => pool[i]) : []), [pool, roundIndices])
   const shareLink = useMemo(
@@ -293,6 +314,24 @@ function App() {
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
+  const avgAccuracy = useMemo(
+    () => (results.length ? results.reduce((s, r) => s + r.points, 0) / results.length / 100 : 0),
+    [results],
+  )
+
+  const [bestSessionScore, setBestSessionScore] = useState(loadBestSessionScore)
+
+  useEffect(() => {
+    if (phase !== 'gameOver') return
+    if (totalScore <= bestSessionScore) return
+    setBestSessionScore(totalScore)
+    try {
+      sessionStorage.setItem(BEST_SCORE_KEY, String(totalScore))
+    } catch {
+      // sessionStorage unavailable; ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, totalScore])
 
   const currentBarrio = useMemo(
     () => barrios?.find((b) => b.barrio_id === current?.barrio_id),
@@ -312,35 +351,39 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current])
 
-  const handlePick = useCallback(
+  const [pendingGuess, setPendingGuess] = useState(null)
+
+  const handleMapClick = useCallback(
     (pos) => {
       if (phase !== 'guessing') return
-      const actual = [current.lat, current.lng]
-      const distance = haversineMeters(pos, actual)
-      const points = scoreForDistance(distance)
-      setResults((prev) => [
-        ...prev,
-        { street1: current.street1, street2: current.street2, guess: pos, actual, distance, points },
-      ])
-      setPhase('revealed')
+      setPendingGuess(pos)
     },
-    [phase, current],
+    [phase],
   )
 
-  useEffect(() => {
-    if (phase !== 'revealed') return
-    const timer = setTimeout(() => {
-      setRoundIndex((i) => {
-        if (i + 1 >= TOTAL_ROUNDS) {
-          setPhase('gameOver')
-          return i
-        }
-        setPhase('guessing')
-        return i + 1
-      })
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [phase])
+  const handleConfirmGuess = useCallback(() => {
+    if (phase !== 'guessing' || !pendingGuess) return
+    const actual = [current.lat, current.lng]
+    const distance = haversineMeters(pendingGuess, actual)
+    const points = scoreForDistance(distance)
+    setResults((prev) => [
+      ...prev,
+      { street1: current.street1, street2: current.street2, guess: pendingGuess, actual, distance, points },
+    ])
+    setPendingGuess(null)
+    setPhase('revealed')
+  }, [phase, current, pendingGuess])
+
+  const handleNextRound = useCallback(() => {
+    setRoundIndex((i) => {
+      if (i + 1 >= TOTAL_ROUNDS) {
+        setPhase('gameOver')
+        return i
+      }
+      setPhase('guessing')
+      return i + 1
+    })
+  }, [])
 
   const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
     setRoundIndices(indices)
@@ -348,9 +391,11 @@ function App() {
     setCustomBarrioIds(barrioIds)
     setRoundIndex(0)
     setResults([])
+    setPendingGuess(null)
     setShareCopied(false)
     setScoreOverlayOpen(true)
     setPhase('guessing')
+    setView('game')
     setSpecialSuggestOpen(mode === 'custom' && isAllSpecialSelection(barrioIds, barrios))
     const urlBarrioIds = mode === 'custom' ? barrioIds : undefined
     window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices, urlBarrioIds))
@@ -387,6 +432,17 @@ function App() {
       await navigator.clipboard.writeText(text)
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      // clipboard not available; ignore
+    }
+  }
+
+  const handleShareInvite = async () => {
+    const text = `Unite a mi partida en el link ${shareLink}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setMenuCopied(true)
+      setTimeout(() => setMenuCopied(false), 2000)
     } catch {
       // clipboard not available; ignore
     }
@@ -434,21 +490,41 @@ function App() {
     )
   }
 
-  const menu = (
-    <>
-      <MenuArchive
-        dayNumberForDate={dayNumberForDate}
-        todayDayNumber={dayNumberForDate(new Date())}
-        onDaily={handleDaily}
-        onPractice={handlePractice}
-        onSelectDay={handleSelectArchiveDay}
-        barrios={barrios}
-        barrioCounts={barrioCounts}
-        onStartCustom={handleStartCustom}
-        onSpecialOnly={handleSpecialOnly}
-      />
-      {menuCopied && <span className="menu-copied">¡Link copiado!</span>}
-    </>
+  const archivePopup = archiveOpen && (
+    <div className="modal-backdrop" onClick={() => setArchiveOpen(false)}>
+      <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="calendar-modal-header">
+          <span>Elegí una fecha</span>
+          <button type="button" className="calendar-close" onClick={() => setArchiveOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <CalendarPicker
+          dayNumberForDate={dayNumberForDate}
+          todayDayNumber={dayNumberForDate(new Date())}
+          onSelectDay={(dayNumber) => {
+            setArchiveOpen(false)
+            handleSelectArchiveDay(dayNumber)
+          }}
+        />
+      </div>
+    </div>
+  )
+
+  const customPopup = customOpen && (
+    <div className="modal-backdrop" onClick={() => setCustomOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <CustomGamePicker
+          barrios={barrios}
+          barrioCounts={barrioCounts}
+          onClose={() => setCustomOpen(false)}
+          onStart={(selectedBarrioIds) => {
+            setCustomOpen(false)
+            handleStartCustom(selectedBarrioIds)
+          }}
+        />
+      </div>
+    </div>
   )
 
   const specialSuggestPopup = specialSuggestOpen && (
@@ -559,16 +635,33 @@ function App() {
     </div>
   )
 
-  if (phase === 'gameOver') {
-    return (
-      <div className="app">
-        <header className="hud">
-          <div className="hud-row">
-            <span className="round-label">¡Juego terminado!</span>
-            {menu}
-          </div>
-        </header>
+  const sidebar = (
+    <Sidebar
+      onDaily={handleDaily}
+      onPractice={handlePractice}
+      onOpenArchive={() => setArchiveOpen(true)}
+      onOpenCustom={() => setCustomOpen(true)}
+      onSpecialOnly={handleSpecialOnly}
+      currentScore={totalScore}
+      bestSessionScore={bestSessionScore}
+      avgAccuracy={avgAccuracy}
+    />
+  )
 
+  let mainContent
+  if (view === 'dashboard') {
+    mainContent = (
+      <Dashboard
+        onDaily={handleDaily}
+        onPractice={handlePractice}
+        onOpenArchive={() => setArchiveOpen(true)}
+        onOpenCustom={() => setCustomOpen(true)}
+        onSpecialOnly={handleSpecialOnly}
+      />
+    )
+  } else if (phase === 'gameOver') {
+    mainContent = (
+      <>
         <div className={`map-wrap${scoreOverlayOpen ? ' map-wrap-dimmed' : ''}`}>
           <ResultsMap results={results} clickEnabled={false} onPick={() => {}} />
           {scoreOverlayOpen ? (
@@ -617,66 +710,89 @@ function App() {
             </button>
           </div>
         </footer>
-        {donatePopup}
-        {credits}
-      </div>
+      </>
+    )
+  } else {
+    mainContent = (
+      <>
+        <header className="hud">
+          <div className="hud-row">
+            <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
+            <span className="score-label">Puntaje: {totalScore}</span>
+          </div>
+          {isSpecial && <div className="eyebrow">Ubicación especial</div>}
+          <div className="prompt">
+            Encontrá: <strong className={isSpecial ? 'special' : ''}>{current.street1}</strong>
+            {current.street2 && (
+              <>
+                {' '}
+                y <strong className={isSpecial ? 'special' : ''}>{current.street2}</strong>
+              </>
+            )}
+            {isSpecial && current.image_url && !specialImageOpen && (
+              <button type="button" className="special-image-reopen" onClick={() => setSpecialImageOpen(true)}>
+                👁 Ver imagen
+              </button>
+            )}
+          </div>
+        </header>
+
+        {isSpecial && current.image_url && specialImageOpen && (
+          <div className="modal-backdrop" onClick={() => setSpecialImageOpen(false)}>
+            <div className="special-image-modal" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="calendar-close" onClick={() => setSpecialImageOpen(false)}>
+                ✕
+              </button>
+              <img src={current.image_url} alt={current.street1} />
+            </div>
+          </div>
+        )}
+
+        {specialSuggestPopup}
+
+        <div className="map-wrap">
+          <ResultsMap
+            results={results}
+            pendingGuess={phase === 'guessing' ? pendingGuess : null}
+            clickEnabled={phase === 'guessing'}
+            onPick={handleMapClick}
+          />
+        </div>
+
+        <footer className="controls">
+          {phase === 'guessing' && !pendingGuess && (
+            <span className="hint">Tocá el mapa para marcar dónde creés que está la esquina</span>
+          )}
+          {phase === 'guessing' && pendingGuess && (
+            <button type="button" className="primary-btn confirm-guess-btn" onClick={handleConfirmGuess}>
+              Confirmar ubicación
+            </button>
+          )}
+        </footer>
+
+        {phase === 'revealed' && (
+          <RoundResultModal
+            points={results[roundIndex].points}
+            distance={results[roundIndex].distance}
+            isLastRound={roundIndex + 1 >= TOTAL_ROUNDS}
+            onNext={handleNextRound}
+          />
+        )}
+      </>
     )
   }
 
   return (
-    <div className="app">
-      <header className="hud">
-        <div className="hud-row">
-          <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
-          {menu}
-          <span className="score-label">Puntaje: {totalScore}</span>
-        </div>
-        {isSpecial && <div className="eyebrow">Ubicación especial</div>}
-        <div className="prompt">
-          Encontrá: <strong className={isSpecial ? 'special' : ''}>{current.street1}</strong>
-          {current.street2 && (
-            <>
-              {' '}
-              y <strong className={isSpecial ? 'special' : ''}>{current.street2}</strong>
-            </>
-          )}
-          {isSpecial && current.image_url && !specialImageOpen && (
-            <button type="button" className="special-image-reopen" onClick={() => setSpecialImageOpen(true)}>
-              👁 Ver imagen
-            </button>
-          )}
-        </div>
-      </header>
-
-      {isSpecial && current.image_url && specialImageOpen && (
-        <div className="modal-backdrop" onClick={() => setSpecialImageOpen(false)}>
-          <div className="special-image-modal" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="calendar-close" onClick={() => setSpecialImageOpen(false)}>
-              ✕
-            </button>
-            <img src={current.image_url} alt={current.street1} />
-          </div>
-        </div>
-      )}
-
-      {specialSuggestPopup}
-      {donatePopup}
-
-      <div className="map-wrap">
-        <ResultsMap results={results} clickEnabled={phase === 'guessing'} onPick={handlePick} />
+    <div className="app-shell">
+      {sidebar}
+      <div className="app-main">
+        <TopBar onShare={handleShareInvite} shareCopied={menuCopied} />
+        {mainContent}
+        {credits}
       </div>
-
-      <footer className="controls">
-        {phase === 'guessing' && (
-          <span className="hint">Tocá el mapa para marcar dónde creés que está la esquina</span>
-        )}
-        {phase === 'revealed' && (
-          <span className="result">
-            Te equivocaste por {Math.round(results[roundIndex].distance)} m — {results[roundIndex].points} pts
-          </span>
-        )}
-      </footer>
-      {credits}
+      {archivePopup}
+      {customPopup}
+      {donatePopup}
     </div>
   )
 }

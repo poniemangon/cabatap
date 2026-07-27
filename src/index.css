@@ -4,6 +4,11 @@
   --bg: #000;
   --border: #262626;
 
+  --accent-primary: #007aff;
+  --accent-secondary: #ffd60a;
+  --accent-tertiary: #d75800;
+  --neutral: #121212;
+
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   font: 16px/145% var(--sans);
