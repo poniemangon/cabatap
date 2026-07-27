@@ -49,7 +49,7 @@ export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick
     let cancelled = false
 
     async function init() {
-      const res = await fetch('/api/style')
+      const res = await fetch('/style.json')
       const style = await res.json()
       if (cancelled) return
 
