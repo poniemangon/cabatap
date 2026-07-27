@@ -147,12 +147,22 @@ function shareIndicesToUrl(indices, barrioIds) {
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const DONATE_POPUP_SESSION_KEY = 'ubicaba-donate-popup-shown'
 const BEST_SCORE_KEY = 'ubicaba-best-session-score'
+const SESSION_ACCURACY_KEY = 'ubicaba-session-accuracy'
 
 function loadBestSessionScore() {
   try {
     return Number(sessionStorage.getItem(BEST_SCORE_KEY)) || 0
   } catch {
     return 0
+  }
+}
+
+function loadSessionAccuracy() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_ACCURACY_KEY)
+    return raw ? JSON.parse(raw) : { points: 0, rounds: 0 }
+  } catch {
+    return { points: 0, rounds: 0 }
   }
 }
 
@@ -315,12 +325,20 @@ function App() {
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
-  const avgAccuracy = useMemo(
-    () => (results.length ? results.reduce((s, r) => s + r.points, 0) / results.length / 100 : 0),
-    [results],
-  )
 
   const [bestSessionScore, setBestSessionScore] = useState(loadBestSessionScore)
+  const [sessionAccuracy, setSessionAccuracy] = useState(loadSessionAccuracy)
+
+  // Precisión acumulada de todas las partidas jugadas en esta sesión. Mientras
+  // se juega, suma también las rondas de la partida en curso (todavía no
+  // volcada a sessionAccuracy); una vez en gameOver, esa partida ya quedó
+  // sumada por el efecto de abajo, así que no se vuelve a contar acá.
+  const avgAccuracy = useMemo(() => {
+    const liveResults = phase === 'gameOver' ? [] : results
+    const points = sessionAccuracy.points + liveResults.reduce((s, r) => s + r.points, 0)
+    const roundsPlayed = sessionAccuracy.rounds + liveResults.length
+    return roundsPlayed ? points / roundsPlayed / 100 : 0
+  }, [sessionAccuracy, results, phase])
 
   useEffect(() => {
     if (phase !== 'gameOver') return
@@ -333,6 +351,20 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, totalScore])
+
+  useEffect(() => {
+    if (phase !== 'gameOver') return
+    setSessionAccuracy((prev) => {
+      const next = { points: prev.points + totalScore, rounds: prev.rounds + TOTAL_ROUNDS }
+      try {
+        sessionStorage.setItem(SESSION_ACCURACY_KEY, JSON.stringify(next))
+      } catch {
+        // sessionStorage unavailable; ignore
+      }
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
 
   const currentBarrio = useMemo(
     () => barrios?.find((b) => b.barrio_id === current?.barrio_id),
@@ -414,7 +446,14 @@ function App() {
   }
 
   const handleRestart = () => {
-    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
+    // Daily can't be "replayed" (it's the same 5 corners all day), and a
+    // custom game replicates the same barrio filter with a fresh random
+    // pick — anything else (practice/linked) just plays another round set.
+    if (gameMode === 'custom') {
+      handleStartCustom(customBarrioIds)
+    } else {
+      startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
+    }
   }
 
   const handleShare = async () => {
@@ -709,7 +748,7 @@ function App() {
               {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
             </button>
             <button className="primary-btn" onClick={handleRestart}>
-              Jugar de nuevo
+              {gameMode === 'daily' ? 'Jugar modo práctica' : 'Jugar otra partida'}
             </button>
           </div>
         </footer>
