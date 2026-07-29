@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom'
 import { SignUpButton } from '@clerk/clerk-react'
+import RankingPreview from './RankingPreview'
 
 export default function Dashboard({
   isSignedIn,
@@ -11,7 +11,6 @@ export default function Dashboard({
   onDuel,
   onMultiplayerDuel,
 }) {
-  const navigate = useNavigate()
   return (
     <div className="dashboard">
       <div className="dashboard-daily-card">
@@ -25,17 +24,13 @@ export default function Dashboard({
         </button>
       </div>
 
+      <RankingPreview />
+
       <div className="dashboard-grid">
         <button type="button" className="dashboard-mode-card" onClick={onOpenArchive}>
           <span className="dashboard-mode-icon">📁</span>
           <span className="dashboard-mode-title">Archivo</span>
           <span className="dashboard-mode-desc">Accedé a desafíos diarios anteriores.</span>
-        </button>
-
-        <button type="button" className="dashboard-mode-card" onClick={() => navigate('/ranking')}>
-          <span className="dashboard-mode-icon">🏆</span>
-          <span className="dashboard-mode-title">Ranking de jugadores</span>
-          <span className="dashboard-mode-desc">Mejor promedio y tabla del día en modo competitivo.</span>
         </button>
 
         {isSignedIn && (
