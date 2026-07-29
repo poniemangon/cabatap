@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth, useClerk, useUser } from '@clerk/clerk-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
@@ -8,12 +10,37 @@ import Dashboard from './Dashboard'
 import RoundResultModal from './RoundResultModal'
 import CalendarPicker from './CalendarPicker'
 import CustomGamePicker from './CustomGamePicker'
-import { fetchAllRows } from './supabaseClient'
+import DuelSetupModal from './duels/DuelSetupModal'
+import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
+import DuelChoiceModal from './duels/DuelChoiceModal'
+import { supabase, fetchAllRows } from './supabaseClient'
+import useProfile from './hooks/useProfile'
+import useNotifications from './hooks/useNotifications'
+import { listFriendships } from './friends/friendsApi'
+import {
+  createDuel,
+  getDuelByCode,
+  claimDuel,
+  submitDuelResult,
+  submitDuelResultBeacon,
+  getDuelResults,
+  computeWinnerId,
+  closeDuel,
+  findOpenRandomDuel,
+} from './duels/duelApi'
+import { notifyDuelCompleted } from './notifications/notificationsApi'
+import { submitDailyResult } from './daily/dailyApi'
 import donateImg from './assets/la-bestia-de-calchin.jpg'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
-const SHARE_DOMAIN = 'https://ubicaba.com'
+const DUEL_TIME_LIMIT = 8
+const DUEL_FORFEIT_WAIT_MS = 5 * 60 * 1000
+// Wherever the app is actually being served (localhost:5173 in dev, the
+// real domain in prod) — hardcoding the production URL here meant every
+// copied invite link (duels included) pointed at production even while
+// testing locally, so a second player opening it never found the duel.
+const SHARE_DOMAIN = window.location.origin
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
 
@@ -146,25 +173,6 @@ function shareIndicesToUrl(indices, barrioIds) {
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const DONATE_POPUP_SESSION_KEY = 'ubicaba-donate-popup-shown'
-const BEST_SCORE_KEY = 'ubicaba-best-session-score'
-const SESSION_ACCURACY_KEY = 'ubicaba-session-accuracy'
-
-function loadBestSessionScore() {
-  try {
-    return Number(sessionStorage.getItem(BEST_SCORE_KEY)) || 0
-  } catch {
-    return 0
-  }
-}
-
-function loadSessionAccuracy() {
-  try {
-    const raw = sessionStorage.getItem(SESSION_ACCURACY_KEY)
-    return raw ? JSON.parse(raw) : { points: 0, rounds: 0 }
-  } catch {
-    return { points: 0, rounds: 0 }
-  }
-}
 
 function loadStoredSession() {
   try {
@@ -184,7 +192,23 @@ function isAllSpecialSelection(barrioIds, barrios) {
   return barrioIds.every((id) => barrios.find((b) => b.barrio_id === id)?.comuna === 0)
 }
 
+// Only 'daily' and 'archive' are playable without an account — everything
+// else (including a bare '?share=' link, since it's indistinguishable from a
+// practice roll) bounces a signed-out visitor back to the dashboard.
+function requiresAuth(mode) {
+  return mode === 'practice' || mode === 'custom' || mode === 'linked' || mode === 'duel'
+}
+
 function App() {
+  const { code: duelCode } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { isLoaded: clerkLoaded, isSignedIn } = useAuth()
+  const { user: clerkUser } = useUser()
+  const { openSignUp } = useClerk()
+  const { profile, loading: profileLoading } = useProfile()
+  const { notifications, unreadCount, markAllRead, deleteNotification } = useNotifications(profile)
+
   const [pool, setPool] = useState(null)
   const [barrios, setBarrios] = useState(null)
   const [loadError, setLoadError] = useState(null)
@@ -195,7 +219,7 @@ function App() {
   const [customBarrioIds, setCustomBarrioIds] = useState([])
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
-  const [view, setView] = useState('dashboard') // 'dashboard' | 'game'
+  const [view, setView] = useState('dashboard') // 'dashboard' | 'game' | 'duel-loading'
   const [results, setResults] = useState([]) // {street1, street2, guess, actual, distance, points}
   const [shareCopied, setShareCopied] = useState(false)
   const [menuCopied, setMenuCopied] = useState(false)
@@ -206,6 +230,20 @@ function App() {
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const [duelChoiceOpen, setDuelChoiceOpen] = useState(false)
+  const [duelSetupOpen, setDuelSetupOpen] = useState(false)
+  const [duelFriends, setDuelFriends] = useState([])
+  const [duelPreselectOpponentId, setDuelPreselectOpponentId] = useState(null)
+  const [multiplayerSetupOpen, setMultiplayerSetupOpen] = useState(false)
+  const [activeDuel, setActiveDuel] = useState(null)
+  const [duelClaimError, setDuelClaimError] = useState(null)
+  const [duelResults, setDuelResults] = useState([]) // every duel_results row for activeDuel
+  const [duelResultsLoading, setDuelResultsLoading] = useState(false)
+  const duelResultSubmittedRef = useRef(false)
+  const dailyResultSubmittedRef = useRef(false)
+
+  const [authGateOpen, setAuthGateOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -229,15 +267,26 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!pool || !barrios || initialized) return
+    if (!pool || !barrios || initialized || !clerkLoaded) return
+
+    if (duelCode) {
+      setView('duel-loading')
+      setInitialized(true)
+      return
+    }
 
     const fromShare = parseShareIndices(pool.length)
     let fresh
+    let blockedByAuth = false
     if (fromShare) {
       const barrioIds = parseCustomShareBarrios(fromShare, pool, barrios)
-      fresh = barrioIds
-        ? { roundIndices: fromShare, gameMode: 'custom', customBarrioIds: barrioIds }
-        : { roundIndices: fromShare, gameMode: 'linked', customBarrioIds: [] }
+      const candidateMode = barrioIds ? 'custom' : 'linked'
+      // Keep the actual shared game (not a daily fallback) even when
+      // signed-out visitors can't play it yet — the "share-gate" screen
+      // below needs it intact so signing up drops them straight into it,
+      // no reload required.
+      fresh = { roundIndices: fromShare, gameMode: candidateMode, customBarrioIds: barrioIds || [] }
+      if (requiresAuth(candidateMode) && !isSignedIn) blockedByAuth = true
     } else {
       fresh = {
         roundIndices: indicesForDay(dayNumberForDate(new Date())),
@@ -247,7 +296,11 @@ function App() {
     }
 
     const stored = loadStoredSession()
-    const isResume = stored && stored.gameMode === fresh.gameMode && sameIndices(stored.roundIndices, fresh.roundIndices)
+    const isResume =
+      !blockedByAuth &&
+      stored &&
+      stored.gameMode === fresh.gameMode &&
+      sameIndices(stored.roundIndices, fresh.roundIndices)
     const initial = isResume
       ? {
           roundIndices: stored.roundIndices,
@@ -260,7 +313,13 @@ function App() {
           // mid-game, so they default to 'game' rather than the dashboard.
           view: stored.view ?? 'game',
         }
-      : { ...fresh, roundIndex: 0, phase: 'guessing', results: [], view: fromShare ? 'game' : 'dashboard' }
+      : {
+          ...fresh,
+          roundIndex: 0,
+          phase: 'guessing',
+          results: [],
+          view: blockedByAuth ? 'share-gate' : fromShare ? 'game' : 'dashboard',
+        }
 
     setRoundIndices(initial.roundIndices)
     setGameMode(initial.gameMode)
@@ -269,11 +328,127 @@ function App() {
     setPhase(initial.phase)
     setResults(initial.results)
     setView(initial.view)
-    if (!isResume && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
+    if (!isResume && !blockedByAuth && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
       setSpecialSuggestOpen(true)
     }
     setInitialized(true)
-  }, [pool, barrios, initialized])
+  }, [pool, barrios, initialized, duelCode, clerkLoaded, isSignedIn])
+
+  // Signing up from the share-gate screen doesn't reload the page (Clerk's
+  // modal completes in place), so isSignedIn just flips true — this picks
+  // that up and drops the visitor straight into the shared game they were
+  // gated out of, using the roundIndices/gameMode/customBarrioIds already
+  // sitting in state from the mount effect above.
+  useEffect(() => {
+    if (view !== 'share-gate' || !isSignedIn) return
+    startGame(roundIndices, gameMode, { barrioIds: customBarrioIds })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, isSignedIn])
+
+  // Resolves a /duelo/:code invite once auth + profile + game data are ready:
+  // signed-out visitors bounce home (with the auth gate popup), signed-in
+  // ones claim the invite if it's a 1v1 with an open slot (multiplayer duels
+  // have no slot to claim — anyone can just play), then either replay their
+  // already-submitted result or start the game on the duel's fixed rounds.
+  useEffect(() => {
+    if (!duelCode || view !== 'duel-loading') return
+    if (!clerkLoaded) return
+    if (!isSignedIn) {
+      navigate('/', { replace: true, state: { showAuthGate: true } })
+      return
+    }
+    if (profileLoading || !profile) return
+
+    let cancelled = false
+    async function loadDuel() {
+      try {
+        const duel = await getDuelByCode(duelCode)
+        if (!duel) {
+          if (!cancelled) setDuelClaimError('No encontramos ese duelo.')
+          return
+        }
+
+        let finalDuel = duel
+        if (!duel.is_multiplayer) {
+          const isParticipant = duel.challenger_id === profile.id || duel.opponent_id === profile.id
+          if (duel.opponent_id && !isParticipant) {
+            if (!cancelled) setDuelClaimError('Este duelo ya fue tomado por otro jugador.')
+            return
+          }
+          if (!duel.opponent_id && duel.challenger_id !== profile.id) {
+            finalDuel = await claimDuel(duel.id, profile.id)
+          }
+        }
+        if (cancelled) return
+        setActiveDuel(finalDuel)
+
+        // Reloading my own still-unmatched matchmaking entry: keep waiting
+        // instead of starting the game with no guaranteed opponent.
+        if (finalDuel.matchmaking && !finalDuel.opponent_id && finalDuel.challenger_id === profile.id) {
+          setView('duel-searching')
+          return
+        }
+
+        const existingResults = await getDuelResults(finalDuel.id)
+        if (cancelled) return
+        setDuelResults(existingResults)
+        const mine = existingResults.find((r) => r.profile_id === profile.id)
+        if (mine) {
+          // Already played this duel — show it instead of overwriting the result.
+          setResults(mine.results)
+          setGameMode('duel')
+          setRoundIndices(finalDuel.round_indices)
+          setCustomBarrioIds(finalDuel.barrio_ids || [])
+          setPhase('gameOver')
+          setView('game')
+        } else {
+          duelResultSubmittedRef.current = false
+          startGame(finalDuel.round_indices, 'duel', { barrioIds: finalDuel.barrio_ids || [] })
+        }
+      } catch (e) {
+        if (!cancelled) setDuelClaimError(e.message)
+      }
+    }
+    loadDuel()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duelCode, view, clerkLoaded, isSignedIn, profile, profileLoading])
+
+  // Matchmaking "buscando rival" screen: waits for someone else's "Duelo
+  // random" click to claim this entry (setting opponent_id), then starts
+  // the game the moment that happens — no polling, no manual refresh.
+  useEffect(() => {
+    if (view !== 'duel-searching' || !activeDuel || activeDuel.opponent_id) return
+    const channel = supabase
+      .channel(`duel-match:${activeDuel.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'duels', filter: `id=eq.${activeDuel.id}` },
+        (payload) => {
+          if (!payload.new.opponent_id) return
+          setActiveDuel(payload.new)
+          duelResultSubmittedRef.current = false
+          startGame(payload.new.round_indices, 'duel', { barrioIds: payload.new.barrio_ids || [] })
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, activeDuel])
+
+  // Consumes one-shot signals passed via router state: showAuthGate (bounced
+  // here from a login barrier elsewhere, e.g. a signed-out /duelo/:code hit)
+  // pops the auth gate once mounted, since state doesn't survive a route swap.
+  useEffect(() => {
+    if (!location.state?.showAuthGate) return
+    navigate(location.pathname, { replace: true, state: null })
+    setAuthGateOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   const isReady = !!pool && !!barrios && initialized
 
@@ -325,46 +500,14 @@ function App() {
 
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
-
-  const [bestSessionScore, setBestSessionScore] = useState(loadBestSessionScore)
-  const [sessionAccuracy, setSessionAccuracy] = useState(loadSessionAccuracy)
-
-  // Precisión acumulada de todas las partidas jugadas en esta sesión. Mientras
-  // se juega, suma también las rondas de la partida en curso (todavía no
-  // volcada a sessionAccuracy); una vez en gameOver, esa partida ya quedó
-  // sumada por el efecto de abajo, así que no se vuelve a contar acá.
-  const avgAccuracy = useMemo(() => {
-    const liveResults = phase === 'gameOver' ? [] : results
-    const points = sessionAccuracy.points + liveResults.reduce((s, r) => s + r.points, 0)
-    const roundsPlayed = sessionAccuracy.rounds + liveResults.length
-    return roundsPlayed ? points / roundsPlayed / 100 : 0
-  }, [sessionAccuracy, results, phase])
-
-  useEffect(() => {
-    if (phase !== 'gameOver') return
-    if (totalScore <= bestSessionScore) return
-    setBestSessionScore(totalScore)
-    try {
-      sessionStorage.setItem(BEST_SCORE_KEY, String(totalScore))
-    } catch {
-      // sessionStorage unavailable; ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, totalScore])
-
-  useEffect(() => {
-    if (phase !== 'gameOver') return
-    setSessionAccuracy((prev) => {
-      const next = { points: prev.points + totalScore, rounds: prev.rounds + TOTAL_ROUNDS }
-      try {
-        sessionStorage.setItem(SESSION_ACCURACY_KEY, JSON.stringify(next))
-      } catch {
-        // sessionStorage unavailable; ignore
-      }
-      return next
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
+  // True while actively playing an unfinished duel (mid-round or looking at
+  // a round's reveal), or waiting on a "Duelo random" match — starting
+  // another duel at either point orphans the current one with no result
+  // ever submitted (or, for matchmaking, leaves your pending entry stuck
+  // waiting forever since nothing ever claims it). Entry points check this
+  // before opening. Once you reach your own gameOver screen you're free to
+  // start a new one, even if still waiting on the rival/leaderboard.
+  const duelInProgress = view === 'duel-searching' || (gameMode === 'duel' && view === 'game' && phase !== 'gameOver')
 
   const currentBarrio = useMemo(
     () => barrios?.find((b) => b.barrio_id === current?.barrio_id),
@@ -384,28 +527,59 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current])
 
+  // Only private duels can opt out of the timer (DuelSetupModal's toggle);
+  // random and multiplayer are always timed. null = no limit for this duel.
+  const duelTimeLimit = gameMode === 'duel' ? (activeDuel?.time_limit_seconds ?? null) : null
+
   const [pendingGuess, setPendingGuess] = useState(null)
 
+  // Guards against submitting the same round twice — a real risk for the
+  // timed-duel tap-to-submit flow, where a map double-click/double-tap (a
+  // built-in zoom gesture) fires two click events before React re-renders
+  // with phase='revealed', and separately where the round timer running out
+  // could race a just-landed tap. Reset whenever a fresh round starts.
+  const roundSubmittedRef = useRef(false)
+  useEffect(() => {
+    if (phase === 'guessing') roundSubmittedRef.current = false
+  }, [phase, roundIndex])
+
+  const submitGuess = useCallback(
+    (guess) => {
+      if (roundSubmittedRef.current) return
+      roundSubmittedRef.current = true
+      const actual = [current.lat, current.lng]
+      const distance = haversineMeters(guess, actual)
+      const points = scoreForDistance(distance)
+      setResults((prev) => [
+        ...prev,
+        { street1: current.street1, street2: current.street2, guess, actual, distance, points },
+      ])
+      setPendingGuess(null)
+      setPhase('revealed')
+    },
+    [current],
+  )
+
+  // Timed duels submit on tap — no separate confirm step, since a two-tap
+  // flow eats into an already-tight clock. Every other mode (including
+  // untimed duels) keeps the tap-then-confirm flow so a guess can be moved
+  // before committing to it.
   const handleMapClick = useCallback(
     (pos) => {
       if (phase !== 'guessing') return
-      setPendingGuess(pos)
+      if (gameMode === 'duel' && duelTimeLimit != null) {
+        submitGuess(pos)
+      } else {
+        setPendingGuess(pos)
+      }
     },
-    [phase],
+    [phase, gameMode, duelTimeLimit, submitGuess],
   )
 
   const handleConfirmGuess = useCallback(() => {
     if (phase !== 'guessing' || !pendingGuess) return
-    const actual = [current.lat, current.lng]
-    const distance = haversineMeters(pendingGuess, actual)
-    const points = scoreForDistance(distance)
-    setResults((prev) => [
-      ...prev,
-      { street1: current.street1, street2: current.street2, guess: pendingGuess, actual, distance, points },
-    ])
-    setPendingGuess(null)
-    setPhase('revealed')
-  }, [phase, current, pendingGuess])
+    submitGuess(pendingGuess)
+  }, [phase, pendingGuess, submitGuess])
 
   const handleNextRound = useCallback(() => {
     setRoundIndex((i) => {
@@ -417,6 +591,64 @@ function App() {
       return i + 1
     })
   }, [])
+
+  // duelTimeLeft is display-only (drives the HUD countdown). The actual
+  // "time's up" decision is made from a local `ticksLeft` variable owned by
+  // this single effect instance, not from duelTimeLeft state — a version
+  // that split ticking and the zero-check into two separate effects had a
+  // stale-closure bug: resetting duelTimeLeft for a brand-new round doesn't
+  // retroactively update the *other* effect's closure from the same render,
+  // so it kept seeing the old round's duelTimeLeft===0 and immediately
+  // zeroed the new round too. One effect per round, with its own private
+  // countdown, avoids that race entirely. Tab/app switching (which also
+  // fires on tab close) fast-forwards the same countdown to 0, so it's
+  // exactly as if the clock ran out — only the current round is forfeited,
+  // play continues into the next one when you come back.
+  const [duelTimeLeft, setDuelTimeLeft] = useState(DUEL_TIME_LIMIT)
+
+  useEffect(() => {
+    if (gameMode !== 'duel' || phase !== 'guessing' || duelTimeLimit == null || !current) return
+
+    let ticksLeft = duelTimeLimit
+    let handled = false // guards a rare double-fire: the interval and a
+    // visibilitychange landing in the same tick could otherwise both call
+    // timeUp() before React re-renders and tears this effect instance down.
+    setDuelTimeLeft(ticksLeft)
+
+    const timeUp = () => {
+      if (handled || roundSubmittedRef.current) return
+      handled = true
+      roundSubmittedRef.current = true
+      setResults((prev) => [
+        ...prev,
+        { street1: current.street1, street2: current.street2, guess: null, actual: [current.lat, current.lng], distance: null, points: 0 },
+      ])
+      setPendingGuess(null)
+      setPhase('revealed')
+    }
+
+    const interval = setInterval(() => {
+      ticksLeft -= 1
+      setDuelTimeLeft(Math.max(0, ticksLeft))
+      if (ticksLeft <= 0) {
+        clearInterval(interval)
+        timeUp()
+      }
+    }, 1000)
+
+    const handleVisibility = () => {
+      if (!document.hidden) return
+      clearInterval(interval)
+      setDuelTimeLeft(0)
+      timeUp()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [gameMode, phase, roundIndex, duelTimeLimit, current])
 
   const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
     setRoundIndices(indices)
@@ -431,7 +663,11 @@ function App() {
     setView('game')
     setSpecialSuggestOpen(mode === 'custom' && isAllSpecialSelection(barrioIds, barrios))
     const urlBarrioIds = mode === 'custom' ? barrioIds : undefined
-    window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices, urlBarrioIds))
+    // Duel URLs are set explicitly by the caller (navigate to /duelo/:code),
+    // not derived from the round indices like every other mode.
+    if (mode !== 'duel') {
+      window.history.replaceState(null, '', mode === 'daily' ? '/' : shareIndicesToUrl(indices, urlBarrioIds))
+    }
 
     if (copyInvite) {
       const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices, urlBarrioIds)}`
@@ -445,17 +681,6 @@ function App() {
     }
   }
 
-  const handleRestart = () => {
-    // Daily can't be "replayed" (it's the same 5 corners all day), and a
-    // custom game replicates the same barrio filter with a fresh random
-    // pick — anything else (practice/linked) just plays another round set.
-    if (gameMode === 'custom') {
-      handleStartCustom(customBarrioIds)
-    } else {
-      startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
-    }
-  }
-
   const handleShare = async () => {
     let modeLine
     let dateLine = null
@@ -464,6 +689,10 @@ function App() {
       dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
     } else if (gameMode === 'custom') {
       modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
+    } else if (gameMode === 'duel') {
+      modeLine = 'Duelo'
+    } else if (gameMode === 'archive') {
+      modeLine = 'Archivo'
     } else {
       modeLine = 'Modo práctica'
     }
@@ -477,30 +706,32 @@ function App() {
     }
   }
 
-  const handleShareInvite = async () => {
-    const text = `Unite a mi partida en el link ${shareLink}`
-    try {
-      await navigator.clipboard.writeText(text)
-      setMenuCopied(true)
-      setTimeout(() => setMenuCopied(false), 2000)
-    } catch {
-      // clipboard not available; ignore
-    }
-  }
+  // Every login barrier funnels through here: signed-in lets the caller
+  // proceed, signed-out bounces to the dashboard and pops the blurred
+  // "necesitás una cuenta" overlay instead of failing silently.
+  const requireAuthOrGate = useCallback(() => {
+    if (isSignedIn) return true
+    setView('dashboard')
+    setAuthGateOpen(true)
+    return false
+  }, [isSignedIn])
 
   const handlePractice = () => {
-    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'linked')
+    if (!requireAuthOrGate()) return
+    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'practice')
   }
 
   const handleSelectArchiveDay = (dayNumber) => {
-    startGame(indicesForDay(dayNumber), 'linked', { copyInvite: true })
+    startGame(indicesForDay(dayNumber), 'archive', { copyInvite: true })
   }
 
   const handleDaily = () => {
+    dailyResultSubmittedRef.current = false
     startGame(indicesForDay(dayNumberForDate(new Date())), 'daily')
   }
 
   const handleStartCustom = (selectedBarrioIds) => {
+    if (!requireAuthOrGate()) return
     const selectedSet = new Set(selectedBarrioIds)
     const candidateIndices = []
     pool.forEach((it, i) => {
@@ -512,6 +743,331 @@ function App() {
   const handleSpecialOnly = () => {
     const specialBarrioIds = barrios.filter((b) => b.comuna === 0).map((b) => b.barrio_id)
     handleStartCustom(specialBarrioIds)
+  }
+
+  // Duelo 1v1: clicking "Duelo" always opens this chooser first — privado
+  // (friend/link + barrio picker) or random (instant matchmaking) — rather
+  // than blending both behind one setup screen.
+  const openDuelChoice = () => {
+    if (!requireAuthOrGate() || duelInProgress) return
+    setDuelChoiceOpen(true)
+  }
+
+  const openDuelSetup = async (preselectOpponentId = null) => {
+    if (!requireAuthOrGate() || !profile) return
+    try {
+      const { accepted } = await listFriendships(profile.id)
+      setDuelFriends(accepted.map((f) => f.friend))
+    } catch (e) {
+      console.error(e)
+      setDuelFriends([])
+    }
+    setDuelPreselectOpponentId(preselectOpponentId)
+    setDuelChoiceOpen(false)
+    setDuelSetupOpen(true)
+  }
+
+  const openMultiplayerSetup = () => {
+    if (!requireAuthOrGate() || duelInProgress) return
+    setMultiplayerSetupOpen(true)
+  }
+
+  // "Retar a duelo" from the profile page's friends list arrives here via
+  // router state (there's no shared game state between routes) so the duel
+  // setup modal opens directly with that friend selected, skipping the
+  // privado/random chooser since the intent is already unambiguous.
+  useEffect(() => {
+    if (!location.state?.challengeFriendId || !isSignedIn || !profile) return
+    const friendId = location.state.challengeFriendId
+    navigate(location.pathname, { replace: true, state: null })
+    openDuelSetup(friendId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, isSignedIn, profile])
+
+  // Shared by every duel-creation path (private 1v1, multiplayer): builds
+  // the round indices, creates the row, and enters the game/loading view.
+  const createAndEnterDuel = async ({
+    barrioIds,
+    opponentId = null,
+    isMultiplayer = false,
+    maxPlayers = null,
+    timeLimitSeconds = DUEL_TIME_LIMIT,
+  }) => {
+    let indices
+    if (barrioIds.length > 0) {
+      const selectedSet = new Set(barrioIds)
+      const candidateIndices = []
+      pool.forEach((it, i) => {
+        if (selectedSet.has(it.barrio_id)) candidateIndices.push(i)
+      })
+      indices = sampleRoundIndices(candidateIndices, TOTAL_ROUNDS)
+    } else {
+      indices = pickRandomIndices(pool.length, TOTAL_ROUNDS)
+    }
+    const duel = await createDuel({
+      challengerId: profile.id,
+      opponentId,
+      roundIndices: indices,
+      barrioIds: barrioIds.length ? barrioIds : null,
+      isMultiplayer,
+      maxPlayers,
+      timeLimitSeconds,
+    })
+    duelResultSubmittedRef.current = false
+    setDuelClaimError(null)
+    setDuelResults([])
+    setActiveDuel(duel)
+    startGame(indices, 'duel', { barrioIds })
+    navigate(`/duelo/${duel.invite_code}`, { replace: true })
+  }
+
+  const handleStartPrivateDuel = async (selectedBarrioIds, opponentProfileId, timed) => {
+    if (!requireAuthOrGate() || !profile) return
+    try {
+      await createAndEnterDuel({
+        barrioIds: selectedBarrioIds,
+        opponentId: opponentProfileId,
+        timeLimitSeconds: timed ? DUEL_TIME_LIMIT : null,
+      })
+      setDuelSetupOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleStartMultiplayerDuel = async (selectedBarrioIds, timed) => {
+    if (!requireAuthOrGate() || !profile) return
+    try {
+      await createAndEnterDuel({
+        barrioIds: selectedBarrioIds,
+        isMultiplayer: true,
+        timeLimitSeconds: timed ? DUEL_TIME_LIMIT : null,
+      })
+      setMultiplayerSetupOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // "Random" 1v1: join the oldest pending matchmaking entry instead of
+  // creating a fresh one, so unmatched duels don't pile up. A claimed match
+  // has a guaranteed opponent, so it starts right away — but when nobody's
+  // waiting, the challenger doesn't play blind: they wait on a "buscando
+  // rival" screen until someone else's random click matches them.
+  const handleStartRandomDuel = async () => {
+    if (!requireAuthOrGate() || !profile) return
+    setDuelChoiceOpen(false)
+    try {
+      const candidate = await findOpenRandomDuel(profile.id)
+      const claimed = candidate ? await claimDuel(candidate.id, profile.id) : null
+      if (claimed) {
+        duelResultSubmittedRef.current = false
+        setDuelClaimError(null)
+        setDuelResults([])
+        setActiveDuel(claimed)
+        startGame(claimed.round_indices, 'duel', { barrioIds: claimed.barrio_ids || [] })
+        navigate(`/duelo/${claimed.invite_code}`, { replace: true })
+      } else {
+        const indices = pickRandomIndices(pool.length, TOTAL_ROUNDS)
+        const duel = await createDuel({
+          challengerId: profile.id,
+          opponentId: null,
+          roundIndices: indices,
+          barrioIds: null,
+          isMultiplayer: false,
+          matchmaking: true,
+        })
+        duelResultSubmittedRef.current = false
+        setDuelClaimError(null)
+        setDuelResults([])
+        setActiveDuel(duel)
+        setView('duel-searching')
+        navigate(`/duelo/${duel.invite_code}`, { replace: true })
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleGoHome = () => {
+    setActiveDuel(null)
+    setView('dashboard')
+    navigate('/')
+  }
+
+  const refreshDuelResults = useCallback(async () => {
+    if (!activeDuel) return
+    setDuelResultsLoading(true)
+    try {
+      const rows = await getDuelResults(activeDuel.id)
+      setDuelResults(rows)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDuelResultsLoading(false)
+    }
+  }, [activeDuel])
+
+  // 1v1 only: the other participant's result, once they've played.
+  const duelOtherResult = useMemo(
+    () => duelResults.find((r) => r.profile_id !== profile?.id) || null,
+    [duelResults, profile],
+  )
+
+  useEffect(() => {
+    if (phase === 'gameOver' && gameMode === 'duel') refreshDuelResults()
+  }, [phase, gameMode, refreshDuelResults])
+
+  // Live-updates every duel waiting/leaderboard screen (1v1 "esperando a tu
+  // rival", multiplayer leaderboard, closed_at/winner_id once someone closes
+  // it) instead of requiring the manual "Actualizar" click: any change to
+  // this duel's results refetches them, and any change to the duel row
+  // itself (closing it) is merged straight into activeDuel.
+  useEffect(() => {
+    if (phase !== 'gameOver' || gameMode !== 'duel' || !activeDuel) return
+    const duelId = activeDuel.id
+    const channel = supabase
+      .channel(`duel-watch:${duelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'duel_results', filter: `duel_id=eq.${duelId}` },
+        () => refreshDuelResults(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'duels', filter: `id=eq.${duelId}` },
+        (payload) => setActiveDuel((prev) => (prev?.id === payload.new.id ? payload.new : prev)),
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, gameMode, activeDuel?.id])
+
+  useEffect(() => {
+    if (phase !== 'gameOver' || gameMode !== 'duel' || !activeDuel || !profile) return
+    if (duelResultSubmittedRef.current) return
+    duelResultSubmittedRef.current = true
+    submitDuelResult({ duelId: activeDuel.id, profileId: profile.id, results, totalScore }).catch((e) => {
+      console.error(e)
+      duelResultSubmittedRef.current = false
+    })
+  }, [phase, gameMode, activeDuel, profile, results, totalScore])
+
+  // Closing the tab mid-duel (not just switching away — that only forfeits
+  // the current round, see the timer effect above) abandons the whole
+  // thing: every round goes to 0, submitted as your final result so the
+  // rival's own auto-close effect sees it and wins outright. Uses the
+  // keepalive beacon (not the normal Supabase client) since a plain fetch
+  // routinely gets cancelled once the tab actually starts closing — see
+  // submitDuelResultBeacon in duelApi.js.
+  useEffect(() => {
+    if (gameMode !== 'duel' || phase === 'gameOver' || !activeDuel || !profile) return
+    let fired = false
+    const handleClose = () => {
+      if (fired || duelResultSubmittedRef.current) return
+      fired = true
+      duelResultSubmittedRef.current = true
+      const zeroed = rounds.map((r) => ({
+        street1: r.street1,
+        street2: r.street2,
+        guess: null,
+        actual: [r.lat, r.lng],
+        distance: null,
+        points: 0,
+      }))
+      submitDuelResultBeacon({ duelId: activeDuel.id, profileId: profile.id, results: zeroed, totalScore: 0 })
+    }
+    window.addEventListener('pagehide', handleClose)
+    window.addEventListener('beforeunload', handleClose)
+    return () => {
+      window.removeEventListener('pagehide', handleClose)
+      window.removeEventListener('beforeunload', handleClose)
+    }
+  }, [gameMode, phase, activeDuel, profile, rounds])
+
+  // Saves today's daily attempt to the profile — only "daily" (today's
+  // challenge via handleDaily), not "archive" (past days) or any other mode.
+  useEffect(() => {
+    if (phase !== 'gameOver' || gameMode !== 'daily' || !profile) return
+    if (dailyResultSubmittedRef.current) return
+    dailyResultSubmittedRef.current = true
+    const dayNumber = dayNumberForDate(new Date())
+    submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore }).catch((e) => {
+      console.error(e)
+      dailyResultSubmittedRef.current = false
+    })
+  }, [phase, gameMode, profile, results, totalScore])
+
+  // 1v1 auto-closes once both sides have played — no manual step, since
+  // there are only ever 2 slots. Whichever client's refreshDuelResults()
+  // call sees the second result first wins the close; closeDuel's
+  // .is('closed_at', null) guard makes a lost race a harmless no-op.
+  useEffect(() => {
+    if (!activeDuel || activeDuel.is_multiplayer || activeDuel.closed_at) return
+    if (duelResults.length < 2) return
+    const winnerId = computeWinnerId(duelResults)
+    closeDuel(activeDuel.id, winnerId)
+      .then((updated) => {
+        if (!updated) return
+        setActiveDuel(updated)
+        notifyDuelCompleted(
+          updated.id,
+          duelResults.map((r) => r.profile_id),
+          { inviteCode: updated.invite_code, isMultiplayer: false },
+        ).catch(console.error)
+      })
+      .catch(console.error)
+  }, [activeDuel, duelResults])
+
+  // Multiplayer: the creator closes the duel manually once at least 2
+  // people have played, locking in the current leaderboard's top scorer.
+  const handleCloseDuel = async () => {
+    if (!activeDuel || duelResults.length < 2) return
+    const winnerId = computeWinnerId(duelResults)
+    try {
+      const updated = await closeDuel(activeDuel.id, winnerId)
+      if (!updated) return
+      setActiveDuel(updated)
+      notifyDuelCompleted(
+        updated.id,
+        duelResults.map((r) => r.profile_id),
+        { inviteCode: updated.invite_code, isMultiplayer: true },
+      ).catch(console.error)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // 1v1 has no admin to force a close — this is the "esperando a tu rival"
+  // screen's way out if they never show up. Only becomes claimable 5 minutes
+  // after the duel was created, so a rival who's just mid-round doesn't get
+  // forfeited out from under them.
+  const [canClaimForfeit, setCanClaimForfeit] = useState(false)
+
+  useEffect(() => {
+    setCanClaimForfeit(false)
+    if (gameMode !== 'duel' || phase !== 'gameOver' || !activeDuel || activeDuel.is_multiplayer || duelOtherResult) {
+      return
+    }
+    const remaining = DUEL_FORFEIT_WAIT_MS - (Date.now() - new Date(activeDuel.created_at).getTime())
+    if (remaining <= 0) {
+      setCanClaimForfeit(true)
+      return
+    }
+    const timer = setTimeout(() => setCanClaimForfeit(true), remaining)
+    return () => clearTimeout(timer)
+  }, [gameMode, phase, activeDuel, duelOtherResult])
+
+  const handleClaimForfeit = async () => {
+    if (!activeDuel || !profile) return
+    try {
+      const updated = await closeDuel(activeDuel.id, profile.id)
+      if (updated) setActiveDuel(updated)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   if (loadError) {
@@ -675,18 +1231,97 @@ function App() {
     </div>
   )
 
+  const authGatePopup = authGateOpen && (
+    <div className="modal-backdrop auth-gate-backdrop">
+      <div className="socials-modal auth-gate-modal">
+        <div className="calendar-modal-header">
+          <span>Necesitás una cuenta</span>
+          <button type="button" className="calendar-close" onClick={() => setAuthGateOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="special-suggest-text">Este modo es solo para jugadores registrados.</p>
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={() => {
+            setAuthGateOpen(false)
+            openSignUp()
+          }}
+        >
+          Registrarme
+        </button>
+      </div>
+    </div>
+  )
+
+  const duelChoicePopup = duelChoiceOpen && (
+    <div className="modal-backdrop" onClick={() => setDuelChoiceOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <DuelChoiceModal
+          onClose={() => setDuelChoiceOpen(false)}
+          onChoosePrivate={() => openDuelSetup()}
+          onChooseRandom={handleStartRandomDuel}
+        />
+      </div>
+    </div>
+  )
+
+  const duelSetupPopup = duelSetupOpen && (
+    <div className="modal-backdrop" onClick={() => setDuelSetupOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <DuelSetupModal
+          barrios={barrios}
+          friends={duelFriends}
+          initialOpponentId={duelPreselectOpponentId}
+          onClose={() => setDuelSetupOpen(false)}
+          onStart={handleStartPrivateDuel}
+        />
+      </div>
+    </div>
+  )
+
+  const multiplayerSetupPopup = multiplayerSetupOpen && (
+    <div className="modal-backdrop" onClick={() => setMultiplayerSetupOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <MultiplayerDuelSetupModal
+          barrios={barrios}
+          onClose={() => setMultiplayerSetupOpen(false)}
+          onStart={handleStartMultiplayerDuel}
+        />
+      </div>
+    </div>
+  )
+
   const sidebar = (
     <Sidebar
-      onDaily={handleDaily}
-      onPractice={handlePractice}
-      onOpenArchive={() => setArchiveOpen(true)}
-      onOpenCustom={() => setCustomOpen(true)}
-      onSpecialOnly={handleSpecialOnly}
-      currentScore={totalScore}
-      bestSessionScore={bestSessionScore}
-      avgAccuracy={avgAccuracy}
+      onGoHome={handleGoHome}
+      onDuel={openDuelChoice}
+      onMultiplayerDuel={openMultiplayerSetup}
+      duelInProgress={duelInProgress}
+      onOpenProfile={() => navigate('/perfil')}
+      isSignedIn={!!isSignedIn}
+      profile={profile}
+      clerkUser={clerkUser}
       mobileOpen={sidebarOpen}
       onClose={() => setSidebarOpen(false)}
+      notifications={notifications}
+      unreadCount={unreadCount}
+      onOpenNotifications={markAllRead}
+      onDeleteNotification={deleteNotification}
+      onNotificationClick={(n) => {
+        if (n.type === 'duel_completed') {
+          // /duelo/:code renders the same App instance as "/" — react-router
+          // doesn't remount it across sibling routes, so navigating alone
+          // only changes the URL param; the loader effect only runs when
+          // view is explicitly 'duel-loading'.
+          setDuelClaimError(null)
+          setView('duel-loading')
+          navigate(`/duelo/${n.data.invite_code}`)
+        } else if (n.type === 'friend_request') {
+          navigate('/perfil')
+        }
+      }}
     />
   )
 
@@ -694,12 +1329,69 @@ function App() {
   if (view === 'dashboard') {
     mainContent = (
       <Dashboard
+        isSignedIn={!!isSignedIn}
         onDaily={handleDaily}
         onPractice={handlePractice}
         onOpenArchive={() => setArchiveOpen(true)}
         onOpenCustom={() => setCustomOpen(true)}
         onSpecialOnly={handleSpecialOnly}
+        onDuel={openDuelChoice}
+        onMultiplayerDuel={openMultiplayerSetup}
       />
+    )
+  } else if (view === 'duel-loading') {
+    mainContent = (
+      <div className="dashboard">
+        <div className="dashboard-daily-card">
+          {duelClaimError ? (
+            <>
+              <div className="dashboard-daily-eyebrow">Duelo</div>
+              <h1 className="dashboard-daily-title">No se pudo abrir</h1>
+              <p className="dashboard-daily-text">{duelClaimError}</p>
+              <button type="button" className="primary-btn dashboard-daily-btn" onClick={() => navigate('/')}>
+                Volver al inicio
+              </button>
+            </>
+          ) : (
+            <p className="dashboard-daily-text">Cargando duelo...</p>
+          )}
+        </div>
+      </div>
+    )
+  } else if (view === 'duel-searching') {
+    mainContent = (
+      <div className="dashboard">
+        <div className="dashboard-daily-card">
+          <div className="dashboard-daily-eyebrow">Duelo random</div>
+          <h1 className="dashboard-daily-title">Buscando rival...</h1>
+          <p className="dashboard-daily-text">
+            Arranca solo cuando alguien más se sume — no hace falta que hagas nada.
+          </p>
+          <button
+            type="button"
+            className="primary-btn secondary-btn dashboard-daily-btn"
+            onClick={handleGoHome}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    )
+  } else if (view === 'share-gate') {
+    mainContent = (
+      <div className="dashboard">
+        <div className="dashboard-daily-card">
+          <div className="dashboard-daily-eyebrow">Partida compartida</div>
+          <h1 className="dashboard-daily-title">Registrate para entrar</h1>
+          <p className="dashboard-daily-text">
+            Te compartieron una partida — necesitás una cuenta para jugarla. En cuanto te registres entrás directo,
+            sin perder el link.
+          </p>
+          <button type="button" className="primary-btn dashboard-daily-btn" onClick={() => openSignUp()}>
+            Registrarme
+          </button>
+        </div>
+      </div>
     )
   } else if (phase === 'gameOver') {
     mainContent = (
@@ -738,17 +1430,141 @@ function App() {
                   R{i + 1}: {formatStreets(r.street1, r.street2)}
                 </span>
                 <span className="breakdown-detail">
-                  {Math.round(r.distance)} m — {r.points} pts
+                  {r.distance == null ? 'Sin respuesta' : `${Math.round(r.distance)} m`} — {r.points} pts
                 </span>
               </li>
             ))}
           </ul>
+
+          {gameMode === 'duel' && activeDuel && (
+            <div className="duel-result-panel">
+              {activeDuel.is_multiplayer ? (
+                <>
+                  <div className="duel-leaderboard-title">Resultados del duelo</div>
+                  {duelResults.length === 0 ? (
+                    <p className="duel-result-waiting">Todavía nadie más jugó este duelo.</p>
+                  ) : (
+                    <ul className="duel-leaderboard">
+                      {duelResults.map((r, i) => (
+                        <li
+                          key={r.profile_id}
+                          className={`duel-leaderboard-row${r.profile_id === profile?.id ? ' duel-leaderboard-row-me' : ''}`}
+                        >
+                          <span className="duel-leaderboard-rank">#{i + 1}</span>
+                          <span className="duel-leaderboard-name">
+                            {r.profile_id === profile?.id ? 'Vos' : r.profile?.username || 'Jugador'}
+                          </span>
+                          <span className="duel-leaderboard-score">{r.total_score}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {activeDuel.closed_at ? (
+                    <div className="duel-result-verdict">
+                      {activeDuel.winner_id
+                        ? `🏆 Ganó ${
+                            activeDuel.winner_id === profile?.id
+                              ? 'Vos'
+                              : duelResults.find((r) => r.profile_id === activeDuel.winner_id)?.profile?.username ||
+                                'otro jugador'
+                          }`
+                        : 'Empataron'}
+                    </div>
+                  ) : (
+                    <div className="duel-result-actions">
+                      <button
+                        type="button"
+                        className="primary-btn secondary-btn"
+                        onClick={refreshDuelResults}
+                        disabled={duelResultsLoading}
+                      >
+                        {duelResultsLoading ? 'Actualizando...' : 'Actualizar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="primary-btn secondary-btn"
+                        onClick={() => {
+                          navigator.clipboard
+                            .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
+                            .then(() => {
+                              setMenuCopied(true)
+                              setTimeout(() => setMenuCopied(false), 2000)
+                            })
+                            .catch(() => {})
+                        }}
+                      >
+                        {menuCopied ? '¡Copiado!' : 'Invitar a más gente'}
+                      </button>
+                      {profile?.id === activeDuel.challenger_id && duelResults.length >= 2 && (
+                        <button type="button" className="primary-btn secondary-btn" onClick={handleCloseDuel}>
+                          Cerrar duelo
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : duelOtherResult ? (
+                <>
+                  <div className="duel-result-vs">
+                    <span>Vos: {totalScore}</span>
+                    <span>
+                      {duelOtherResult.profile?.username || 'Rival'}: {duelOtherResult.total_score}
+                    </span>
+                  </div>
+                  <div className="duel-result-verdict">
+                    {totalScore > duelOtherResult.total_score
+                      ? '🏆 Ganaste el duelo'
+                      : totalScore < duelOtherResult.total_score
+                        ? 'Perdiste el duelo'
+                        : 'Empataron'}
+                  </div>
+                </>
+              ) : activeDuel.closed_at ? (
+                <div className="duel-result-verdict">🏆 Ganaste por abandono — tu rival nunca respondió</div>
+              ) : (
+                <>
+                  <p className="duel-result-waiting">Esperando a que tu rival juegue...</p>
+                  <div className="duel-result-actions">
+                    <button
+                      type="button"
+                      className="primary-btn secondary-btn"
+                      onClick={refreshDuelResults}
+                      disabled={duelResultsLoading}
+                    >
+                      {duelResultsLoading ? 'Actualizando...' : 'Actualizar'}
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-btn secondary-btn"
+                      onClick={() => {
+                        navigator.clipboard
+                          .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
+                          .then(() => {
+                            setMenuCopied(true)
+                            setTimeout(() => setMenuCopied(false), 2000)
+                          })
+                          .catch(() => {})
+                      }}
+                    >
+                      {menuCopied ? '¡Copiado!' : 'Copiar link del duelo'}
+                    </button>
+                    {canClaimForfeit && (
+                      <button type="button" className="primary-btn secondary-btn" onClick={handleClaimForfeit}>
+                        Reclamar victoria (tu rival no respondió)
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="gameover-actions">
             <button className="primary-btn secondary-btn" onClick={handleShare}>
               {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
             </button>
-            <button className="primary-btn" onClick={handleRestart}>
-              {gameMode === 'daily' ? 'Jugar modo práctica' : 'Jugar otra partida'}
+            <button className="primary-btn" onClick={isSignedIn ? handleGoHome : () => openSignUp()}>
+              {isSignedIn ? 'Ir al inicio' : 'Registrate'}
             </button>
           </div>
         </footer>
@@ -760,6 +1576,9 @@ function App() {
         <header className="hud">
           <div className="hud-row">
             <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
+            {gameMode === 'duel' && phase === 'guessing' && duelTimeLimit != null && (
+              <span className={`duel-timer${duelTimeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {duelTimeLeft}s</span>
+            )}
             <span className="score-label">Puntaje: {totalScore}</span>
           </div>
           {isSpecial && <div className="eyebrow">Ubicación especial</div>}
@@ -826,19 +1645,21 @@ function App() {
 
   return (
     <div className="app-shell">
-      {sidebar}
-      <div className="app-main">
-        <TopBar
-          onShare={handleShareInvite}
-          shareCopied={menuCopied}
-          onToggleSidebar={() => setSidebarOpen((o) => !o)}
-        />
-        {mainContent}
-        {credits}
+      <div className={`app-shell-content${authGateOpen ? ' app-shell-blurred' : ''}`}>
+        {sidebar}
+        <div className="app-main">
+          <TopBar onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+          {mainContent}
+          {credits}
+        </div>
       </div>
       {archivePopup}
       {customPopup}
+      {duelChoicePopup}
+      {duelSetupPopup}
+      {multiplayerSetupPopup}
       {donatePopup}
+      {authGatePopup}
     </div>
   )
 }

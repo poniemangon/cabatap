@@ -1,0 +1,462 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useAuth, useUser } from '@clerk/clerk-react'
+import useProfile, { slugifyUsername } from '../hooks/useProfile'
+import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
+import { listMyDuels, getDuelStats } from '../duels/duelApi'
+import { listMyDailyStats } from '../daily/dailyApi'
+import './ProfilePage.css'
+
+const SEARCH_PAGE_SIZE = 8
+
+// Same epoch App.jsx's dayNumberForDate()/indicesForDay() use, kept in sync
+// so a day_number here maps back to the calendar date it was actually played.
+const DAY_MS = 24 * 60 * 60 * 1000
+const EPOCH_UTC = Date.UTC(2024, 0, 1)
+function formatDailyDate(dayNumber) {
+  return new Date(EPOCH_UTC + dayNumber * DAY_MS).toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function DuelRow({ duel, myProfileId, onOpen }) {
+  const mine = duel.duel_results.find((r) => r.profile_id === myProfileId)
+  const others = duel.duel_results.filter((r) => r.profile_id !== myProfileId)
+
+  if (duel.is_multiplayer) {
+    const rank = [...duel.duel_results].sort((a, b) => b.total_score - a.total_score).findIndex((r) => r.profile_id === myProfileId) + 1
+    const verdict =
+      others.length === 0
+        ? 'Esperando más jugadores'
+        : `#${rank} de ${duel.duel_results.length}`
+    return (
+      <li className="profile-duel-row profile-duel-row-clickable" onClick={onOpen}>
+        <span className="profile-duel-opponent">Duelo multijugador</span>
+        <span className="profile-duel-score">{mine.total_score} pts</span>
+        <span className="profile-duel-verdict">{verdict}</span>
+      </li>
+    )
+  }
+
+  const iAmChallenger = duel.challenger_id === myProfileId
+  const opponentName = others[0]?.profile?.username || (iAmChallenger ? duel.opponent : duel.challenger)?.username || 'esperando rival'
+  const theirs = others[0]
+
+  let verdict = 'Esperando al rival'
+  if (theirs) {
+    if (mine.total_score > theirs.total_score) verdict = '🏆 Ganaste'
+    else if (mine.total_score < theirs.total_score) verdict = 'Perdiste'
+    else verdict = 'Empate'
+  }
+
+  return (
+    <li className="profile-duel-row profile-duel-row-clickable" onClick={onOpen}>
+      <span className="profile-duel-opponent">vs. {opponentName}</span>
+      <span className="profile-duel-score">
+        {mine.total_score} — {theirs ? theirs.total_score : '?'}
+      </span>
+      <span className="profile-duel-verdict">{verdict}</span>
+    </li>
+  )
+}
+
+export default function ProfilePage() {
+  const { isLoaded: clerkLoaded, isSignedIn } = useAuth()
+  const { user: clerkUser } = useUser()
+  const { profile, loading: profileLoading, updateUsername } = useProfile()
+  const navigate = useNavigate()
+
+  const [editingUsername, setEditingUsername] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameStatus, setUsernameStatus] = useState(null)
+
+  const [friends, setFriends] = useState({ accepted: [], incoming: [], outgoing: [] })
+  const [duels, setDuels] = useState([])
+  const [dailyStats, setDailyStats] = useState([])
+  const [stats, setStats] = useState({
+    oneVOne: { played: 0, won: 0, tied: 0 },
+    multi: { played: 0, won: 0, tied: 0 },
+  })
+  const [searchValue, setSearchValue] = useState('')
+  const [searchStatus, setSearchStatus] = useState(null)
+  const [searchResults, setSearchResults] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchPage, setSearchPage] = useState(0)
+  const [searchTotal, setSearchTotal] = useState(0)
+
+  const reloadFriends = async (profileId) => {
+    try {
+      const data = await listFriendships(profileId)
+      setFriends(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    if (!profile) return
+    reloadFriends(profile.id)
+    listMyDuels(profile.id).then(setDuels).catch(console.error)
+    getDuelStats(profile.id).then(setStats).catch(console.error)
+    listMyDailyStats(profile.id).then(setDailyStats).catch(console.error)
+  }, [profile])
+
+  // Per-friend 1v1 win/loss record, for the "Tus amigos" cards. Only closed
+  // duels with a definite winner count — ties and still-open duels don't
+  // move the record either way.
+  const headToHead = useMemo(() => {
+    const map = new Map()
+    if (!profile) return map
+    for (const d of duels) {
+      if (d.is_multiplayer || !d.closed_at || !d.winner_id) continue
+      const otherId = d.challenger_id === profile.id ? d.opponent_id : d.challenger_id
+      if (!otherId) continue
+      const entry = map.get(otherId) || { wins: 0, losses: 0 }
+      if (d.winner_id === profile.id) entry.wins += 1
+      else if (d.winner_id === otherId) entry.losses += 1
+      map.set(otherId, entry)
+    }
+    return map
+  }, [duels, profile])
+
+  if (clerkLoaded && !isSignedIn) {
+    return <Navigate to="/" replace />
+  }
+
+  // "none" | "friends" | "outgoing" | "incoming" — decides whether a search
+  // result row can still show an "Agregar" button.
+  const friendStatusFor = (userId) => {
+    if (friends.accepted.some((f) => f.friend.id === userId)) return 'friends'
+    if (friends.outgoing.some((f) => f.to.id === userId)) return 'outgoing'
+    if (friends.incoming.some((f) => f.from.id === userId)) return 'incoming'
+    return 'none'
+  }
+
+  const runSearch = async (query, page) => {
+    if (!profile) return
+    try {
+      const { results, total } = await searchUsers(query, profile.id, { page, pageSize: SEARCH_PAGE_SIZE })
+      setSearchResults(results)
+      setSearchTotal(total)
+      setSearchPage(page)
+    } catch (e) {
+      console.error(e)
+      setSearchStatus({ type: 'error', text: 'No se pudo buscar. Probá de nuevo.' })
+    }
+  }
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    setSearchStatus(null)
+    const query = searchValue.trim()
+    if (!query) return
+    setSearchQuery(query)
+    runSearch(query, 0)
+  }
+
+  const handleAddFriend = async (target) => {
+    if (!profile) return
+    try {
+      await sendFriendRequest(profile.id, target.id, profile.username)
+      setSearchStatus({ type: 'ok', text: `Solicitud enviada a ${target.username}.` })
+      reloadFriends(profile.id)
+    } catch (err) {
+      setSearchStatus({ type: 'error', text: err.message.includes('duplicate') ? 'Ya le mandaste una solicitud.' : 'No se pudo enviar la solicitud.' })
+    }
+  }
+
+  const handleRespond = async (friendshipId, status) => {
+    try {
+      await respondFriendRequest(friendshipId, status)
+      reloadFriends(profile.id)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const startEditUsername = () => {
+    setUsernameInput(profile.username)
+    setUsernameStatus(null)
+    setEditingUsername(true)
+  }
+
+  const handleSaveUsername = async (e) => {
+    e.preventDefault()
+    const cleaned = slugifyUsername(usernameInput)
+    if (cleaned.length < 3) {
+      setUsernameStatus({ type: 'error', text: 'Usá al menos 3 caracteres (minúsculas, números o guion bajo).' })
+      return
+    }
+    if (cleaned === profile.username) {
+      setEditingUsername(false)
+      return
+    }
+    try {
+      await updateUsername(cleaned)
+      setEditingUsername(false)
+      setUsernameStatus(null)
+    } catch (err) {
+      setUsernameStatus({
+        type: 'error',
+        text: err.message?.includes('duplicate') ? 'Ese nombre de usuario ya está en uso.' : 'No se pudo cambiar el nombre de usuario.',
+      })
+    }
+  }
+
+  const handleChallenge = (friendId) => {
+    navigate('/', { state: { challengeFriendId: friendId } })
+  }
+
+  return (
+    <div className="profile-page">
+      <Link to="/" className="profile-back-link">
+        ← Volver
+      </Link>
+
+      <header className="profile-header">
+        {clerkUser?.imageUrl ? (
+          <img src={clerkUser.imageUrl} alt="" className="profile-avatar" />
+        ) : (
+          <span className="profile-avatar profile-avatar-fallback">🙂</span>
+        )}
+        <div className="profile-header-info">
+          {editingUsername ? (
+            <form className="profile-username-edit" onSubmit={handleSaveUsername}>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                className="profile-username-input"
+                autoFocus
+              />
+              <button type="submit" className="primary-btn secondary-btn">
+                Guardar
+              </button>
+              <button type="button" className="primary-btn secondary-btn" onClick={() => setEditingUsername(false)}>
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <h1 className="profile-username">
+              {profileLoading ? 'Cargando...' : profile?.username}
+              {profile && (
+                <button type="button" className="profile-username-edit-btn" onClick={startEditUsername}>
+                  ✏️
+                </button>
+              )}
+            </h1>
+          )}
+          {usernameStatus && (
+            <p className={`profile-search-status profile-search-status-${usernameStatus.type}`}>{usernameStatus.text}</p>
+          )}
+        </div>
+      </header>
+
+      <section className="profile-section">
+        <h2 className="profile-section-title">Amigos</h2>
+        <form className="profile-friend-search" onSubmit={handleSearch}>
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Buscar por username"
+            className="profile-search-input"
+          />
+          <button type="submit" className="primary-btn secondary-btn">
+            Buscar
+          </button>
+        </form>
+        {searchStatus && (
+          <p className={`profile-search-status profile-search-status-${searchStatus.type}`}>{searchStatus.text}</p>
+        )}
+
+        {searchResults !== null && (
+          <div className="profile-friend-group">
+            {searchResults.length === 0 ? (
+              <p className="profile-empty-text">No encontramos usuarios con ese nombre.</p>
+            ) : (
+              <ul className="profile-friend-list">
+                {searchResults.map((u) => {
+                  const status = friendStatusFor(u.id)
+                  return (
+                    <li key={u.id} className="profile-friend-row">
+                      <span>{u.username}</span>
+                      {status === 'none' && (
+                        <button type="button" className="primary-btn secondary-btn" onClick={() => handleAddFriend(u)}>
+                          Agregar
+                        </button>
+                      )}
+                      {status === 'friends' && <span className="profile-friend-pending">Ya sos amigo</span>}
+                      {status === 'outgoing' && <span className="profile-friend-pending">Pendiente</span>}
+                      {status === 'incoming' && <span className="profile-friend-pending">Te envió una solicitud</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {searchTotal > SEARCH_PAGE_SIZE && (
+              <div className="profile-search-pagination">
+                <button
+                  type="button"
+                  className="primary-btn secondary-btn"
+                  disabled={searchPage === 0}
+                  onClick={() => runSearch(searchQuery, searchPage - 1)}
+                >
+                  ← Anterior
+                </button>
+                <span className="profile-search-page-label">
+                  Página {searchPage + 1} de {Math.ceil(searchTotal / SEARCH_PAGE_SIZE)}
+                </span>
+                <button
+                  type="button"
+                  className="primary-btn secondary-btn"
+                  disabled={(searchPage + 1) * SEARCH_PAGE_SIZE >= searchTotal}
+                  onClick={() => runSearch(searchQuery, searchPage + 1)}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {friends.incoming.length > 0 && (
+          <div className="profile-friend-group">
+            <div className="profile-friend-group-title">Solicitudes recibidas</div>
+            <ul className="profile-friend-list">
+              {friends.incoming.map((f) => (
+                <li key={f.id} className="profile-friend-row">
+                  <span>{f.from.username}</span>
+                  <span className="profile-friend-actions">
+                    <button type="button" className="primary-btn secondary-btn" onClick={() => handleRespond(f.id, 'accepted')}>
+                      Aceptar
+                    </button>
+                    <button type="button" className="primary-btn secondary-btn" onClick={() => handleRespond(f.id, 'declined')}>
+                      Rechazar
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {friends.outgoing.length > 0 && (
+          <div className="profile-friend-group">
+            <div className="profile-friend-group-title">Solicitudes enviadas</div>
+            <ul className="profile-friend-list">
+              {friends.outgoing.map((f) => (
+                <li key={f.id} className="profile-friend-row">
+                  <span>{f.to.username}</span>
+                  <span className="profile-friend-pending">Pendiente</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="profile-friend-group">
+          <div className="profile-friend-group-title">Tus amigos</div>
+          {friends.accepted.length === 0 ? (
+            <p className="profile-empty-text">Todavía no tenés amigos agregados.</p>
+          ) : (
+            <div className="friend-card-grid">
+              {friends.accepted.map((f) => {
+                const h2h = headToHead.get(f.friend.id)
+                const hasHistory = h2h && (h2h.wins > 0 || h2h.losses > 0)
+                return (
+                  <div key={f.id} className="friend-card">
+                    {f.friend.avatar_url ? (
+                      <img src={f.friend.avatar_url} alt="" className="friend-card-avatar" />
+                    ) : (
+                      <span className="friend-card-avatar friend-card-avatar-fallback">🙂</span>
+                    )}
+                    <div className="friend-card-name">{f.friend.username}</div>
+                    {hasHistory ? (
+                      <div className="friend-card-h2h">
+                        <span className="friend-card-h2h-wins">{h2h.wins}G</span>
+                        <span className="friend-card-h2h-sep">-</span>
+                        <span className="friend-card-h2h-losses">{h2h.losses}P</span>
+                      </div>
+                    ) : (
+                      <div className="friend-card-h2h friend-card-h2h-empty">Sin duelos</div>
+                    )}
+                    <button
+                      type="button"
+                      className="primary-btn secondary-btn friend-card-btn"
+                      onClick={() => handleChallenge(f.friend.id)}
+                    >
+                      Retar a duelo
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2 className="profile-section-title">Estadísticas</h2>
+        <div className="profile-stats-grid">
+          <div className="profile-stat-card">
+            <div className="profile-stat-title">1 vs 1</div>
+            <div className="profile-stat-numbers">
+              <span>{stats.oneVOne.played} jugados</span>
+              <span>{stats.oneVOne.won} ganados</span>
+              <span>{stats.oneVOne.tied} empatados</span>
+            </div>
+          </div>
+          <div className="profile-stat-card">
+            <div className="profile-stat-title">Multijugador</div>
+            <div className="profile-stat-numbers">
+              <span>{stats.multi.played} jugados</span>
+              <span>{stats.multi.won} ganados</span>
+              <span>{stats.multi.tied} empatados</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2 className="profile-section-title">Duelos jugados</h2>
+        {duels.length === 0 ? (
+          <p className="profile-empty-text">Todavía no jugaste ningún duelo.</p>
+        ) : (
+          <ul className="profile-duel-list">
+            {duels.map((d) => (
+              <DuelRow
+                key={d.id}
+                duel={d}
+                myProfileId={profile.id}
+                onOpen={() => navigate(`/duelo/${d.invite_code}`)}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="profile-section">
+        <h2 className="profile-section-title">Mapas diarios jugados</h2>
+        {dailyStats.length === 0 ? (
+          <p className="profile-empty-text">Todavía no jugaste ningún mapa diario.</p>
+        ) : (
+          <ul className="profile-duel-list">
+            {dailyStats.map((d) => (
+              <li
+                key={d.id}
+                className="profile-duel-row profile-duel-row-clickable"
+                onClick={() => navigate(`/mapa-diario/${d.id}`)}
+              >
+                <span className="profile-duel-opponent">{formatDailyDate(d.day_number)}</span>
+                <span className="profile-duel-score">{d.total_score} pts</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}

@@ -137,16 +137,23 @@ export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick
     markersRef.current.forEach((m) => m.remove())
     markersRef.current = []
 
-    const features = results.map((r, i) => {
-      const guessMarker = new maplibregl.Marker({ element: createDot('#007aff', '#0056b3') })
-        .setLngLat([r.guess[1], r.guess[0]])
-        .addTo(map)
+    // A round can have no guess at all (duel timed out with no click) — show
+    // just the actual-location marker for those, skip the guess marker/line.
+    const features = []
+    results.forEach((r, i) => {
       const actualMarker = new maplibregl.Marker({ element: createActualMarkerEl(`R${i + 1}`), anchor: 'bottom' })
         .setLngLat([r.actual[1], r.actual[0]])
         .addTo(map)
-      markersRef.current.push(guessMarker, actualMarker)
+      markersRef.current.push(actualMarker)
 
-      return {
+      if (!r.guess) return
+
+      const guessMarker = new maplibregl.Marker({ element: createDot('#007aff', '#0056b3') })
+        .setLngLat([r.guess[1], r.guess[0]])
+        .addTo(map)
+      markersRef.current.push(guessMarker)
+
+      features.push({
         type: 'Feature',
         geometry: {
           type: 'LineString',
@@ -156,7 +163,7 @@ export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick
           ],
         },
         properties: {},
-      }
+      })
     })
 
     map.getSource('guess-lines')?.setData({ type: 'FeatureCollection', features })

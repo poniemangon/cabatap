@@ -1,4 +1,4 @@
-export default function TopBar({ onShare, shareCopied, onToggleSidebar }) {
+export default function TopBar({ onToggleSidebar }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -15,9 +15,6 @@ export default function TopBar({ onShare, shareCopied, onToggleSidebar }) {
           ubi<span className="topbar-title-accent">CABA</span>
         </span>
       </div>
-      <button type="button" className="topbar-share-btn" onClick={onShare}>
-        {shareCopied ? '¡Copiado!' : '🔗 Compartir partida'}
-      </button>
     </header>
   )
 }

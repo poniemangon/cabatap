@@ -6,9 +6,29 @@
 }
 
 .app-shell {
+  height: 100svh;
+  width: 100%;
+}
+
+.app-shell-content {
   display: flex;
   flex-direction: row;
-  height: 100svh;
+  height: 100%;
+  width: 100%;
+  transition: filter 0.15s ease;
+}
+
+.app-shell-blurred {
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.auth-gate-modal {
+  max-width: 340px;
+  text-align: center;
+}
+
+.auth-gate-modal .primary-btn {
   width: 100%;
 }
 
@@ -58,6 +78,15 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.sidebar-nav-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sidebar-nav-item:disabled:hover {
+  background: transparent;
+}
+
 .sidebar-nav-icon {
   font-size: 16px;
 }
@@ -71,33 +100,171 @@
   padding-left: 26px;
 }
 
-.sidebar-stats {
-  margin-top: auto;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border, #262626);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.sidebar-stats-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text, #9ca3af);
-  margin-bottom: 8px;
-}
-
-.sidebar-stat-row {
+.sidebar-top-row {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-bell-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-bell-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.sidebar-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.sidebar-notif-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.sidebar-notif-panel {
+  /* Fixed (not absolute inside .sidebar, which has overflow-y:auto and
+     therefore clips overflow-x too) and positioned via inline style from
+     the bell's actual on-screen rect, so it always renders fully visible
+     instead of being cut off by the sidebar's own bounding box. */
+  position: fixed;
+  z-index: 61;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--neutral, #1c1c1c);
+  border: 1px solid var(--border, #262626);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-notif-empty {
+  padding: 14px;
   font-size: 13px;
   color: var(--text, #9ca3af);
-  padding: 4px 0;
+  margin: 0;
 }
 
-.sidebar-stat-row strong {
+.sidebar-notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.sidebar-notif-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-h, #f5f5f5);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-notif-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-notif-row-unread {
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.sidebar-notif-text {
+  font-size: 13px;
+}
+
+.sidebar-notif-time {
+  font-size: 11px;
+  color: var(--text, #9ca3af);
+}
+
+.sidebar-profile-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.sidebar-profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-primary, #007aff);
+  font-size: 18px;
+}
+
+.sidebar-profile-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  color: var(--text-h, #f5f5f5);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-profile-link {
+  color: var(--accent-primary, #007aff);
+  font-size: 12px;
+}
+
+.sidebar-signup-btn {
+  margin-top: auto;
+  width: 100%;
 }
 
 .topbar {
@@ -174,22 +341,6 @@
     z-index: 45;
     background: rgba(0, 0, 0, 0.5);
   }
-}
-
-.topbar-share-btn {
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid var(--accent-primary, #007aff);
-  background: transparent;
-  color: var(--accent-primary, #007aff);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.topbar-share-btn:hover {
-  background: var(--accent-primary, #007aff);
-  color: #fff;
 }
 
 .loading-screen {
@@ -328,6 +479,15 @@
 
 .round-label {
   font-weight: 600;
+}
+
+.duel-timer {
+  font-weight: 700;
+  color: var(--accent-primary, #007aff);
+}
+
+.duel-timer-urgent {
+  color: #ef4444;
 }
 
 .menu-wrap {
@@ -621,6 +781,188 @@
   width: 100%;
 }
 
+.duel-setup-section {
+  margin-bottom: 16px;
+}
+
+.duel-setup-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text, #9ca3af);
+  margin-bottom: 8px;
+}
+
+.duel-friend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.duel-friend-chip {
+  border: 1.5px solid var(--accent-primary, #007aff);
+  color: var(--accent-primary, #007aff);
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.duel-friend-chip.selected {
+  background: var(--accent-primary, #007aff);
+  color: #fff;
+}
+
+.duel-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.duel-type-btn {
+  flex: 1;
+  border: 1.5px solid var(--border, #262626);
+  color: var(--text-h, #f5f5f5);
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.duel-type-btn.selected {
+  border-color: var(--accent-primary, #007aff);
+  background: rgba(0, 122, 255, 0.15);
+}
+
+.duel-setup-hint {
+  font-size: 12px;
+  color: var(--text, #9ca3af);
+  margin: 6px 0 0;
+}
+
+.duel-choice-modal {
+  padding: 16px;
+  gap: 12px;
+}
+
+.duel-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #262626);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-h, #f5f5f5);
+  cursor: pointer;
+  text-align: left;
+}
+
+.duel-choice-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.duel-choice-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.duel-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.duel-choice-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.duel-choice-desc {
+  font-size: 12px;
+  color: var(--text, #9ca3af);
+}
+
+.duel-result-panel {
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.duel-result-vs {
+  display: flex;
+  justify-content: space-around;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.duel-result-verdict {
+  font-weight: 700;
+}
+
+.duel-result-waiting {
+  margin: 0 0 10px;
+  color: var(--text, #9ca3af);
+}
+
+.duel-result-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.duel-leaderboard-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.duel-leaderboard {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.duel-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e4e7);
+}
+
+.duel-leaderboard-row-me {
+  border-color: var(--accent-primary, #007aff);
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.duel-leaderboard-rank {
+  font-weight: 700;
+  color: var(--text, #9ca3af);
+  width: 28px;
+}
+
+.duel-leaderboard-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.duel-leaderboard-score {
+  font-weight: 700;
+}
+
 .score-label {
   font-weight: 600;
 }
@@ -756,6 +1098,15 @@
 
 .dashboard-mode-card:hover {
   border-color: var(--accent-primary, #007aff);
+}
+
+.dashboard-signup-card {
+  cursor: default;
+  width: 100%;
+}
+
+.dashboard-signup-card-btn {
+  margin-top: 4px;
 }
 
 .dashboard-mode-icon {
