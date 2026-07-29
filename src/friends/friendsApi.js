@@ -20,6 +20,18 @@ export async function searchUsers(query, excludeProfileId, { page = 0, pageSize 
   return { results: data, total: count ?? 0 }
 }
 
+// For the public profile viewer (/jugador/:username) — exact match, no auth
+// required (profiles are readable by everyone).
+export async function getProfileByUsername(username) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .eq('username', username)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function sendFriendRequest(requesterId, addresseeId, requesterUsername) {
   const { data, error } = await supabase
     .from('friendships')

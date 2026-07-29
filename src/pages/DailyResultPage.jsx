@@ -60,7 +60,10 @@ export default function DailyResultPage() {
             <div>
               <h1 className="daily-result-username">{stat.profile?.username || 'Jugador'}</h1>
               <p className="daily-result-meta">
-                {formatDailyDate(stat.day_number)} — {stat.total_score} pts
+                {formatDailyDate(stat.day_number)} — {stat.total_score} pts —{' '}
+                <span className={`daily-mode-tag${stat.timed ? ' daily-mode-tag-timed' : ''}`}>
+                  {stat.timed ? '⏱ Competitivo' : '🧘 Tranqui'}
+                </span>
               </p>
             </div>
           </header>

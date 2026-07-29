@@ -13,6 +13,7 @@ import CustomGamePicker from './CustomGamePicker'
 import DuelSetupModal from './duels/DuelSetupModal'
 import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
 import DuelChoiceModal from './duels/DuelChoiceModal'
+import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useNotifications from './hooks/useNotifications'
@@ -29,7 +30,7 @@ import {
   findOpenRandomDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted } from './notifications/notificationsApi'
-import { submitDailyResult } from './daily/dailyApi'
+import { submitDailyResult, getDailyLeaderboard } from './daily/dailyApi'
 import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
@@ -216,6 +217,10 @@ function App() {
 
   const [roundIndices, setRoundIndices] = useState([])
   const [gameMode, setGameMode] = useState('daily')
+  // Only meaningful when gameMode === 'daily': competitivo (true) vs tranqui
+  // (false) — set by DailyModeChoiceModal's choice, drives the same timer/
+  // tap-to-submit behavior duels use (see timeLimit below).
+  const [dailyTimed, setDailyTimed] = useState(false)
   const [customBarrioIds, setCustomBarrioIds] = useState([])
   const [roundIndex, setRoundIndex] = useState(0)
   const [phase, setPhase] = useState('guessing') // 'guessing' | 'revealed' | 'gameOver'
@@ -527,9 +532,16 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current])
 
-  // Only private duels can opt out of the timer (DuelSetupModal's toggle);
-  // random and multiplayer are always timed. null = no limit for this duel.
-  const duelTimeLimit = gameMode === 'duel' ? (activeDuel?.time_limit_seconds ?? null) : null
+  // The 8s-per-location timer + tap-to-submit flow isn't duel-exclusive:
+  // "Modo competitivo" on the daily map uses the exact same mechanic. null
+  // means untimed (private duels can opt out via DuelSetupModal's toggle;
+  // random/multiplayer duels and modo competitivo are always timed).
+  const timeLimit =
+    gameMode === 'duel'
+      ? (activeDuel?.time_limit_seconds ?? null)
+      : gameMode === 'daily' && dailyTimed
+        ? DUEL_TIME_LIMIT
+        : null
 
   const [pendingGuess, setPendingGuess] = useState(null)
 
@@ -560,20 +572,20 @@ function App() {
     [current],
   )
 
-  // Timed duels submit on tap — no separate confirm step, since a two-tap
-  // flow eats into an already-tight clock. Every other mode (including
-  // untimed duels) keeps the tap-then-confirm flow so a guess can be moved
-  // before committing to it.
+  // Timed modes (duels, modo competitivo) submit on tap — no separate
+  // confirm step, since a two-tap flow eats into an already-tight clock.
+  // Every untimed mode keeps the tap-then-confirm flow so a guess can be
+  // moved before committing to it.
   const handleMapClick = useCallback(
     (pos) => {
       if (phase !== 'guessing') return
-      if (gameMode === 'duel' && duelTimeLimit != null) {
+      if (timeLimit != null) {
         submitGuess(pos)
       } else {
         setPendingGuess(pos)
       }
     },
-    [phase, gameMode, duelTimeLimit, submitGuess],
+    [phase, timeLimit, submitGuess],
   )
 
   const handleConfirmGuess = useCallback(() => {
@@ -592,28 +604,28 @@ function App() {
     })
   }, [])
 
-  // duelTimeLeft is display-only (drives the HUD countdown). The actual
-  // "time's up" decision is made from a local `ticksLeft` variable owned by
-  // this single effect instance, not from duelTimeLeft state — a version
-  // that split ticking and the zero-check into two separate effects had a
-  // stale-closure bug: resetting duelTimeLeft for a brand-new round doesn't
+  // timeLeft is display-only (drives the HUD countdown). The actual "time's
+  // up" decision is made from a local `ticksLeft` variable owned by this
+  // single effect instance, not from timeLeft state — a version that split
+  // ticking and the zero-check into two separate effects had a stale-
+  // closure bug: resetting timeLeft for a brand-new round doesn't
   // retroactively update the *other* effect's closure from the same render,
-  // so it kept seeing the old round's duelTimeLeft===0 and immediately
-  // zeroed the new round too. One effect per round, with its own private
+  // so it kept seeing the old round's timeLeft===0 and immediately zeroed
+  // the new round too. One effect per round, with its own private
   // countdown, avoids that race entirely. Tab/app switching (which also
   // fires on tab close) fast-forwards the same countdown to 0, so it's
   // exactly as if the clock ran out — only the current round is forfeited,
   // play continues into the next one when you come back.
-  const [duelTimeLeft, setDuelTimeLeft] = useState(DUEL_TIME_LIMIT)
+  const [timeLeft, setTimeLeft] = useState(DUEL_TIME_LIMIT)
 
   useEffect(() => {
-    if (gameMode !== 'duel' || phase !== 'guessing' || duelTimeLimit == null || !current) return
+    if (phase !== 'guessing' || timeLimit == null || !current) return
 
-    let ticksLeft = duelTimeLimit
+    let ticksLeft = timeLimit
     let handled = false // guards a rare double-fire: the interval and a
     // visibilitychange landing in the same tick could otherwise both call
     // timeUp() before React re-renders and tears this effect instance down.
-    setDuelTimeLeft(ticksLeft)
+    setTimeLeft(ticksLeft)
 
     const timeUp = () => {
       if (handled || roundSubmittedRef.current) return
@@ -629,7 +641,7 @@ function App() {
 
     const interval = setInterval(() => {
       ticksLeft -= 1
-      setDuelTimeLeft(Math.max(0, ticksLeft))
+      setTimeLeft(Math.max(0, ticksLeft))
       if (ticksLeft <= 0) {
         clearInterval(interval)
         timeUp()
@@ -639,7 +651,7 @@ function App() {
     const handleVisibility = () => {
       if (!document.hidden) return
       clearInterval(interval)
-      setDuelTimeLeft(0)
+      setTimeLeft(0)
       timeUp()
     }
     document.addEventListener('visibilitychange', handleVisibility)
@@ -648,7 +660,7 @@ function App() {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [gameMode, phase, roundIndex, duelTimeLimit, current])
+  }, [phase, roundIndex, timeLimit, current])
 
   const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
     setRoundIndices(indices)
@@ -744,7 +756,27 @@ function App() {
     startGame(indicesForDay(dayNumber), 'archive', { copyInvite: true })
   }
 
+  const [dailyChoiceOpen, setDailyChoiceOpen] = useState(false)
+
   const handleDaily = () => {
+    // Signed-out visitors can only ever play tranqui (competitivo needs an
+    // account to rank), so the choice popup would just be a dead option —
+    // skip straight to tranqui instead of showing it.
+    if (!isSignedIn) {
+      startDaily(false)
+      return
+    }
+    setDailyChoiceOpen(true)
+  }
+
+  // Tranqui stays open to signed-out visitors, same as the daily challenge
+  // always has been — competitivo needs a profile, since the whole point is
+  // ranking against everyone else's attempt.
+  const startDaily = (timed) => {
+    if (timed && !requireAuthOrGate()) return
+    setDailyChoiceOpen(false)
+    setDailyTimed(timed)
+    setDailyRankInfo(null)
     dailyResultSubmittedRef.current = false
     startGame(indicesForDay(dayNumberForDate(new Date())), 'daily')
   }
@@ -1008,16 +1040,30 @@ function App() {
 
   // Saves today's daily attempt to the profile — only "daily" (today's
   // challenge via handleDaily), not "archive" (past days) or any other mode.
+  // Tranqui and competitivo save as separate rows (see dailyApi.js). For
+  // competitivo, the rank fetch is chained *after* the submit resolves —
+  // fetching it independently would usually race ahead of my own row
+  // actually landing, undercounting my own rank.
+  const [dailyRankInfo, setDailyRankInfo] = useState(null)
+
   useEffect(() => {
     if (phase !== 'gameOver' || gameMode !== 'daily' || !profile) return
     if (dailyResultSubmittedRef.current) return
     dailyResultSubmittedRef.current = true
     const dayNumber = dayNumberForDate(new Date())
-    submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore }).catch((e) => {
-      console.error(e)
-      dailyResultSubmittedRef.current = false
-    })
-  }, [phase, gameMode, profile, results, totalScore])
+    submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore, timed: dailyTimed })
+      .then(() => {
+        if (!dailyTimed) return
+        return getDailyLeaderboard(dayNumber).then((rows) => {
+          const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
+          setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
+        })
+      })
+      .catch((e) => {
+        console.error(e)
+        dailyResultSubmittedRef.current = false
+      })
+  }, [phase, gameMode, profile, results, totalScore, dailyTimed])
 
   // 1v1 auto-closes once both sides have played — no manual step, since
   // there are only ever 2 slots. Whichever client's refreshDuelResults()
@@ -1175,7 +1221,7 @@ function App() {
           </button>
         </div>
         <img src={registerImg} alt="" className="register-popup-image" />
-        <p className="special-suggest-text">Registrate para acceder a más modos y desafiar a otros jugadores.</p>
+        <p className="special-suggest-text">Registrate para que tu mapa del día compita con todos los jugadores.</p>
         <button
           type="button"
           className="primary-btn"
@@ -1269,6 +1315,18 @@ function App() {
         >
           Registrarme
         </button>
+      </div>
+    </div>
+  )
+
+  const dailyChoicePopup = dailyChoiceOpen && (
+    <div className="modal-backdrop" onClick={() => setDailyChoiceOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <DailyModeChoiceModal
+          onClose={() => setDailyChoiceOpen(false)}
+          onChooseTranqui={() => startDaily(false)}
+          onChooseCompetitivo={() => startDaily(true)}
+        />
       </div>
     </div>
   )
@@ -1454,6 +1512,14 @@ function App() {
             ))}
           </ul>
 
+          {gameMode === 'daily' && dailyTimed && (
+            <div className="duel-result-panel">
+              <div className="duel-result-verdict">
+                {dailyRankInfo ? `🏆 #${dailyRankInfo.rank} de ${dailyRankInfo.total} hoy` : 'Calculando tu posición...'}
+              </div>
+            </div>
+          )}
+
           {gameMode === 'duel' && activeDuel && (
             <div className="duel-result-panel">
               {activeDuel.is_multiplayer ? (
@@ -1594,8 +1660,8 @@ function App() {
         <header className="hud">
           <div className="hud-row">
             <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
-            {gameMode === 'duel' && phase === 'guessing' && duelTimeLimit != null && (
-              <span className={`duel-timer${duelTimeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {duelTimeLeft}s</span>
+            {phase === 'guessing' && timeLimit != null && (
+              <span className={`duel-timer${timeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {timeLeft}s</span>
             )}
             <span className="score-label">Puntaje: {totalScore}</span>
           </div>
@@ -1673,6 +1739,7 @@ function App() {
       </div>
       {archivePopup}
       {customPopup}
+      {dailyChoicePopup}
       {duelChoicePopup}
       {duelSetupPopup}
       {multiplayerSetupPopup}

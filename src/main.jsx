@@ -8,6 +8,8 @@ import './index.css'
 import App from './App.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import DailyResultPage from './pages/DailyResultPage.jsx'
+import PublicProfilePage from './pages/PublicProfilePage.jsx'
+import RankingPage from './pages/RankingPage.jsx'
 import ClerkTokenBridge from './auth/ClerkTokenBridge.jsx'
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -22,6 +24,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/duelo/:code" element={<App />} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/mapa-diario/:id" element={<DailyResultPage />} />
+          <Route path="/jugador/:username" element={<PublicProfilePage />} />
+          <Route path="/ranking" element={<RankingPage />} />
         </Routes>
       </BrowserRouter>
     </ClerkProvider>

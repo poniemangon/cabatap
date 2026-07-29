@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SignInButton } from '@clerk/clerk-react'
 
 function timeAgo(isoString) {
@@ -38,6 +39,7 @@ export default function Sidebar({
   const [notifPanelOpen, setNotifPanelOpen] = useState(false)
   const [notifPanelPos, setNotifPanelPos] = useState({ top: 0, left: 0 })
   const bellRef = useRef(null)
+  const navigate = useNavigate()
 
   const withClose = (fn) => () => {
     fn()
@@ -129,6 +131,9 @@ export default function Sidebar({
         <nav className="sidebar-nav">
           <button type="button" className="sidebar-nav-item" onClick={withClose(onGoHome)}>
             <span className="sidebar-nav-icon">🏠</span> Inicio
+          </button>
+          <button type="button" className="sidebar-nav-item" onClick={withClose(() => navigate('/ranking'))}>
+            <span className="sidebar-nav-icon">🏆</span> Ranking de jugadores
           </button>
           {isSignedIn && (
             <button

@@ -282,7 +282,9 @@ export default function ProfilePage() {
                   const status = friendStatusFor(u.id)
                   return (
                     <li key={u.id} className="profile-friend-row">
-                      <span>{u.username}</span>
+                      <Link to={`/jugador/${u.username}`} className="profile-friend-name-link">
+                        {u.username}
+                      </Link>
                       {status === 'none' && (
                         <button type="button" className="primary-btn secondary-btn" onClick={() => handleAddFriend(u)}>
                           Agregar
@@ -450,7 +452,12 @@ export default function ProfilePage() {
                 className="profile-duel-row profile-duel-row-clickable"
                 onClick={() => navigate(`/mapa-diario/${d.id}`)}
               >
-                <span className="profile-duel-opponent">{formatDailyDate(d.day_number)}</span>
+                <span className="profile-duel-opponent">
+                  {formatDailyDate(d.day_number)}
+                  <span className={`daily-mode-tag${d.timed ? ' daily-mode-tag-timed' : ''}`}>
+                    {d.timed ? '⏱ Competitivo' : '🧘 Tranqui'}
+                  </span>
+                </span>
                 <span className="profile-duel-score">{d.total_score} pts</span>
               </li>
             ))}
