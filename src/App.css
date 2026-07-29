@@ -393,10 +393,17 @@
   font-size: 14px;
 }
 
-.donate-modal {
+.register-popup-modal {
   max-width: 320px;
   align-items: center;
   text-align: center;
+  gap: 12px;
+}
+
+.register-popup-image {
+  width: 100%;
+  max-width: 220px;
+  border-radius: 10px;
 }
 
 .round-result-modal {
@@ -424,13 +431,6 @@
 
 .confirm-guess-btn {
   border-radius: 999px;
-}
-
-.donate-image {
-  width: 100%;
-  max-width: 220px;
-  border-radius: 10px;
-  margin-bottom: 10px;
 }
 
 .special-suggest-text {

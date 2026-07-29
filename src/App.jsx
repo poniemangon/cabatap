@@ -30,7 +30,7 @@ import {
 } from './duels/duelApi'
 import { notifyDuelCompleted } from './notifications/notificationsApi'
 import { submitDailyResult } from './daily/dailyApi'
-import donateImg from './assets/la-bestia-de-calchin.jpg'
+import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
@@ -172,7 +172,7 @@ function shareIndicesToUrl(indices, barrioIds) {
 }
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
-const DONATE_POPUP_SESSION_KEY = 'ubicaba-donate-popup-shown'
+const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 
 function loadStoredSession() {
   try {
@@ -225,7 +225,7 @@ function App() {
   const [menuCopied, setMenuCopied] = useState(false)
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
-  const [donatePopupOpen, setDonatePopupOpen] = useState(false)
+  const [registerPopupOpen, setRegisterPopupOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
@@ -453,17 +453,17 @@ function App() {
   const isReady = !!pool && !!barrios && initialized
 
   useEffect(() => {
-    if (!isReady) return
+    if (!isReady || !clerkLoaded || isSignedIn) return
     try {
-      if (!sessionStorage.getItem(DONATE_POPUP_SESSION_KEY)) {
-        sessionStorage.setItem(DONATE_POPUP_SESSION_KEY, '1')
-        setDonatePopupOpen(true)
+      if (!sessionStorage.getItem(REGISTER_POPUP_SESSION_KEY)) {
+        sessionStorage.setItem(REGISTER_POPUP_SESSION_KEY, '1')
+        setRegisterPopupOpen(true)
       }
     } catch {
       // sessionStorage unavailable (private browsing, etc.); just skip the popup
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady])
+  }, [isReady, clerkLoaded, isSignedIn])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -1165,28 +1165,27 @@ function App() {
     </div>
   )
 
-  const donatePopup = donatePopupOpen && (
-    <div className="modal-backdrop" onClick={() => setDonatePopupOpen(false)}>
-      <div className="socials-modal donate-modal" onClick={(e) => e.stopPropagation()}>
+  const registerPopup = registerPopupOpen && (
+    <div className="modal-backdrop" onClick={() => setRegisterPopupOpen(false)}>
+      <div className="socials-modal register-popup-modal" onClick={(e) => e.stopPropagation()}>
         <div className="calendar-modal-header">
-          <span>Aguante Messi</span>
-          <button type="button" className="calendar-close" onClick={() => setDonatePopupOpen(false)}>
+          <span>Registrate</span>
+          <button type="button" className="calendar-close" onClick={() => setRegisterPopupOpen(false)}>
             ✕
           </button>
         </div>
-        <img src={donateImg} alt="" className="donate-image" />
-        <p className="special-suggest-text">
-          Necesito tu ayuda para costear el servidor
-          <br />
-          <a
-            href="https://cafecito.app/poniemangon"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setDonatePopupOpen(false)}
-          >
-            en este link
-          </a>
-        </p>
+        <img src={registerImg} alt="" className="register-popup-image" />
+        <p className="special-suggest-text">Registrate para acceder a más modos y desafiar a otros jugadores.</p>
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={() => {
+            setRegisterPopupOpen(false)
+            openSignUp()
+          }}
+        >
+          Registrarme
+        </button>
       </div>
     </div>
   )
@@ -1677,7 +1676,7 @@ function App() {
       {duelChoicePopup}
       {duelSetupPopup}
       {multiplayerSetupPopup}
-      {donatePopup}
+      {registerPopup}
       {authGatePopup}
     </div>
   )
