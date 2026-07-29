@@ -682,21 +682,40 @@ function App() {
   }
 
   const handleShare = async () => {
-    let modeLine
-    let dateLine = null
-    if (gameMode === 'daily') {
-      modeLine = 'Partida del día'
-      dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
-    } else if (gameMode === 'custom') {
-      modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
-    } else if (gameMode === 'duel') {
-      modeLine = 'Duelo'
-    } else if (gameMode === 'archive') {
-      modeLine = 'Archivo'
+    let text
+    if (gameMode === 'duel' && activeDuel) {
+      // Duels share their own invite link (not the generic round-indices
+      // link) plus who you played and both/everyone's scores, instead of the
+      // emoji-breakdown format the other modes use.
+      const link = `${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`
+      if (activeDuel.is_multiplayer) {
+        const ranked = [...duelResults].sort((a, b) => b.total_score - a.total_score)
+        const lines = ranked.map(
+          (r, i) => `${i + 1}. ${r.profile_id === profile?.id ? 'Vos' : r.profile?.username || 'Jugador'}: ${r.total_score} pts`,
+        )
+        text = `${link}\nDuelo multijugador\n${lines.join('\n')}`
+      } else {
+        const opponentName = duelOtherResult?.profile?.username || 'tu rival'
+        const scoresLine = duelOtherResult
+          ? `Vos: ${totalScore} pts — ${opponentName}: ${duelOtherResult.total_score} pts`
+          : `Vos: ${totalScore} pts`
+        text = `${link}\nDuelo vs ${opponentName}\n${scoresLine}`
+      }
     } else {
-      modeLine = 'Modo práctica'
+      let modeLine
+      let dateLine = null
+      if (gameMode === 'daily') {
+        modeLine = 'Partida del día'
+        dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+      } else if (gameMode === 'custom') {
+        modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
+      } else if (gameMode === 'archive') {
+        modeLine = 'Archivo'
+      } else {
+        modeLine = 'Modo práctica'
+      }
+      text = buildShareText(resultShareLink, results, totalScore, modeLine, dateLine)
     }
-    const text = buildShareText(resultShareLink, results, totalScore, modeLine, dateLine)
     try {
       await navigator.clipboard.writeText(text)
       setShareCopied(true)
