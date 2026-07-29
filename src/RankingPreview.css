@@ -116,3 +116,9 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+@media (max-width: 768px) {
+  .ranking-preview {
+    width: 100%;
+  }
+}
