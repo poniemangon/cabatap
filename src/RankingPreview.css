@@ -32,12 +32,29 @@
   text-decoration: underline;
 }
 
+.ranking-preview-section {
+  margin-bottom: 16px;
+}
+
+.ranking-preview-section:last-child {
+  margin-bottom: 0;
+}
+
+.ranking-preview-section-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text, #9ca3af);
+}
+
 .ranking-preview-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 

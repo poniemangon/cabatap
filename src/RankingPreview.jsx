@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getDailyLeaderboard } from './daily/dailyApi'
+import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
 import './RankingPreview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -11,44 +11,73 @@ function todayDayNumber() {
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 
+const TOP_N = 5
+
+function PreviewList({ title, rows, emptyText, detail, to }) {
+  return (
+    <div className="ranking-preview-section">
+      <h3 className="ranking-preview-section-title">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="profile-empty-text">{emptyText}</p>
+      ) : (
+        <ul className="ranking-preview-list">
+          {rows.map((r, i) => (
+            <li key={r.key}>
+              <Link to={to(r)} className="ranking-preview-row">
+                <span className="ranking-preview-rank">#{i + 1}</span>
+                {r.avatarUrl ? (
+                  <img src={r.avatarUrl} alt="" className="ranking-preview-avatar" />
+                ) : (
+                  <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
+                )}
+                <span className="ranking-preview-name">{r.username || 'Jugador'}</span>
+                <span className="ranking-preview-score">{detail(r)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function RankingPreview() {
-  const [rows, setRows] = useState([])
+  const [dayRows, setDayRows] = useState([])
+  const [avgRows, setAvgRows] = useState([])
 
   useEffect(() => {
     getDailyLeaderboard(todayDayNumber())
-      .then((data) => setRows(data.slice(0, 10)))
+      .then((data) => setDayRows(data.slice(0, TOP_N)))
+      .catch(console.error)
+    getDailyAverageLeaderboard()
+      .then((data) => setAvgRows(data.slice(0, TOP_N)))
       .catch(console.error)
   }, [])
 
   return (
     <div className="ranking-preview">
       <div className="ranking-preview-header">
-        <h2 className="ranking-preview-title">🏆 Top 10 de hoy</h2>
+        <h2 className="ranking-preview-title">🏆 Ranking de jugadores</h2>
         <Link to="/ranking" className="ranking-preview-link">
           Ver ranking completo →
         </Link>
       </div>
 
-      {rows.length === 0 ? (
-        <p className="profile-empty-text">Nadie jugó en modo competitivo hoy todavía.</p>
-      ) : (
-        <ul className="ranking-preview-list">
-          {rows.map((r, i) => (
-            <li key={r.id}>
-              <Link to={`/mapa-diario/${r.id}`} className="ranking-preview-row">
-                <span className="ranking-preview-rank">#{i + 1}</span>
-                {r.profile?.avatar_url ? (
-                  <img src={r.profile.avatar_url} alt="" className="ranking-preview-avatar" />
-                ) : (
-                  <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
-                )}
-                <span className="ranking-preview-name">{r.profile?.username || 'Jugador'}</span>
-                <span className="ranking-preview-score">{r.total_score} pts</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <PreviewList
+        title="Top 5 de hoy"
+        rows={dayRows.map((r) => ({ key: r.id, id: r.id, avatarUrl: r.profile?.avatar_url, username: r.profile?.username, total_score: r.total_score }))}
+        emptyText="Nadie jugó en modo competitivo hoy todavía."
+        detail={(r) => `${r.total_score} pts`}
+        to={(r) => `/mapa-diario/${r.id}`}
+      />
+
+      <PreviewList
+        title="Top 5 histórico"
+        rows={avgRows.map((a) => ({ key: a.profileId, avatarUrl: a.profile?.avatar_url, username: a.profile?.username, avgScore: a.avgScore }))}
+        emptyText="Todavía nadie jugó en modo competitivo."
+        detail={(a) => `${a.avgScore.toFixed(1)} pts prom.`}
+        to={(a) => `/jugador/${a.username}`}
+      />
     </div>
   )
 }
