@@ -28,6 +28,7 @@ import {
   computeWinnerId,
   closeDuel,
   findOpenRandomDuel,
+  cancelMatchmakingDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted } from './notifications/notificationsApi'
 import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
@@ -1038,6 +1039,22 @@ function App() {
     navigate('/')
   }
 
+  // "Cancelar" on the "Buscando rival..." screen — deletes the unclaimed
+  // matchmaking row instead of just navigating away and leaving it behind
+  // (see cancelMatchmakingDuel). If someone claimed it in the split second
+  // before this fires, RLS just matches zero rows and this is a no-op — the
+  // duel proceeds normally on their side.
+  const handleCancelMatchmaking = async () => {
+    if (activeDuel?.matchmaking && !activeDuel.opponent_id) {
+      try {
+        await cancelMatchmakingDuel(activeDuel.id)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    handleGoHome()
+  }
+
   const refreshDuelResults = useCallback(async () => {
     if (!activeDuel) return
     setDuelResultsLoading(true)
@@ -1581,7 +1598,7 @@ function App() {
           <button
             type="button"
             className="primary-btn secondary-btn dashboard-daily-btn"
-            onClick={handleGoHome}
+            onClick={handleCancelMatchmaking}
           >
             Cancelar
           </button>

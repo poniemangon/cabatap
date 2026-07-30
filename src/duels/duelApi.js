@@ -55,6 +55,16 @@ export async function findOpenRandomDuel(excludeProfileId) {
   return data
 }
 
+// Deletes an unclaimed "Duelo random" entry when its creator cancels the
+// search — without this the row lingered forever as a stale matchmaking
+// candidate, which is exactly what findOpenRandomDuel's staleness cutoff
+// above exists to paper over. RLS only allows this while the duel is still
+// a matchmaking row with no opponent and not closed (see migration 0015).
+export async function cancelMatchmakingDuel(duelId) {
+  const { error } = await supabase.from('duels').delete().eq('id', duelId)
+  if (error) throw error
+}
+
 export async function getDuelByCode(inviteCode) {
   const { data, error } = await supabase
     .from('duels')
