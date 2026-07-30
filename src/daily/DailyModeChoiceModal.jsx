@@ -1,4 +1,13 @@
-export default function DailyModeChoiceModal({ onClose, onChooseTranqui, onChooseCompetitivo }) {
+export default function DailyModeChoiceModal({
+  onClose,
+  onChooseTranqui,
+  onChooseCompetitivo,
+  tranquiPlayed,
+  competitivoPlayed,
+}) {
+  const alreadyPlayed = tranquiPlayed || competitivoPlayed
+  const viewResult = competitivoPlayed ? onChooseCompetitivo : onChooseTranqui
+
   return (
     <div className="custom-modal duel-choice-modal">
       <div className="custom-modal-header">
@@ -8,21 +17,32 @@ export default function DailyModeChoiceModal({ onClose, onChooseTranqui, onChoos
         </button>
       </div>
 
-      <button type="button" className="duel-choice-option" onClick={onChooseTranqui}>
-        <span className="duel-choice-icon">🧘</span>
-        <span className="duel-choice-text">
-          <span className="duel-choice-title">Modo tranqui</span>
-          <span className="duel-choice-desc">Sin límite de tiempo, no rankea contra nadie.</span>
-        </span>
-      </button>
+      {alreadyPlayed ? (
+        <button type="button" className="duel-choice-option" onClick={viewResult}>
+          <span className="duel-choice-icon">✅</span>
+          <span className="duel-choice-text">
+            <span className="duel-choice-title">Ya jugaste - mirar resultado</span>
+          </span>
+        </button>
+      ) : (
+        <>
+          <button type="button" className="duel-choice-option" onClick={onChooseTranqui}>
+            <span className="duel-choice-icon">🧘</span>
+            <span className="duel-choice-text">
+              <span className="duel-choice-title">Modo tranqui</span>
+              <span className="duel-choice-desc">Sin límite de tiempo, no rankea contra nadie.</span>
+            </span>
+          </button>
 
-      <button type="button" className="duel-choice-option" onClick={onChooseCompetitivo}>
-        <span className="duel-choice-icon">⏱</span>
-        <span className="duel-choice-text">
-          <span className="duel-choice-title">Modo competitivo</span>
-          <span className="duel-choice-desc">8s por ubicación, como un duelo — rankea contra todos hoy.</span>
-        </span>
-      </button>
+          <button type="button" className="duel-choice-option" onClick={onChooseCompetitivo}>
+            <span className="duel-choice-icon">⏱</span>
+            <span className="duel-choice-text">
+              <span className="duel-choice-title">Modo competitivo</span>
+              <span className="duel-choice-desc">8s por ubicación, como un duelo — rankea contra todos hoy.</span>
+            </span>
+          </button>
+        </>
+      )}
     </div>
   )
 }

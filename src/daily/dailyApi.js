@@ -1,4 +1,4 @@
-import { supabase } from '../supabaseClient'
+import { supabase, supabaseUrl, supabaseAnonKey, getCachedAccessToken } from '../supabaseClient'
 
 // One row per profile per calendar day per mode (day_number + timed) —
 // upsert so resuming a stored session and re-reaching gameOver doesn't
@@ -60,6 +60,48 @@ export async function getDailyAverageLeaderboard() {
   return [...byProfile.values()]
     .map((e) => ({ ...e, avgScore: e.totalScore / e.played }))
     .sort((a, b) => b.avgScore - a.avgScore)
+}
+
+// Whether this profile already completed today's daily in this mode — used
+// to gate re-entry (App.jsx's startDaily) so a finished ranked run can't be
+// silently replayed for a better score.
+export async function getMyDailyStat(profileId, dayNumber, timed) {
+  const { data, error } = await supabase
+    .from('daily_stats')
+    .select('*')
+    .eq('profile_id', profileId)
+    .eq('day_number', dayNumber)
+    .eq('timed', timed)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Tab-close abandon for modo competitivo — mirrors submitDuelResultBeacon in
+// duelApi.js. Uses a raw keepalive fetch with a synchronously-cached token
+// instead of the normal Supabase client, which gets cancelled once the tab
+// actually closes.
+export function submitDailyResultBeacon({ profileId, dayNumber, results, totalScore, timed }) {
+  const token = getCachedAccessToken()
+  if (!token) return
+  fetch(`${supabaseUrl}/rest/v1/daily_stats?on_conflict=profile_id,day_number,timed`, {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${token}`,
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify({
+      profile_id: profileId,
+      day_number: dayNumber,
+      results,
+      total_score: totalScore,
+      timed,
+      completed_at: new Date().toISOString(),
+    }),
+  }).catch(() => {})
 }
 
 export async function listMyDailyStats(profileId, limit = 30) {

@@ -30,7 +30,7 @@ import {
   findOpenRandomDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted } from './notifications/notificationsApi'
-import { submitDailyResult, getDailyLeaderboard } from './daily/dailyApi'
+import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
 import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
@@ -90,6 +90,34 @@ function indicesForDay(dayNumber) {
   const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
   const start = cyclePos * TOTAL_ROUNDS
   return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
+}
+
+// Signed-out guests never get a profiles row, so their daily result can't
+// be persisted to daily_stats — tracked in sessionStorage instead, scoped
+// to the current browser session (not localStorage) so it doesn't survive
+// closing the browser. Only ever used for tranqui, the one mode guests can
+// play (see handleDaily).
+const GUEST_DAILY_SESSION_KEY = 'ubicaba-guest-daily-result'
+
+function loadGuestDailyResult(dayNumber) {
+  try {
+    const raw = sessionStorage.getItem(GUEST_DAILY_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed.dayNumber !== dayNumber) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function saveGuestDailyResult(dayNumber, results, totalScore) {
+  try {
+    sessionStorage.setItem(GUEST_DAILY_SESSION_KEY, JSON.stringify({ dayNumber, results, totalScore }))
+  } catch {
+    // sessionStorage unavailable (e.g. private browsing) — worst case a
+    // guest can replay, no data loss since nothing was ever persisted
+  }
 }
 
 function shuffleSample(arr, n) {
@@ -757,6 +785,25 @@ function App() {
   }
 
   const [dailyChoiceOpen, setDailyChoiceOpen] = useState(false)
+  // undefined = not fetched yet, null = fetched and confirmed not played,
+  // row = fetched and already played. Refreshed every time the popup opens
+  // so its buttons can offer "Ver resultado" instead of "Jugar" for
+  // whichever mode(s) are already done today.
+  const [dailyStatusToday, setDailyStatusToday] = useState({ tranqui: undefined, competitivo: undefined })
+
+  useEffect(() => {
+    if (!dailyChoiceOpen || !profile) return
+    let cancelled = false
+    const dayNumber = dayNumberForDate(new Date())
+    Promise.all([getMyDailyStat(profile.id, dayNumber, false), getMyDailyStat(profile.id, dayNumber, true)])
+      .then(([tranqui, competitivo]) => {
+        if (!cancelled) setDailyStatusToday({ tranqui, competitivo })
+      })
+      .catch(console.error)
+    return () => {
+      cancelled = true
+    }
+  }, [dailyChoiceOpen, profile])
 
   const handleDaily = () => {
     // Signed-out visitors can only ever play tranqui (competitivo needs an
@@ -771,14 +818,59 @@ function App() {
 
   // Tranqui stays open to signed-out visitors, same as the daily challenge
   // always has been — competitivo needs a profile, since the whole point is
-  // ranking against everyone else's attempt.
-  const startDaily = (timed) => {
+  // ranking against everyone else's attempt. Either way, re-entering a mode
+  // already completed today shows that result instead of starting a fresh
+  // (and, for competitivo, potentially retry-farmed) attempt — signed-in via
+  // daily_stats, signed-out via the session-scoped guest result above.
+  const startDaily = async (timed) => {
     if (timed && !requireAuthOrGate()) return
     setDailyChoiceOpen(false)
     setDailyTimed(timed)
     setDailyRankInfo(null)
+    const dayNumber = dayNumberForDate(new Date())
+
+    if (profile) {
+      const cached = timed ? dailyStatusToday.competitivo : dailyStatusToday.tranqui
+      const existing = cached !== undefined ? cached : await getMyDailyStat(profile.id, dayNumber, timed).catch((e) => {
+        console.error(e)
+        return null
+      })
+      if (existing) {
+        dailyResultSubmittedRef.current = true
+        setRoundIndices(indicesForDay(dayNumber))
+        setGameMode('daily')
+        setCustomBarrioIds([])
+        setResults(existing.results)
+        setPhase('gameOver')
+        setView('game')
+        window.history.replaceState(null, '', '/')
+        if (timed) {
+          getDailyLeaderboard(dayNumber)
+            .then((rows) => {
+              const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
+              setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
+            })
+            .catch(console.error)
+        }
+        return
+      }
+    } else if (!timed) {
+      const stored = loadGuestDailyResult(dayNumber)
+      if (stored) {
+        dailyResultSubmittedRef.current = true
+        setRoundIndices(indicesForDay(dayNumber))
+        setGameMode('daily')
+        setCustomBarrioIds([])
+        setResults(stored.results)
+        setPhase('gameOver')
+        setView('game')
+        window.history.replaceState(null, '', '/')
+        return
+      }
+    }
+
     dailyResultSubmittedRef.current = false
-    startGame(indicesForDay(dayNumberForDate(new Date())), 'daily')
+    startGame(indicesForDay(dayNumber), 'daily')
   }
 
   const handleStartCustom = (selectedBarrioIds) => {
@@ -1047,10 +1139,19 @@ function App() {
   const [dailyRankInfo, setDailyRankInfo] = useState(null)
 
   useEffect(() => {
-    if (phase !== 'gameOver' || gameMode !== 'daily' || !profile) return
+    if (phase !== 'gameOver' || gameMode !== 'daily') return
     if (dailyResultSubmittedRef.current) return
     dailyResultSubmittedRef.current = true
     const dayNumber = dayNumberForDate(new Date())
+
+    if (!profile) {
+      // Signed-out guests can only play tranqui — persisted locally for this
+      // browser session (see loadGuestDailyResult) so re-entering "Mapa del
+      // día" shows this result instead of allowing a fresh replay.
+      saveGuestDailyResult(dayNumber, results, totalScore)
+      return
+    }
+
     submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore, timed: dailyTimed })
       .then(() => {
         if (!dailyTimed) return
@@ -1064,6 +1165,38 @@ function App() {
         dailyResultSubmittedRef.current = false
       })
   }, [phase, gameMode, profile, results, totalScore, dailyTimed])
+
+  // Closing the tab mid-competitivo (ranked) run abandons it, mirroring the
+  // duel tab-close behavior above: every round goes to 0 and is submitted as
+  // the final result via the keepalive beacon. Without this, closing the tab
+  // on a bad run would leave no daily_stats row behind, letting the player
+  // reopen "Mapa del día" and retry for free (startDaily's already-played
+  // check only blocks re-entry once a row actually exists).
+  useEffect(() => {
+    if (gameMode !== 'daily' || !dailyTimed || phase === 'gameOver' || !profile) return
+    let fired = false
+    const handleClose = () => {
+      if (fired || dailyResultSubmittedRef.current) return
+      fired = true
+      dailyResultSubmittedRef.current = true
+      const zeroed = rounds.map((r) => ({
+        street1: r.street1,
+        street2: r.street2,
+        guess: null,
+        actual: [r.lat, r.lng],
+        distance: null,
+        points: 0,
+      }))
+      const dayNumber = dayNumberForDate(new Date())
+      submitDailyResultBeacon({ profileId: profile.id, dayNumber, results: zeroed, totalScore: 0, timed: true })
+    }
+    window.addEventListener('pagehide', handleClose)
+    window.addEventListener('beforeunload', handleClose)
+    return () => {
+      window.removeEventListener('pagehide', handleClose)
+      window.removeEventListener('beforeunload', handleClose)
+    }
+  }, [gameMode, dailyTimed, phase, profile, rounds])
 
   // 1v1 auto-closes once both sides have played — no manual step, since
   // there are only ever 2 slots. Whichever client's refreshDuelResults()
@@ -1326,6 +1459,8 @@ function App() {
           onClose={() => setDailyChoiceOpen(false)}
           onChooseTranqui={() => startDaily(false)}
           onChooseCompetitivo={() => startDaily(true)}
+          tranquiPlayed={!!dailyStatusToday.tranqui}
+          competitivoPlayed={!!dailyStatusToday.competitivo}
         />
       </div>
     </div>
