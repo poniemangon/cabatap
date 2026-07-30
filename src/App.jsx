@@ -1224,6 +1224,26 @@ function App() {
     }
   }
 
+  // Private 1v1 (not matchmaking): whoever's already played can end it
+  // themselves whenever they want instead of waiting on the rival — same
+  // freedom multiplayer's creator already had. Winner is always the caller,
+  // since this only applies while just 1 side has a result.
+  const handleCloseSoloDuel = async () => {
+    if (!activeDuel || !profile || duelResults.length !== 1) return
+    try {
+      const updated = await closeDuel(activeDuel.id, profile.id)
+      if (!updated) return
+      setActiveDuel(updated)
+      notifyDuelCompleted(
+        updated.id,
+        duelResults.map((r) => r.profile_id),
+        { inviteCode: updated.invite_code, isMultiplayer: false },
+      ).catch(console.error)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   if (loadError) {
     return (
       <div className="app">
@@ -1700,21 +1720,28 @@ function App() {
                     >
                       {duelResultsLoading ? 'Actualizando...' : 'Actualizar'}
                     </button>
-                    <button
-                      type="button"
-                      className="primary-btn secondary-btn"
-                      onClick={() => {
-                        navigator.clipboard
-                          .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
-                          .then(() => {
-                            setMenuCopied(true)
-                            setTimeout(() => setMenuCopied(false), 2000)
-                          })
-                          .catch(() => {})
-                      }}
-                    >
-                      {menuCopied ? '¡Copiado!' : 'Copiar link del duelo'}
-                    </button>
+                    {!activeDuel.matchmaking && (
+                      <>
+                        <button
+                          type="button"
+                          className="primary-btn secondary-btn"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
+                              .then(() => {
+                                setMenuCopied(true)
+                                setTimeout(() => setMenuCopied(false), 2000)
+                              })
+                              .catch(() => {})
+                          }}
+                        >
+                          {menuCopied ? '¡Copiado!' : 'Copiar link del duelo'}
+                        </button>
+                        <button type="button" className="primary-btn secondary-btn" onClick={handleCloseSoloDuel}>
+                          Cerrar duelo
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -1722,9 +1749,11 @@ function App() {
           )}
 
           <div className="gameover-actions">
-            <button className="primary-btn secondary-btn" onClick={handleShare}>
-              {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
-            </button>
+            {!(gameMode === 'duel' && activeDuel?.matchmaking && !activeDuel?.closed_at && !duelOtherResult) && (
+              <button className="primary-btn secondary-btn" onClick={handleShare}>
+                {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
+              </button>
+            )}
             <button className="primary-btn" onClick={isSignedIn ? handleGoHome : () => openSignUp()}>
               {isSignedIn ? 'Ir al inicio' : 'Registrate'}
             </button>
