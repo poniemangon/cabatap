@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SignInButton } from '@clerk/clerk-react'
 
 function timeAgo(isoString) {
   const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
@@ -16,6 +15,7 @@ function timeAgo(isoString) {
 function notificationText(n) {
   if (n.type === 'friend_request') return `${n.data?.from_username || 'Alguien'} te envió una solicitud de amistad`
   if (n.type === 'duel_completed') return 'Tu duelo terminó — ver resultado'
+  if (n.type === 'duel_matched') return `${n.data?.opponent_username || 'Alguien'} respondió tu duelo`
   return 'Notificación'
 }
 
@@ -27,7 +27,8 @@ export default function Sidebar({
   onOpenProfile,
   isSignedIn,
   profile,
-  clerkUser,
+  authUser,
+  onOpenAuth,
   mobileOpen,
   onClose,
   notifications = [],
@@ -70,7 +71,7 @@ export default function Sidebar({
     onClose?.()
   }
 
-  const displayName = profile?.username || clerkUser?.fullName || 'Jugador'
+  const displayName = profile?.username || authUser?.user_metadata?.full_name || 'Jugador'
 
   return (
     <>
@@ -79,8 +80,8 @@ export default function Sidebar({
         {isSignedIn && (
           <div className="sidebar-top-row">
             <button type="button" className="sidebar-profile-row" onClick={withClose(onOpenProfile)}>
-              {clerkUser?.imageUrl ? (
-                <img src={clerkUser.imageUrl} alt="" className="sidebar-profile-avatar" />
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="sidebar-profile-avatar" />
               ) : (
                 <span className="sidebar-profile-avatar sidebar-profile-avatar-fallback">🙂</span>
               )}
@@ -158,11 +159,9 @@ export default function Sidebar({
         </nav>
 
         {!isSignedIn && (
-          <SignInButton mode="modal">
-            <button type="button" className="primary-btn sidebar-signup-btn">
-              Iniciar sesión
-            </button>
-          </SignInButton>
+          <button type="button" className="primary-btn sidebar-signup-btn" onClick={withClose(onOpenAuth)}>
+            Iniciar sesión
+          </button>
         )}
       </aside>
     </>

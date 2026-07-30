@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useAuth, useUser } from '@clerk/clerk-react'
+import useAuth from '../hooks/useAuth'
 import useProfile, { slugifyUsername } from '../hooks/useProfile'
 import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
 import { listMyDuels, getDuelStats } from '../duels/duelApi'
@@ -64,8 +64,7 @@ function DuelRow({ duel, myProfileId, onOpen }) {
 }
 
 export default function ProfilePage() {
-  const { isLoaded: clerkLoaded, isSignedIn } = useAuth()
-  const { user: clerkUser } = useUser()
+  const { isLoaded: authLoaded, isSignedIn } = useAuth()
   const { profile, loading: profileLoading, updateUsername } = useProfile()
   const navigate = useNavigate()
 
@@ -134,7 +133,7 @@ export default function ProfilePage() {
     return [...byDay.values()].sort((a, b) => b.day_number - a.day_number)
   }, [dailyStats])
 
-  if (clerkLoaded && !isSignedIn) {
+  if (authLoaded && !isSignedIn) {
     return <Navigate to="/" replace />
   }
 
@@ -229,8 +228,8 @@ export default function ProfilePage() {
       </Link>
 
       <header className="profile-header">
-        {clerkUser?.imageUrl ? (
-          <img src={clerkUser.imageUrl} alt="" className="profile-avatar" />
+        {profile?.avatar_url ? (
+          <img src={profile.avatar_url} alt="" className="profile-avatar" />
         ) : (
           <span className="profile-avatar profile-avatar-fallback">🙂</span>
         )}

@@ -28,18 +28,21 @@ export async function createDuel({
   return data
 }
 
-const MATCHMAKING_STALE_MS = 2 * 60 * 1000
+// A "Duelo random" you've already played but that nobody else has joined
+// yet — kept out of stats/lists below so it doesn't look like a resolved
+// (or even real) match until it's actually a two-player game or forfeited.
+function isPendingRival(duel) {
+  return duel.matchmaking && !duel.opponent_id && !duel.closed_at
+}
 
-// Oldest *recent* pending matchmaking entry (created by "Duelo random" with
-// no opponent yet), excluding duels I created myself. Separate from private
+// Oldest pending matchmaking entry (created by "Duelo random" with no
+// opponent yet), excluding duels I created myself. Separate from private
 // "cualquiera (link)" open invites — those are never auto-matched, only
-// matchmaking=true rows are. The staleness cutoff matters because matches
-// are FIFO by created_at: without it, an entry nobody ever claimed (its
-// creator gave up, closed the tab, whatever) sits at the front of the queue
-// forever and keeps getting offered to new searchers instead of them
-// actually pairing with each other.
+// matchmaking=true rows are. No staleness cutoff: the creator always plays
+// their side immediately on creation now, so an old pending entry is a
+// perfectly real, already-scored match waiting on a rival — not a ghost —
+// and FIFO order alone is enough to pair searchers up correctly.
 export async function findOpenRandomDuel(excludeProfileId) {
-  const notStaleSince = new Date(Date.now() - MATCHMAKING_STALE_MS).toISOString()
   const { data, error } = await supabase
     .from('duels')
     .select('*')
@@ -47,22 +50,11 @@ export async function findOpenRandomDuel(excludeProfileId) {
     .is('opponent_id', null)
     .is('closed_at', null)
     .neq('challenger_id', excludeProfileId)
-    .gt('created_at', notStaleSince)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
   if (error) throw error
   return data
-}
-
-// Deletes an unclaimed "Duelo random" entry when its creator cancels the
-// search — without this the row lingered forever as a stale matchmaking
-// candidate, which is exactly what findOpenRandomDuel's staleness cutoff
-// above exists to paper over. RLS only allows this while the duel is still
-// a matchmaking row with no opponent and not closed (see migration 0015).
-export async function cancelMatchmakingDuel(duelId) {
-  const { error } = await supabase.from('duels').delete().eq('id', duelId)
-  if (error) throw error
 }
 
 export async function getDuelByCode(inviteCode) {
@@ -143,11 +135,12 @@ export async function getDuelStats(profileId) {
 
   const { data, error } = await supabase
     .from('duels')
-    .select('is_multiplayer, winner_id, closed_at, duel_results(profile_id, total_score)')
+    .select('is_multiplayer, winner_id, closed_at, matchmaking, opponent_id, duel_results(profile_id, total_score)')
     .in('id', duelIds)
   if (error) throw error
 
   for (const duel of data) {
+    if (isPendingRival(duel)) continue
     const bucket = duel.is_multiplayer ? stats.multi : stats.oneVOne
     bucket.played += 1
 
@@ -212,7 +205,8 @@ export async function getDuelResults(duelId) {
 // page's "duelos jugados" list, not duels I merely created/claimed. Driven
 // off duel_results rather than challenger_id/opponent_id so it also picks up
 // multiplayer duels I joined as a third-plus participant (no opponent_id at
-// all in that case).
+// all in that case). A still-pending "Duelo random" (see isPendingRival) is
+// excluded — it isn't a real match yet, so it shouldn't show up as one.
 export async function listMyDuels(profileId) {
   const { data: myResults, error: myResultsError } = await supabase
     .from('duel_results')
@@ -233,5 +227,5 @@ export async function listMyDuels(profileId) {
     .in('id', duelIds)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data
+  return data.filter((d) => !isPendingRival(d))
 }

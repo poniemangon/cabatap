@@ -1,4 +1,3 @@
-import { SignUpButton } from '@clerk/clerk-react'
 import RankingPreview from './RankingPreview'
 
 export default function Dashboard({
@@ -10,6 +9,7 @@ export default function Dashboard({
   onSpecialOnly,
   onDuel,
   onMultiplayerDuel,
+  onOpenAuth,
 }) {
   return (
     <div className="dashboard">
@@ -68,11 +68,9 @@ export default function Dashboard({
             <span className="dashboard-mode-icon">🔓</span>
             <span className="dashboard-mode-title">Desbloqueá más</span>
             <span className="dashboard-mode-desc">Registrate para acceder a más modos y desafiar otros jugadores.</span>
-            <SignUpButton mode="modal">
-              <button type="button" className="primary-btn secondary-btn dashboard-signup-card-btn">
-                Registrarme
-              </button>
-            </SignUpButton>
+            <button type="button" className="primary-btn secondary-btn dashboard-signup-card-btn" onClick={onOpenAuth}>
+              Registrarme
+            </button>
           </div>
         )}
       </div>

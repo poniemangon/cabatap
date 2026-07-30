@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useAuth, useClerk, useUser } from '@clerk/clerk-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
@@ -14,8 +13,10 @@ import DuelSetupModal from './duels/DuelSetupModal'
 import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
 import DuelChoiceModal from './duels/DuelChoiceModal'
 import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
+import AuthModal from './auth/AuthModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
+import useAuth from './hooks/useAuth'
 import useNotifications from './hooks/useNotifications'
 import { listFriendships } from './friends/friendsApi'
 import {
@@ -28,9 +29,8 @@ import {
   computeWinnerId,
   closeDuel,
   findOpenRandomDuel,
-  cancelMatchmakingDuel,
 } from './duels/duelApi'
-import { notifyDuelCompleted } from './notifications/notificationsApi'
+import { notifyDuelCompleted, notifyDuelMatched } from './notifications/notificationsApi'
 import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
 import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
@@ -233,9 +233,9 @@ function App() {
   const { code: duelCode } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { isLoaded: clerkLoaded, isSignedIn } = useAuth()
-  const { user: clerkUser } = useUser()
-  const { openSignUp } = useClerk()
+  const { isLoaded: authLoaded, isSignedIn, user: authUser } = useAuth()
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const openSignUp = () => setAuthModalOpen(true)
   const { profile, loading: profileLoading } = useProfile()
   const { notifications, unreadCount, markAllRead, deleteNotification } = useNotifications(profile)
 
@@ -301,7 +301,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!pool || !barrios || initialized || !clerkLoaded) return
+    if (!pool || !barrios || initialized || !authLoaded) return
 
     if (duelCode) {
       setView('duel-loading')
@@ -366,13 +366,15 @@ function App() {
       setSpecialSuggestOpen(true)
     }
     setInitialized(true)
-  }, [pool, barrios, initialized, duelCode, clerkLoaded, isSignedIn])
+  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn])
 
-  // Signing up from the share-gate screen doesn't reload the page (Clerk's
-  // modal completes in place), so isSignedIn just flips true — this picks
-  // that up and drops the visitor straight into the shared game they were
-  // gated out of, using the roundIndices/gameMode/customBarrioIds already
-  // sitting in state from the mount effect above.
+  // Signing up from the share-gate screen via the magic-link email flow
+  // doesn't reload the page, so isSignedIn just flips true — this picks that
+  // up and drops the visitor straight into the shared game they were gated
+  // out of, using the roundIndices/gameMode/customBarrioIds already sitting
+  // in state from the mount effect above. (An OAuth sign-in does reload the
+  // page, but the mount effect above re-derives the same share indices from
+  // the URL on that reload, so it still resolves correctly either way.)
   useEffect(() => {
     if (view !== 'share-gate' || !isSignedIn) return
     startGame(roundIndices, gameMode, { barrioIds: customBarrioIds })
@@ -386,7 +388,7 @@ function App() {
   // already-submitted result or start the game on the duel's fixed rounds.
   useEffect(() => {
     if (!duelCode || view !== 'duel-loading') return
-    if (!clerkLoaded) return
+    if (!authLoaded) return
     if (!isSignedIn) {
       navigate('/', { replace: true, state: { showAuthGate: true } })
       return
@@ -411,17 +413,16 @@ function App() {
           }
           if (!duel.opponent_id && duel.challenger_id !== profile.id) {
             finalDuel = await claimDuel(duel.id, profile.id)
+            if (finalDuel) {
+              notifyDuelMatched(finalDuel.id, finalDuel.challenger_id, {
+                inviteCode: finalDuel.invite_code,
+                opponentUsername: profile.username,
+              }).catch(console.error)
+            }
           }
         }
         if (cancelled) return
         setActiveDuel(finalDuel)
-
-        // Reloading my own still-unmatched matchmaking entry: keep waiting
-        // instead of starting the game with no guaranteed opponent.
-        if (finalDuel.matchmaking && !finalDuel.opponent_id && finalDuel.challenger_id === profile.id) {
-          setView('duel-searching')
-          return
-        }
 
         const existingResults = await getDuelResults(finalDuel.id)
         if (cancelled) return
@@ -448,31 +449,7 @@ function App() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duelCode, view, clerkLoaded, isSignedIn, profile, profileLoading])
-
-  // Matchmaking "buscando rival" screen: waits for someone else's "Duelo
-  // random" click to claim this entry (setting opponent_id), then starts
-  // the game the moment that happens — no polling, no manual refresh.
-  useEffect(() => {
-    if (view !== 'duel-searching' || !activeDuel || activeDuel.opponent_id) return
-    const channel = supabase
-      .channel(`duel-match:${activeDuel.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'duels', filter: `id=eq.${activeDuel.id}` },
-        (payload) => {
-          if (!payload.new.opponent_id) return
-          setActiveDuel(payload.new)
-          duelResultSubmittedRef.current = false
-          startGame(payload.new.round_indices, 'duel', { barrioIds: payload.new.barrio_ids || [] })
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, activeDuel])
+  }, [duelCode, view, authLoaded, isSignedIn, profile, profileLoading])
 
   // Consumes one-shot signals passed via router state: showAuthGate (bounced
   // here from a login barrier elsewhere, e.g. a signed-out /duelo/:code hit)
@@ -487,7 +464,7 @@ function App() {
   const isReady = !!pool && !!barrios && initialized
 
   useEffect(() => {
-    if (!isReady || !clerkLoaded || isSignedIn) return
+    if (!isReady || !authLoaded || isSignedIn) return
     try {
       if (!sessionStorage.getItem(REGISTER_POPUP_SESSION_KEY)) {
         sessionStorage.setItem(REGISTER_POPUP_SESSION_KEY, '1')
@@ -497,7 +474,7 @@ function App() {
       // sessionStorage unavailable (private browsing, etc.); just skip the popup
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, clerkLoaded, isSignedIn])
+  }, [isReady, authLoaded, isSignedIn])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -535,13 +512,11 @@ function App() {
   const current = rounds[roundIndex]
   const totalScore = useMemo(() => results.reduce((s, r) => s + r.points, 0), [results])
   // True while actively playing an unfinished duel (mid-round or looking at
-  // a round's reveal), or waiting on a "Duelo random" match — starting
-  // another duel at either point orphans the current one with no result
-  // ever submitted (or, for matchmaking, leaves your pending entry stuck
-  // waiting forever since nothing ever claims it). Entry points check this
+  // a round's reveal) — starting another one at that point orphans the
+  // current duel with no result ever submitted. Entry points check this
   // before opening. Once you reach your own gameOver screen you're free to
-  // start a new one, even if still waiting on the rival/leaderboard.
-  const duelInProgress = view === 'duel-searching' || (gameMode === 'duel' && view === 'game' && phase !== 'gameOver')
+  // start a new one, even if this duel is still pending a rival/leaderboard.
+  const duelInProgress = gameMode === 'duel' && view === 'game' && phase !== 'gameOver'
 
   const currentBarrio = useMemo(
     () => barrios?.find((b) => b.barrio_id === current?.barrio_id),
@@ -994,10 +969,12 @@ function App() {
   }
 
   // "Random" 1v1: join the oldest pending matchmaking entry instead of
-  // creating a fresh one, so unmatched duels don't pile up. A claimed match
-  // has a guaranteed opponent, so it starts right away — but when nobody's
-  // waiting, the challenger doesn't play blind: they wait on a "buscando
-  // rival" screen until someone else's random click matches them.
+  // creating a fresh one, so unmatched duels don't pile up. Either way you
+  // play right away — if nobody's waiting, you play the map solo and your
+  // result just sits pending until someone else's "Duelo random" click
+  // matches into this same duel (FIFO, oldest first); the duel resolves
+  // once both sides have played (or via the forfeit-claim escape hatch if
+  // nobody ever shows up).
   const handleStartRandomDuel = async () => {
     if (!requireAuthOrGate() || !profile) return
     setDuelChoiceOpen(false)
@@ -1011,6 +988,10 @@ function App() {
         setActiveDuel(claimed)
         startGame(claimed.round_indices, 'duel', { barrioIds: claimed.barrio_ids || [] })
         navigate(`/duelo/${claimed.invite_code}`, { replace: true })
+        notifyDuelMatched(claimed.id, claimed.challenger_id, {
+          inviteCode: claimed.invite_code,
+          opponentUsername: profile.username,
+        }).catch(console.error)
       } else {
         const indices = pickRandomIndices(pool.length, TOTAL_ROUNDS)
         const duel = await createDuel({
@@ -1025,7 +1006,7 @@ function App() {
         setDuelClaimError(null)
         setDuelResults([])
         setActiveDuel(duel)
-        setView('duel-searching')
+        startGame(duel.round_indices, 'duel', { barrioIds: duel.barrio_ids || [] })
         navigate(`/duelo/${duel.invite_code}`, { replace: true })
       }
     } catch (e) {
@@ -1037,22 +1018,6 @@ function App() {
     setActiveDuel(null)
     setView('dashboard')
     navigate('/')
-  }
-
-  // "Cancelar" on the "Buscando rival..." screen — deletes the unclaimed
-  // matchmaking row instead of just navigating away and leaving it behind
-  // (see cancelMatchmakingDuel). If someone claimed it in the split second
-  // before this fires, RLS just matches zero rows and this is a no-op — the
-  // duel proceeds normally on their side.
-  const handleCancelMatchmaking = async () => {
-    if (activeDuel?.matchmaking && !activeDuel.opponent_id) {
-      try {
-        await cancelMatchmakingDuel(activeDuel.id)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    handleGoHome()
   }
 
   const refreshDuelResults = useCallback(async () => {
@@ -1386,6 +1351,14 @@ function App() {
     </div>
   )
 
+  const authModalPopup = authModalOpen && (
+    <div className="modal-backdrop" onClick={() => setAuthModalOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <AuthModal onClose={() => setAuthModalOpen(false)} />
+      </div>
+    </div>
+  )
+
   const credits = (
     <div className="credits-bar">
       Hecho por{' '}
@@ -1530,7 +1503,8 @@ function App() {
       onOpenProfile={() => navigate('/perfil')}
       isSignedIn={!!isSignedIn}
       profile={profile}
-      clerkUser={clerkUser}
+      authUser={authUser}
+      onOpenAuth={openSignUp}
       mobileOpen={sidebarOpen}
       onClose={() => setSidebarOpen(false)}
       notifications={notifications}
@@ -1538,7 +1512,7 @@ function App() {
       onOpenNotifications={markAllRead}
       onDeleteNotification={deleteNotification}
       onNotificationClick={(n) => {
-        if (n.type === 'duel_completed') {
+        if (n.type === 'duel_completed' || n.type === 'duel_matched') {
           // /duelo/:code renders the same App instance as "/" — react-router
           // doesn't remount it across sibling routes, so navigating alone
           // only changes the URL param; the loader effect only runs when
@@ -1565,6 +1539,7 @@ function App() {
         onSpecialOnly={handleSpecialOnly}
         onDuel={openDuelChoice}
         onMultiplayerDuel={openMultiplayerSetup}
+        onOpenAuth={openSignUp}
       />
     )
   } else if (view === 'duel-loading') {
@@ -1583,25 +1558,6 @@ function App() {
           ) : (
             <p className="dashboard-daily-text">Cargando duelo...</p>
           )}
-        </div>
-      </div>
-    )
-  } else if (view === 'duel-searching') {
-    mainContent = (
-      <div className="dashboard">
-        <div className="dashboard-daily-card">
-          <div className="dashboard-daily-eyebrow">Duelo random</div>
-          <h1 className="dashboard-daily-title">Buscando rival...</h1>
-          <p className="dashboard-daily-text">
-            Arranca solo cuando alguien más se sume — no hace falta que hagas nada.
-          </p>
-          <button
-            type="button"
-            className="primary-btn secondary-btn dashboard-daily-btn"
-            onClick={handleCancelMatchmaking}
-          >
-            Cancelar
-          </button>
         </div>
       </div>
     )
@@ -1897,6 +1853,7 @@ function App() {
       {multiplayerSetupPopup}
       {registerPopup}
       {authGatePopup}
+      {authModalPopup}
     </div>
   )
 }

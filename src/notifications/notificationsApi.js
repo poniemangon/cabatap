@@ -54,6 +54,20 @@ export async function notifyDuelCompleted(duelId, participantProfileIds, { invit
   if (error) throw error
 }
 
+// Tells the challenger someone just claimed their pending 1v1 (a "Duelo
+// random" match or a direct link share) — otherwise the only way they'd
+// find out is reloading their own gameOver screen and noticing the
+// "esperando a tu rival" banner is gone.
+export async function notifyDuelMatched(duelId, challengerProfileId, { inviteCode, opponentUsername }) {
+  const { error } = await supabase.from('notifications').insert({
+    profile_id: challengerProfileId,
+    type: 'duel_matched',
+    duel_id: duelId,
+    data: { invite_code: inviteCode, opponent_username: opponentUsername },
+  })
+  if (error) throw error
+}
+
 // Subscribes to live inserts for this profile's notifications. Returns the
 // channel — pass it to supabase.removeChannel() on cleanup/unmount.
 export function subscribeToNotifications(profileId, onInsert) {
