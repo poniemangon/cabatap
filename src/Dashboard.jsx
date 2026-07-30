@@ -24,8 +24,6 @@ export default function Dashboard({
         </button>
       </div>
 
-      <RankingPreview />
-
       <div className="dashboard-grid">
         <button type="button" className="dashboard-mode-card" onClick={onOpenArchive}>
           <span className="dashboard-mode-icon">📁</span>
@@ -78,6 +76,8 @@ export default function Dashboard({
           </div>
         )}
       </div>
+
+      <RankingPreview />
     </div>
   )
 }
