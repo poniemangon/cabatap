@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
 import useProfile, { slugifyUsername } from '../hooks/useProfile'
 import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
-import { listMyDuels, getDuelStats } from '../duels/duelApi'
+import { listMyDuels, listMyPendingDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
 import './ProfilePage.css'
 
@@ -74,6 +74,8 @@ export default function ProfilePage() {
 
   const [friends, setFriends] = useState({ accepted: [], incoming: [], outgoing: [] })
   const [duels, setDuels] = useState([])
+  const [pendingDuels, setPendingDuels] = useState([])
+  const [showPending, setShowPending] = useState(false)
   const [dailyStats, setDailyStats] = useState([])
   const [stats, setStats] = useState({
     oneVOne: { played: 0, won: 0, tied: 0 },
@@ -99,6 +101,7 @@ export default function ProfilePage() {
     if (!profile) return
     reloadFriends(profile.id)
     listMyDuels(profile.id).then(setDuels).catch(console.error)
+    listMyPendingDuels(profile.id).then(setPendingDuels).catch(console.error)
     getDuelStats(profile.id).then(setStats).catch(console.error)
     listMyDailyStats(profile.id).then(setDailyStats).catch(console.error)
   }, [profile])
@@ -417,18 +420,20 @@ export default function ProfilePage() {
         <div className="profile-stats-grid">
           <div className="profile-stat-card">
             <div className="profile-stat-title">1 vs 1</div>
+            <div className="profile-stat-played">{stats.oneVOne.played} jugados</div>
             <div className="profile-stat-numbers">
-              <span>{stats.oneVOne.played} jugados</span>
-              <span>{stats.oneVOne.won} ganados</span>
-              <span>{stats.oneVOne.tied} empatados</span>
+              <span>✅ {stats.oneVOne.won}</span>
+              <span>❌ {stats.oneVOne.played - stats.oneVOne.won - stats.oneVOne.tied}</span>
+              <span>🟰 {stats.oneVOne.tied}</span>
             </div>
           </div>
           <div className="profile-stat-card">
             <div className="profile-stat-title">Multijugador</div>
+            <div className="profile-stat-played">{stats.multi.played} jugados</div>
             <div className="profile-stat-numbers">
-              <span>{stats.multi.played} jugados</span>
-              <span>{stats.multi.won} ganados</span>
-              <span>{stats.multi.tied} empatados</span>
+              <span>✅ {stats.multi.won}</span>
+              <span>❌ {stats.multi.played - stats.multi.won - stats.multi.tied}</span>
+              <span>🟰 {stats.multi.tied}</span>
             </div>
           </div>
         </div>
@@ -449,6 +454,32 @@ export default function ProfilePage() {
               />
             ))}
           </ul>
+        )}
+
+        <button
+          type="button"
+          className="primary-btn secondary-btn profile-pending-toggle"
+          onClick={() => setShowPending((v) => !v)}
+        >
+          {showPending ? 'Ocultar pendientes' : 'Ver pendientes'}
+        </button>
+
+        {showPending && (
+          pendingDuels.length === 0 ? (
+            <p className="profile-empty-text">No tenés duelos pendientes.</p>
+          ) : (
+            <ul className="profile-duel-list">
+              {pendingDuels.map((d) => (
+                <li
+                  key={d.id}
+                  className="profile-duel-row profile-duel-row-clickable"
+                  onClick={() => navigate(`/duelo/${d.invite_code}`)}
+                >
+                  <span className="profile-duel-opponent">Duelo random — esperando rival</span>
+                </li>
+              ))}
+            </ul>
+          )
         )}
       </section>
 

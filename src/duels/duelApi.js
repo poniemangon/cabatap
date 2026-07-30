@@ -236,3 +236,18 @@ export async function listMyDuels(profileId) {
   if (error) throw error
   return data.filter((d) => !isPendingRival(d))
 }
+
+// The flip side of listMyDuels' filter: "Duelo random" entries I created
+// that nobody's joined yet — for the profile page's "Ver pendientes" toggle.
+export async function listMyPendingDuels(profileId) {
+  const { data, error } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('challenger_id', profileId)
+    .eq('matchmaking', true)
+    .is('opponent_id', null)
+    .is('closed_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
