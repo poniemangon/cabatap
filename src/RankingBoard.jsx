@@ -12,7 +12,7 @@ function dayNumberForDate(date) {
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 function formatDailyDate(dayNumber) {
-  return new Date(EPOCH_UTC + dayNumber * DAY_MS).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+  return new Date(EPOCH_UTC + dayNumber * DAY_MS).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
 }
 
 const MAX_SIZE = 100

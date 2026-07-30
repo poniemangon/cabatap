@@ -11,6 +11,7 @@ function formatDailyDate(dayNumber) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
   })
 }
 
