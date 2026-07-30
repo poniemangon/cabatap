@@ -29,6 +29,7 @@ export default function Sidebar({
   profile,
   authUser,
   onOpenAuth,
+  onLogout,
   mobileOpen,
   onClose,
   notifications = [],
@@ -161,6 +162,11 @@ export default function Sidebar({
         {!isSignedIn && (
           <button type="button" className="primary-btn sidebar-signup-btn" onClick={withClose(onOpenAuth)}>
             Iniciar sesión
+          </button>
+        )}
+        {isSignedIn && (
+          <button type="button" className="sidebar-logout-btn" onClick={withClose(onLogout)}>
+            Cerrar sesión
           </button>
         )}
       </aside>

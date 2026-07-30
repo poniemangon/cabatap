@@ -37,7 +37,6 @@ import './App.css'
 
 const TOTAL_ROUNDS = 5
 const DUEL_TIME_LIMIT = 8
-const DUEL_FORFEIT_WAIT_MS = 5 * 60 * 1000
 // Wherever the app is actually being served (localhost:5173 in dev, the
 // real domain in prod) — hardcoding the production URL here meant every
 // copied invite link (duels included) pointed at production even while
@@ -233,7 +232,7 @@ function App() {
   const { code: duelCode } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { isLoaded: authLoaded, isSignedIn, user: authUser } = useAuth()
+  const { isLoaded: authLoaded, isSignedIn, user: authUser, signOut } = useAuth()
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const openSignUp = () => setAuthModalOpen(true)
   const { profile, loading: profileLoading } = useProfile()
@@ -1020,6 +1019,11 @@ function App() {
     navigate('/')
   }
 
+  const handleLogout = async () => {
+    await signOut()
+    handleGoHome()
+  }
+
   const refreshDuelResults = useCallback(async () => {
     if (!activeDuel) return
     setDuelResultsLoading(true)
@@ -1215,36 +1219,6 @@ function App() {
         duelResults.map((r) => r.profile_id),
         { inviteCode: updated.invite_code, isMultiplayer: true },
       ).catch(console.error)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  // 1v1 has no admin to force a close — this is the "esperando a tu rival"
-  // screen's way out if they never show up. Only becomes claimable 5 minutes
-  // after the duel was created, so a rival who's just mid-round doesn't get
-  // forfeited out from under them.
-  const [canClaimForfeit, setCanClaimForfeit] = useState(false)
-
-  useEffect(() => {
-    setCanClaimForfeit(false)
-    if (gameMode !== 'duel' || phase !== 'gameOver' || !activeDuel || activeDuel.is_multiplayer || duelOtherResult) {
-      return
-    }
-    const remaining = DUEL_FORFEIT_WAIT_MS - (Date.now() - new Date(activeDuel.created_at).getTime())
-    if (remaining <= 0) {
-      setCanClaimForfeit(true)
-      return
-    }
-    const timer = setTimeout(() => setCanClaimForfeit(true), remaining)
-    return () => clearTimeout(timer)
-  }, [gameMode, phase, activeDuel, duelOtherResult])
-
-  const handleClaimForfeit = async () => {
-    if (!activeDuel || !profile) return
-    try {
-      const updated = await closeDuel(activeDuel.id, profile.id)
-      if (updated) setActiveDuel(updated)
     } catch (e) {
       console.error(e)
     }
@@ -1505,6 +1479,7 @@ function App() {
       profile={profile}
       authUser={authUser}
       onOpenAuth={openSignUp}
+      onLogout={handleLogout}
       mobileOpen={sidebarOpen}
       onClose={() => setSidebarOpen(false)}
       notifications={notifications}
@@ -1740,11 +1715,6 @@ function App() {
                     >
                       {menuCopied ? '¡Copiado!' : 'Copiar link del duelo'}
                     </button>
-                    {canClaimForfeit && (
-                      <button type="button" className="primary-btn secondary-btn" onClick={handleClaimForfeit}>
-                        Reclamar victoria (tu rival no respondió)
-                      </button>
-                    )}
                   </div>
                 </>
               )}
