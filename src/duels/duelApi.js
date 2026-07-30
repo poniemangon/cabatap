@@ -158,10 +158,17 @@ export async function getDuelStats(profileId) {
   return stats
 }
 
+// Upsert, not a plain insert: a duplicate submission attempt (e.g. a reload
+// racing the submission effect) should just overwrite with the latest
+// attempt instead of hitting duel_results' unique(duel_id, profile_id)
+// constraint as a hard 409 — same reasoning as submitDailyResult's upsert.
 export async function submitDuelResult({ duelId, profileId, results, totalScore }) {
   const { data, error } = await supabase
     .from('duel_results')
-    .insert({ duel_id: duelId, profile_id: profileId, results, total_score: totalScore })
+    .upsert(
+      { duel_id: duelId, profile_id: profileId, results, total_score: totalScore },
+      { onConflict: 'duel_id,profile_id' },
+    )
     .select()
     .single()
   if (error) throw error
@@ -178,14 +185,14 @@ export async function submitDuelResult({ duelId, profileId, results, totalScore 
 export function submitDuelResultBeacon({ duelId, profileId, results, totalScore }) {
   const token = getCachedAccessToken()
   if (!token) return
-  fetch(`${supabaseUrl}/rest/v1/duel_results`, {
+  fetch(`${supabaseUrl}/rest/v1/duel_results?on_conflict=duel_id,profile_id`, {
     method: 'POST',
     keepalive: true,
     headers: {
       'Content-Type': 'application/json',
       apikey: supabaseAnonKey,
       Authorization: `Bearer ${token}`,
-      Prefer: 'return=minimal',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
     },
     body: JSON.stringify({ duel_id: duelId, profile_id: profileId, results, total_score: totalScore }),
   }).catch(() => {})
