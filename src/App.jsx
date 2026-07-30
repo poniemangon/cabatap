@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
@@ -202,6 +202,11 @@ function shareIndicesToUrl(indices, barrioIds) {
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
+const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
+// Fixed 5-round intro shown once per browser session to signed-out first-
+// time visitors, before they've ever seen a real map — a curated preview
+// rather than random corners. Indices into the intersections pool.
+const TEST_MAP_ROUND_INDICES = [4027, 4028, 4029, 4030, 4031]
 
 function loadStoredSession() {
   try {
@@ -209,6 +214,22 @@ function loadStoredSession() {
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
+  }
+}
+
+function hasSeenTestMap() {
+  try {
+    return !!sessionStorage.getItem(TEST_MAP_SESSION_KEY)
+  } catch {
+    return true // sessionStorage unavailable — skip the special flow safely
+  }
+}
+
+function markTestMapSeen() {
+  try {
+    sessionStorage.setItem(TEST_MAP_SESSION_KEY, '1')
+  } catch {
+    // ignore
   }
 }
 
@@ -311,6 +332,7 @@ function App() {
     const fromShare = parseShareIndices(pool.length)
     let fresh
     let blockedByAuth = false
+    let isTestMap = false
     if (fromShare) {
       const barrioIds = parseCustomShareBarrios(fromShare, pool, barrios)
       const candidateMode = barrioIds ? 'custom' : 'linked'
@@ -320,6 +342,14 @@ function App() {
       // no reload required.
       fresh = { roundIndices: fromShare, gameMode: candidateMode, customBarrioIds: barrioIds || [] }
       if (requiresAuth(candidateMode) && !isSignedIn) blockedByAuth = true
+    } else if (!isSignedIn && !hasSeenTestMap()) {
+      // First time this browser session sees the site signed out: a fixed
+      // 5-corner preview instead of the dashboard, so a brand-new visitor
+      // lands straight in a game. The register popup (see below) waits for
+      // this to finish instead of firing immediately.
+      isTestMap = true
+      markTestMapSeen()
+      fresh = { roundIndices: TEST_MAP_ROUND_INDICES, gameMode: 'testmap', customBarrioIds: [] }
     } else {
       fresh = {
         roundIndices: indicesForDay(dayNumberForDate(new Date())),
@@ -351,7 +381,7 @@ function App() {
           roundIndex: 0,
           phase: 'guessing',
           results: [],
-          view: blockedByAuth ? 'share-gate' : fromShare ? 'game' : 'dashboard',
+          view: blockedByAuth ? 'share-gate' : fromShare || isTestMap ? 'game' : 'dashboard',
         }
 
     setRoundIndices(initial.roundIndices)
@@ -462,8 +492,13 @@ function App() {
 
   const isReady = !!pool && !!barrios && initialized
 
+  // Waits for the test-map intro (see the mount effect above) to actually
+  // finish before nagging a first-time visitor to register — if they never
+  // reach gameOver on it this session (abandoned it, closed the tab), the
+  // popup just doesn't show rather than firing at some other arbitrary
+  // point. Still capped at once per session via REGISTER_POPUP_SESSION_KEY.
   useEffect(() => {
-    if (!isReady || !authLoaded || isSignedIn) return
+    if (phase !== 'gameOver' || gameMode !== 'testmap' || isSignedIn) return
     try {
       if (!sessionStorage.getItem(REGISTER_POPUP_SESSION_KEY)) {
         sessionStorage.setItem(REGISTER_POPUP_SESSION_KEY, '1')
@@ -472,8 +507,7 @@ function App() {
     } catch {
       // sessionStorage unavailable (private browsing, etc.); just skip the popup
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, authLoaded, isSignedIn])
+  }, [phase, gameMode, isSignedIn])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -1639,7 +1673,15 @@ function App() {
                         >
                           <span className="duel-leaderboard-rank">#{i + 1}</span>
                           <span className="duel-leaderboard-name">
-                            {r.profile_id === profile?.id ? 'Vos' : r.profile?.username || 'Jugador'}
+                            {r.profile_id === profile?.id ? (
+                              'Vos'
+                            ) : r.profile?.username ? (
+                              <Link to={`/jugador/${r.profile.username}`} className="duel-player-link">
+                                {r.profile.username}
+                              </Link>
+                            ) : (
+                              'Jugador'
+                            )}
                           </span>
                           <span className="duel-leaderboard-score">{r.total_score}</span>
                         </li>
@@ -1695,7 +1737,14 @@ function App() {
                   <div className="duel-result-vs">
                     <span>Vos: {totalScore}</span>
                     <span>
-                      {duelOtherResult.profile?.username || 'Rival'}: {duelOtherResult.total_score}
+                      {duelOtherResult.profile?.username ? (
+                        <Link to={`/jugador/${duelOtherResult.profile.username}`} className="duel-player-link">
+                          {duelOtherResult.profile.username}
+                        </Link>
+                      ) : (
+                        'Rival'
+                      )}
+                      : {duelOtherResult.total_score}
                     </span>
                   </div>
                   <div className="duel-result-verdict">
