@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faGoogle, faXTwitter } from '@fortawesome/free-brands-svg-icons'
 import { supabase } from '../supabaseClient'
 import './AuthModal.css'
 
@@ -92,9 +94,11 @@ export default function AuthModal({ onClose }) {
       </div>
 
       <button type="button" className="auth-modal-oauth-btn" onClick={() => handleOAuth('google')}>
+        <FontAwesomeIcon icon={faGoogle} className="auth-modal-oauth-icon" />
         Continuar con Google
       </button>
       <button type="button" className="auth-modal-oauth-btn" onClick={() => handleOAuth('twitter')}>
+        <FontAwesomeIcon icon={faXTwitter} className="auth-modal-oauth-icon" />
         Continuar con X
       </button>
 
