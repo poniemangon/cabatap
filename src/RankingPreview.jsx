@@ -75,7 +75,7 @@ export default function RankingPreview() {
         title="Top 5 histórico"
         rows={avgRows.map((a) => ({ key: a.profileId, avatarUrl: a.profile?.avatar_url, username: a.profile?.username, avgScore: a.avgScore }))}
         emptyText="Todavía nadie jugó en modo competitivo."
-        detail={(a) => `${a.avgScore.toFixed(1)} pts prom.`}
+        detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
         to={(a) => `/jugador/${a.username}`}
       />
     </div>

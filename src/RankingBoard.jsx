@@ -117,7 +117,7 @@ export default function RankingBoard() {
         avgRank={myAvgRank}
         avgDetail={
           myAvgEntry
-            ? `${myAvgEntry.avgScore.toFixed(1)} pts prom. (${myAvgEntry.played} ${myAvgEntry.played === 1 ? 'partida' : 'partidas'})`
+            ? `${Math.round(myAvgEntry.avgScore)} pts prom. (${myAvgEntry.played} ${myAvgEntry.played === 1 ? 'partida' : 'partidas'})`
             : null
         }
       />
@@ -139,7 +139,7 @@ export default function RankingBoard() {
         title="Mejor promedio (histórico)"
         items={averages.map((a) => ({ key: a.profileId, avatarUrl: a.profile?.avatar_url, username: a.profile?.username, ...a }))}
         emptyText="Todavía nadie jugó en modo competitivo."
-        renderDetail={(a) => `${a.avgScore.toFixed(1)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
+        renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
         to={(a) => `/jugador/${a.profile?.username}`}
       />
 

@@ -121,6 +121,18 @@ export default function ProfilePage() {
     return map
   }, [duels, profile])
 
+  // Tranqui and competitivo save as separate daily_stats rows for the same
+  // day_number — collapse them to one card per day here, preferring
+  // competitivo when both exist (it's the one that actually ranks).
+  const dedupedDailyStats = useMemo(() => {
+    const byDay = new Map()
+    for (const d of dailyStats) {
+      const existing = byDay.get(d.day_number)
+      if (!existing || (d.timed && !existing.timed)) byDay.set(d.day_number, d)
+    }
+    return [...byDay.values()].sort((a, b) => b.day_number - a.day_number)
+  }, [dailyStats])
+
   if (clerkLoaded && !isSignedIn) {
     return <Navigate to="/" replace />
   }
@@ -442,11 +454,11 @@ export default function ProfilePage() {
 
       <section className="profile-section">
         <h2 className="profile-section-title">Mapas diarios jugados</h2>
-        {dailyStats.length === 0 ? (
+        {dedupedDailyStats.length === 0 ? (
           <p className="profile-empty-text">Todavía no jugaste ningún mapa diario.</p>
         ) : (
           <ul className="profile-duel-list">
-            {dailyStats.map((d) => (
+            {dedupedDailyStats.map((d) => (
               <li
                 key={d.id}
                 className="profile-duel-row profile-duel-row-clickable"
@@ -454,9 +466,7 @@ export default function ProfilePage() {
               >
                 <span className="profile-duel-opponent">
                   {formatDailyDate(d.day_number)}
-                  <span className={`daily-mode-tag${d.timed ? ' daily-mode-tag-timed' : ''}`}>
-                    {d.timed ? '⏱ Competitivo' : '🧘 Tranqui'}
-                  </span>
+                  {d.timed && <span className="daily-mode-tag daily-mode-tag-timed">⏱ Competitivo</span>}
                 </span>
                 <span className="profile-duel-score">{d.total_score} pts</span>
               </li>
