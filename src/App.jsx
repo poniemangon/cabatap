@@ -36,7 +36,7 @@ import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
-const DUEL_TIME_LIMIT = 8
+const DEFAULT_DUEL_TIME_LIMIT = 8
 // Wherever the app is actually being served (localhost:5173 in dev, the
 // real domain in prod) — hardcoding the production URL here meant every
 // copied invite link (duels included) pointed at production even while
@@ -261,6 +261,7 @@ function App() {
 
   const [pool, setPool] = useState(null)
   const [barrios, setBarrios] = useState(null)
+  const [duelTimeLimit, setDuelTimeLimit] = useState(DEFAULT_DUEL_TIME_LIMIT)
   const [loadError, setLoadError] = useState(null)
   const [initialized, setInitialized] = useState(false)
 
@@ -303,13 +304,15 @@ function App() {
     let cancelled = false
     async function load() {
       try {
-        const [poolRows, barrioRows] = await Promise.all([
+        const [poolRows, barrioRows, { data: timeLimitSetting }] = await Promise.all([
           fetchAllRows('intersections', 'street1, street2, lat, lng, barrio_id, image_url', 'pool_index'),
           fetchAllRows('barrios', '*', 'barrio_id'),
+          supabase.from('app_settings').select('value').eq('key', 'duel_time_limit_seconds').maybeSingle(),
         ])
         if (cancelled) return
         setPool(poolRows)
         setBarrios(barrioRows)
+        if (typeof timeLimitSetting?.value === 'number') setDuelTimeLimit(timeLimitSetting.value)
       } catch (e) {
         if (!cancelled) setLoadError(e.message)
       }
@@ -577,7 +580,7 @@ function App() {
     gameMode === 'duel'
       ? (activeDuel?.time_limit_seconds ?? null)
       : gameMode === 'daily' && dailyTimed
-        ? DUEL_TIME_LIMIT
+        ? duelTimeLimit
         : null
 
   const [pendingGuess, setPendingGuess] = useState(null)
@@ -653,7 +656,7 @@ function App() {
   // fires on tab close) fast-forwards the same countdown to 0, so it's
   // exactly as if the clock ran out — only the current round is forfeited,
   // play continues into the next one when you come back.
-  const [timeLeft, setTimeLeft] = useState(DUEL_TIME_LIMIT)
+  const [timeLeft, setTimeLeft] = useState(duelTimeLimit)
 
   useEffect(() => {
     if (phase !== 'guessing' || timeLimit == null || !current) return
@@ -943,7 +946,7 @@ function App() {
     opponentId = null,
     isMultiplayer = false,
     maxPlayers = null,
-    timeLimitSeconds = DUEL_TIME_LIMIT,
+    timeLimitSeconds = duelTimeLimit,
   }) => {
     let indices
     if (barrioIds.length > 0) {
@@ -979,7 +982,7 @@ function App() {
       await createAndEnterDuel({
         barrioIds: selectedBarrioIds,
         opponentId: opponentProfileId,
-        timeLimitSeconds: timed ? DUEL_TIME_LIMIT : null,
+        timeLimitSeconds: timed ? duelTimeLimit : null,
       })
       setDuelSetupOpen(false)
     } catch (e) {
@@ -993,7 +996,7 @@ function App() {
       await createAndEnterDuel({
         barrioIds: selectedBarrioIds,
         isMultiplayer: true,
-        timeLimitSeconds: timed ? DUEL_TIME_LIMIT : null,
+        timeLimitSeconds: timed ? duelTimeLimit : null,
       })
       setMultiplayerSetupOpen(false)
     } catch (e) {
