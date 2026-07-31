@@ -161,20 +161,6 @@ export default function Sidebar({
           )}
         </nav>
 
-        {isSignedIn && profile?.elo != null && (
-          <p className="sidebar-elo-summary">
-            Tu puntaje ELO: <strong>{profile.elo}</strong>
-            <a
-              href="https://es.wikipedia.org/wiki/Sistema_de_puntuaci%C3%B3n_Elo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sidebar-elo-link"
-            >
-              ¿Qué es ELO?
-            </a>
-          </p>
-        )}
-
         {!isSignedIn && (
           <button type="button" className="primary-btn sidebar-signup-btn" onClick={withClose(onOpenAuth)}>
             Iniciar sesión
