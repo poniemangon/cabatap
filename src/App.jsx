@@ -15,6 +15,7 @@ import DuelChoiceModal from './duels/DuelChoiceModal'
 import RankedDuelModal from './duels/RankedDuelModal'
 import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
+import EloInfoModal from './EloInfoModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -204,6 +205,7 @@ function shareIndicesToUrl(indices, barrioIds) {
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
+const ELO_INFO_SESSION_KEY = 'ubicaba-elo-info-shown'
 // Fixed 5-round intro shown once per browser session to signed-out first-
 // time visitors, before they've ever seen a real map — a curated preview
 // rather than random corners. Indices into the intersections pool.
@@ -282,6 +284,7 @@ function App() {
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
   const [registerPopupOpen, setRegisterPopupOpen] = useState(false)
+  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
@@ -513,6 +516,22 @@ function App() {
       // sessionStorage unavailable (private browsing, etc.); just skip the popup
     }
   }, [phase, gameMode, isSignedIn])
+
+  // Explains the ELO badge next to usernames to signed-in players — once per
+  // browser session via ELO_INFO_SESSION_KEY, same mechanism as the register
+  // popup above. Fires as soon as the profile loads, not gated on any
+  // particular screen.
+  useEffect(() => {
+    if (!isSignedIn || !profile) return
+    try {
+      if (!sessionStorage.getItem(ELO_INFO_SESSION_KEY)) {
+        sessionStorage.setItem(ELO_INFO_SESSION_KEY, '1')
+        setEloInfoOpen(true)
+      }
+    } catch {
+      // sessionStorage unavailable (private browsing, etc.); just skip the popup
+    }
+  }, [isSignedIn, profile])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -1391,6 +1410,14 @@ function App() {
     </div>
   )
 
+  const eloInfoPopup = eloInfoOpen && (
+    <div className="modal-backdrop" onClick={() => setEloInfoOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <EloInfoModal onClose={() => setEloInfoOpen(false)} />
+      </div>
+    </div>
+  )
+
   const authModalPopup = authModalOpen && (
     <div className="modal-backdrop" onClick={() => setAuthModalOpen(false)}>
       <div onClick={(e) => e.stopPropagation()}>
@@ -1928,6 +1955,7 @@ function App() {
       {duelSetupPopup}
       {multiplayerSetupPopup}
       {registerPopup}
+      {eloInfoPopup}
       {authGatePopup}
       {authModalPopup}
     </div>
