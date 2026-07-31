@@ -117,7 +117,7 @@
 }
 
 .ranking-preview-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   font-weight: 600;
   overflow: hidden;
