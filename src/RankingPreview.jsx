@@ -64,7 +64,7 @@ export default function RankingPreview() {
   }, [])
 
   return (
-    <div className="ranking-preview-row">
+    <div className="ranking-preview-cards">
       <div className="ranking-preview">
         <div className="ranking-preview-header">
           <h2 className="ranking-preview-title">🏆 Ranking mapa del día</h2>
