@@ -258,11 +258,15 @@ export async function listMyPendingDuels(profileId) {
 }
 
 // Top ELO ranking — profiles.elo only ever moves via apply_duel_elo() (see
-// 0021_duel_elo.sql), so this is purely a read of that column, highest first.
+// 0021_duel_elo.sql), so this is purely a read of that column, highest
+// first. Excludes anyone who's never actually closed a ranked duel: without
+// this, every profile sits at the default elo=1000 and the "leaderboard" is
+// just every registered user tied for first.
 export async function getEloLeaderboard(limit = 100) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url, elo')
+    .select('id, username, avatar_url, elo, ranked_games_played')
+    .gt('ranked_games_played', 0)
     .order('elo', { ascending: false })
     .limit(limit)
   if (error) throw error
