@@ -82,7 +82,8 @@ export default function ProfilePage() {
   const [showPending, setShowPending] = useState(false)
   const [dailyStats, setDailyStats] = useState([])
   const [stats, setStats] = useState({
-    oneVOne: { played: 0, won: 0, tied: 0 },
+    oneVOnePrivate: { played: 0, won: 0, tied: 0 },
+    oneVOneRanked: { played: 0, won: 0, tied: 0 },
     multi: { played: 0, won: 0, tied: 0 },
   })
   const [searchValue, setSearchValue] = useState('')
@@ -430,12 +431,21 @@ export default function ProfilePage() {
         <h2 className="profile-section-title">Estadísticas</h2>
         <div className="profile-stats-grid">
           <div className="profile-stat-card">
-            <div className="profile-stat-title">1 vs 1</div>
-            <div className="profile-stat-played">{stats.oneVOne.played} jugados</div>
+            <div className="profile-stat-title">1 vs 1 privado</div>
+            <div className="profile-stat-played">{stats.oneVOnePrivate.played} jugados</div>
             <div className="profile-stat-numbers">
-              <span>✅ {stats.oneVOne.won}</span>
-              <span>❌ {stats.oneVOne.played - stats.oneVOne.won - stats.oneVOne.tied}</span>
-              <span>🟰 {stats.oneVOne.tied}</span>
+              <span>✅ {stats.oneVOnePrivate.won}</span>
+              <span>❌ {stats.oneVOnePrivate.played - stats.oneVOnePrivate.won - stats.oneVOnePrivate.tied}</span>
+              <span>🟰 {stats.oneVOnePrivate.tied}</span>
+            </div>
+          </div>
+          <div className="profile-stat-card">
+            <div className="profile-stat-title">1 vs 1 rankeado</div>
+            <div className="profile-stat-played">{stats.oneVOneRanked.played} jugados</div>
+            <div className="profile-stat-numbers">
+              <span>✅ {stats.oneVOneRanked.won}</span>
+              <span>❌ {stats.oneVOneRanked.played - stats.oneVOneRanked.won - stats.oneVOneRanked.tied}</span>
+              <span>🟰 {stats.oneVOneRanked.tied}</span>
             </div>
           </div>
           <div className="profile-stat-card">

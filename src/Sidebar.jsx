@@ -88,9 +88,8 @@ export default function Sidebar({
                 <span className="sidebar-profile-avatar sidebar-profile-avatar-fallback">🙂</span>
               )}
               <span className="sidebar-profile-info">
-                <span className="sidebar-profile-name">
-                  {displayName} <EloBadge elo={profile?.elo} />
-                </span>
+                <span className="sidebar-profile-name">{displayName}</span>
+                <EloBadge elo={profile?.elo} />
                 <span className="sidebar-profile-link">Ver perfil</span>
               </span>
             </button>

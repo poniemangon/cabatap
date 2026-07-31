@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CalendarPicker from './CalendarPicker'
-import EloBadge from './EloBadge'
+import EloBadge, { eloTier } from './EloBadge'
 import useProfile from './hooks/useProfile'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
+import { getEloLeaderboard } from './duels/duelApi'
 import './RankingBoard.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -37,7 +38,7 @@ function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
   )
 }
 
-function YourRankSummary({ profile, dayRank, dayDetail, avgRank, avgDetail }) {
+function YourRankSummary({ profile, dayRank, dayDetail, avgRank, avgDetail, eloRank, eloDetail }) {
   if (!profile) return null
   return (
     <div className="ranking-your-summary">
@@ -51,6 +52,12 @@ function YourRankSummary({ profile, dayRank, dayDetail, avgRank, avgDetail }) {
         <span className="ranking-your-summary-label">Tu ranking histórico</span>
         <span className={`ranking-your-summary-value${avgRank ? '' : ' ranking-your-summary-empty'}`}>
           {avgRank ? `#${avgRank} · ${avgDetail}` : 'Todavía no jugaste'}
+        </span>
+      </div>
+      <div className="ranking-your-summary-item">
+        <span className="ranking-your-summary-label">Tu ranking ELO</span>
+        <span className={`ranking-your-summary-value${eloRank ? '' : ' ranking-your-summary-empty'}`}>
+          {eloRank ? `#${eloRank} · ${eloDetail}` : 'Sin ranking todavía'}
         </span>
       </div>
     </div>
@@ -94,6 +101,7 @@ export default function RankingBoard() {
   const [averages, setAverages] = useState([])
   const [dayNumber, setDayNumber] = useState(todayDayNumber)
   const [dayResults, setDayResults] = useState([])
+  const [eloRows, setEloRows] = useState([])
   const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
@@ -104,10 +112,16 @@ export default function RankingBoard() {
     getDailyLeaderboard(dayNumber).then(setDayResults).catch(console.error)
   }, [dayNumber])
 
+  useEffect(() => {
+    getEloLeaderboard().then(setEloRows).catch(console.error)
+  }, [])
+
   const myAvgRank = profile ? averages.findIndex((a) => a.profileId === profile.id) + 1 : 0
   const myAvgEntry = myAvgRank ? averages[myAvgRank - 1] : null
   const myDayRank = profile ? dayResults.findIndex((r) => r.profile_id === profile.id) + 1 : 0
   const myDayEntry = myDayRank ? dayResults[myDayRank - 1] : null
+  const myEloRank = profile ? eloRows.findIndex((r) => r.id === profile.id) + 1 : 0
+  const myEloEntry = myEloRank ? eloRows[myEloRank - 1] : null
 
   return (
     <div className="ranking-board">
@@ -124,10 +138,12 @@ export default function RankingBoard() {
             ? `${Math.round(myAvgEntry.avgScore)} pts prom. (${myAvgEntry.played} ${myAvgEntry.played === 1 ? 'partida' : 'partidas'})`
             : null
         }
+        eloRank={myEloRank}
+        eloDetail={myEloEntry ? `${myEloEntry.elo} (${eloTier(myEloEntry.elo).name})` : null}
       />
 
       <LeaderboardSection
-        title={dayNumber === todayDayNumber ? 'Ranking de hoy' : formatDailyDate(dayNumber)}
+        title={dayNumber === todayDayNumber ? 'Top mapa del día de hoy' : formatDailyDate(dayNumber)}
         extra={
           <button type="button" className="primary-btn secondary-btn ranking-day-label" onClick={() => setCalendarOpen(true)}>
             Ver otro día
@@ -146,7 +162,7 @@ export default function RankingBoard() {
       />
 
       <LeaderboardSection
-        title="Mejor promedio (histórico)"
+        title="Top mapa del día promedio histórico"
         items={averages.map((a) => ({
           key: a.profileId,
           avatarUrl: a.profile?.avatar_url,
@@ -157,6 +173,14 @@ export default function RankingBoard() {
         emptyText="Todavía nadie jugó en modo competitivo."
         renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
         to={(a) => `/jugador/${a.profile?.username}`}
+      />
+
+      <LeaderboardSection
+        title="Top ranking ELO"
+        items={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+        emptyText="Todavía nadie jugó un duelo rankeado."
+        renderDetail={(r) => eloTier(r.elo).name}
+        to={(r) => `/jugador/${r.username}`}
       />
 
       {calendarOpen && (

@@ -109,8 +109,9 @@ export async function closeDuel(duelId, winnerId) {
   return data
 }
 
-// Games played/won/tied, split 1v1 vs multiplayer, for the profile page's
-// stats section.
+// Games played/won/tied, split into 1v1 privado / 1v1 rankeado / multiplayer,
+// for the profile page's stats section. Rankeado is exactly the set of duels
+// apply_duel_elo() (0021_duel_elo.sql) would ever touch — 1v1 + matchmaking.
 //
 // Once a duel is *closed*, winner_id is authoritative — including a forfeit
 // win (only one participant ever played, the other never showed up), which
@@ -130,7 +131,11 @@ export async function getDuelStats(profileId) {
     .eq('profile_id', profileId)
   if (myResultsError) throw myResultsError
   const duelIds = myResults.map((r) => r.duel_id)
-  const stats = { oneVOne: { played: 0, won: 0, tied: 0 }, multi: { played: 0, won: 0, tied: 0 } }
+  const stats = {
+    oneVOnePrivate: { played: 0, won: 0, tied: 0 },
+    oneVOneRanked: { played: 0, won: 0, tied: 0 },
+    multi: { played: 0, won: 0, tied: 0 },
+  }
   if (duelIds.length === 0) return stats
 
   const { data, error } = await supabase
@@ -141,7 +146,7 @@ export async function getDuelStats(profileId) {
 
   for (const duel of data) {
     if (isPendingRival(duel)) continue
-    const bucket = duel.is_multiplayer ? stats.multi : stats.oneVOne
+    const bucket = duel.is_multiplayer ? stats.multi : duel.matchmaking ? stats.oneVOneRanked : stats.oneVOnePrivate
     bucket.played += 1
 
     let winnerId
@@ -248,6 +253,18 @@ export async function listMyPendingDuels(profileId) {
     .is('opponent_id', null)
     .is('closed_at', null)
     .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+// Top ELO ranking — profiles.elo only ever moves via apply_duel_elo() (see
+// 0021_duel_elo.sql), so this is purely a read of that column, highest first.
+export async function getEloLeaderboard(limit = 100) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url, elo')
+    .order('elo', { ascending: false })
+    .limit(limit)
   if (error) throw error
   return data
 }

@@ -54,7 +54,8 @@ export default function PublicProfilePage() {
   const [duels, setDuels] = useState([])
   const [dailyStats, setDailyStats] = useState([])
   const [stats, setStats] = useState({
-    oneVOne: { played: 0, won: 0, tied: 0 },
+    oneVOnePrivate: { played: 0, won: 0, tied: 0 },
+    oneVOneRanked: { played: 0, won: 0, tied: 0 },
     multi: { played: 0, won: 0, tied: 0 },
   })
 
@@ -122,11 +123,19 @@ export default function PublicProfilePage() {
             <h2 className="profile-section-title">Estadísticas</h2>
             <div className="profile-stats-grid">
               <div className="profile-stat-card">
-                <div className="profile-stat-title">1 vs 1</div>
+                <div className="profile-stat-title">1 vs 1 privado</div>
                 <div className="profile-stat-numbers">
-                  <span>{stats.oneVOne.played} jugados</span>
-                  <span>{stats.oneVOne.won} ganados</span>
-                  <span>{stats.oneVOne.tied} empatados</span>
+                  <span>{stats.oneVOnePrivate.played} jugados</span>
+                  <span>{stats.oneVOnePrivate.won} ganados</span>
+                  <span>{stats.oneVOnePrivate.tied} empatados</span>
+                </div>
+              </div>
+              <div className="profile-stat-card">
+                <div className="profile-stat-title">1 vs 1 rankeado</div>
+                <div className="profile-stat-numbers">
+                  <span>{stats.oneVOneRanked.played} jugados</span>
+                  <span>{stats.oneVOneRanked.won} ganados</span>
+                  <span>{stats.oneVOneRanked.tied} empatados</span>
                 </div>
               </div>
               <div className="profile-stat-card">
