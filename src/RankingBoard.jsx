@@ -38,30 +38,20 @@ function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
   )
 }
 
-function YourRankSummary({ profile, dayRank, dayDetail, avgRank, avgDetail, eloRank, eloDetail }) {
-  if (!profile) return null
+function RankSummaryItem({ label, rank, detail, emptyText }) {
   return (
-    <div className="ranking-your-summary">
-      <div className="ranking-your-summary-item">
-        <span className="ranking-your-summary-label">Tu ranking de hoy</span>
-        <span className={`ranking-your-summary-value${dayRank ? '' : ' ranking-your-summary-empty'}`}>
-          {dayRank ? `#${dayRank} · ${dayDetail}` : 'Todavía no jugaste hoy'}
-        </span>
-      </div>
-      <div className="ranking-your-summary-item">
-        <span className="ranking-your-summary-label">Tu ranking histórico</span>
-        <span className={`ranking-your-summary-value${avgRank ? '' : ' ranking-your-summary-empty'}`}>
-          {avgRank ? `#${avgRank} · ${avgDetail}` : 'Todavía no jugaste'}
-        </span>
-      </div>
-      <div className="ranking-your-summary-item">
-        <span className="ranking-your-summary-label">Tu ranking ELO</span>
-        <span className={`ranking-your-summary-value${eloRank ? '' : ' ranking-your-summary-empty'}`}>
-          {eloRank ? `#${eloRank} · ${eloDetail}` : 'Sin ranking todavía'}
-        </span>
-      </div>
+    <div className="ranking-your-summary-item">
+      <span className="ranking-your-summary-label">{label}</span>
+      <span className={`ranking-your-summary-value${rank ? '' : ' ranking-your-summary-empty'}`}>
+        {rank ? `#${rank} · ${detail}` : emptyText}
+      </span>
     </div>
   )
+}
+
+function YourRankSummary({ profile, children }) {
+  if (!profile) return null
+  return <div className="ranking-your-summary">{children}</div>
 }
 
 function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to }) {
@@ -124,64 +114,85 @@ export default function RankingBoard() {
   const myEloEntry = myEloRank ? eloRows[myEloRank - 1] : null
 
   return (
-    <div className="ranking-board">
-      <h2 className="ranking-board-title">🏆 Ranking de jugadores</h2>
-      <p className="ranking-subtitle">Solo cuentan las partidas de Mapa del día en modo competitivo.</p>
+    <div className="ranking-page-cards">
+      <div className="ranking-board">
+        <h2 className="ranking-board-title">🏆 Ranking mapa del día</h2>
+        <p className="ranking-subtitle">Solo cuentan las partidas de Mapa del día en modo competitivo.</p>
 
-      <YourRankSummary
-        profile={profile}
-        dayRank={myDayRank}
-        dayDetail={myDayEntry ? `${myDayEntry.total_score} pts` : null}
-        avgRank={myAvgRank}
-        avgDetail={
-          myAvgEntry
-            ? `${Math.round(myAvgEntry.avgScore)} pts prom. (${myAvgEntry.played} ${myAvgEntry.played === 1 ? 'partida' : 'partidas'})`
-            : null
-        }
-        eloRank={myEloRank}
-        eloDetail={myEloEntry ? `${myEloEntry.elo} (${eloTier(myEloEntry.elo).name})` : null}
-      />
+        <YourRankSummary profile={profile}>
+          <RankSummaryItem
+            label="Tu ranking de hoy"
+            rank={myDayRank}
+            detail={myDayEntry ? `${myDayEntry.total_score} pts` : null}
+            emptyText="Todavía no jugaste hoy"
+          />
+          <RankSummaryItem
+            label="Tu ranking histórico"
+            rank={myAvgRank}
+            detail={
+              myAvgEntry
+                ? `${Math.round(myAvgEntry.avgScore)} pts prom. (${myAvgEntry.played} ${myAvgEntry.played === 1 ? 'partida' : 'partidas'})`
+                : null
+            }
+            emptyText="Todavía no jugaste"
+          />
+        </YourRankSummary>
 
-      <LeaderboardSection
-        title={dayNumber === todayDayNumber ? 'Top mapa del día de hoy' : formatDailyDate(dayNumber)}
-        extra={
-          <button type="button" className="primary-btn secondary-btn ranking-day-label" onClick={() => setCalendarOpen(true)}>
-            Ver otro día
-          </button>
-        }
-        items={dayResults.map((r) => ({
-          key: r.id,
-          avatarUrl: r.profile?.avatar_url,
-          username: r.profile?.username,
-          elo: r.profile?.elo,
-          ...r,
-        }))}
-        emptyText="Nadie jugó en modo competitivo ese día."
-        renderDetail={(r) => `${r.total_score} pts`}
-        to={(r) => `/mapa-diario/${r.id}`}
-      />
+        <LeaderboardSection
+          title={dayNumber === todayDayNumber ? 'Top mapa del día de hoy' : formatDailyDate(dayNumber)}
+          extra={
+            <button type="button" className="primary-btn secondary-btn ranking-day-label" onClick={() => setCalendarOpen(true)}>
+              Ver otro día
+            </button>
+          }
+          items={dayResults.map((r) => ({
+            key: r.id,
+            avatarUrl: r.profile?.avatar_url,
+            username: r.profile?.username,
+            elo: r.profile?.elo,
+            ...r,
+          }))}
+          emptyText="Nadie jugó en modo competitivo ese día."
+          renderDetail={(r) => `${r.total_score} pts`}
+          to={(r) => `/mapa-diario/${r.id}`}
+        />
 
-      <LeaderboardSection
-        title="Top mapa del día promedio histórico"
-        items={averages.map((a) => ({
-          key: a.profileId,
-          avatarUrl: a.profile?.avatar_url,
-          username: a.profile?.username,
-          elo: a.profile?.elo,
-          ...a,
-        }))}
-        emptyText="Todavía nadie jugó en modo competitivo."
-        renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
-        to={(a) => `/jugador/${a.profile?.username}`}
-      />
+        <LeaderboardSection
+          title="Top mapa del día promedio histórico"
+          items={averages.map((a) => ({
+            key: a.profileId,
+            avatarUrl: a.profile?.avatar_url,
+            username: a.profile?.username,
+            elo: a.profile?.elo,
+            ...a,
+          }))}
+          emptyText="Todavía nadie jugó en modo competitivo."
+          renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
+          to={(a) => `/jugador/${a.profile?.username}`}
+        />
+      </div>
 
-      <LeaderboardSection
-        title="Top ranking ELO"
-        items={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
-        emptyText="Todavía nadie jugó un duelo rankeado."
-        renderDetail={(r) => eloTier(r.elo).name}
-        to={(r) => `/jugador/${r.username}`}
-      />
+      <div className="ranking-board">
+        <h2 className="ranking-board-title">🏅 Ranking de jugadores por ELO</h2>
+        <p className="ranking-subtitle">Solo cuenta el resultado de Duelo rankeado.</p>
+
+        <YourRankSummary profile={profile}>
+          <RankSummaryItem
+            label="Tu ranking ELO"
+            rank={myEloRank}
+            detail={myEloEntry ? `${myEloEntry.elo} (${eloTier(myEloEntry.elo).name})` : null}
+            emptyText="Sin ranking todavía"
+          />
+        </YourRankSummary>
+
+        <LeaderboardSection
+          title="Top ranking ELO"
+          items={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+          emptyText="Todavía nadie jugó un duelo rankeado."
+          renderDetail={(r) => eloTier(r.elo).name}
+          to={(r) => `/jugador/${r.username}`}
+        />
+      </div>
 
       {calendarOpen && (
         <div className="modal-backdrop" onClick={() => setCalendarOpen(false)}>

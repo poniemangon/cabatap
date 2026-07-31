@@ -64,50 +64,61 @@ export default function RankingPreview() {
   }, [])
 
   return (
-    <div className="ranking-preview">
-      <div className="ranking-preview-header">
-        <h2 className="ranking-preview-title">🏆 Ranking de jugadores</h2>
-        <Link to="/ranking" className="ranking-preview-link">
-          Ver ranking completo →
-        </Link>
+    <div className="ranking-preview-row">
+      <div className="ranking-preview">
+        <div className="ranking-preview-header">
+          <h2 className="ranking-preview-title">🏆 Ranking mapa del día</h2>
+          <Link to="/ranking" className="ranking-preview-link">
+            Ver ranking completo →
+          </Link>
+        </div>
+
+        <PreviewList
+          title="Top mapa del día de hoy"
+          rows={dayRows.map((r) => ({
+            key: r.id,
+            id: r.id,
+            avatarUrl: r.profile?.avatar_url,
+            username: r.profile?.username,
+            elo: r.profile?.elo,
+            total_score: r.total_score,
+          }))}
+          emptyText="Nadie jugó en modo competitivo hoy todavía."
+          detail={(r) => `${r.total_score} pts`}
+          to={(r) => `/mapa-diario/${r.id}`}
+        />
+
+        <PreviewList
+          title="Top mapa del día promedio histórico"
+          rows={avgRows.map((a) => ({
+            key: a.profileId,
+            avatarUrl: a.profile?.avatar_url,
+            username: a.profile?.username,
+            elo: a.profile?.elo,
+            avgScore: a.avgScore,
+          }))}
+          emptyText="Todavía nadie jugó en modo competitivo."
+          detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
+          to={(a) => `/jugador/${a.username}`}
+        />
       </div>
 
-      <PreviewList
-        title="Top mapa del día de hoy"
-        rows={dayRows.map((r) => ({
-          key: r.id,
-          id: r.id,
-          avatarUrl: r.profile?.avatar_url,
-          username: r.profile?.username,
-          elo: r.profile?.elo,
-          total_score: r.total_score,
-        }))}
-        emptyText="Nadie jugó en modo competitivo hoy todavía."
-        detail={(r) => `${r.total_score} pts`}
-        to={(r) => `/mapa-diario/${r.id}`}
-      />
+      <div className="ranking-preview">
+        <div className="ranking-preview-header">
+          <h2 className="ranking-preview-title">🏅 Ranking de jugadores por ELO</h2>
+          <Link to="/ranking" className="ranking-preview-link">
+            Ver ranking completo →
+          </Link>
+        </div>
 
-      <PreviewList
-        title="Top mapa del día promedio histórico"
-        rows={avgRows.map((a) => ({
-          key: a.profileId,
-          avatarUrl: a.profile?.avatar_url,
-          username: a.profile?.username,
-          elo: a.profile?.elo,
-          avgScore: a.avgScore,
-        }))}
-        emptyText="Todavía nadie jugó en modo competitivo."
-        detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
-        to={(a) => `/jugador/${a.username}`}
-      />
-
-      <PreviewList
-        title="Top ranking ELO"
-        rows={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
-        emptyText="Todavía nadie jugó un duelo rankeado."
-        detail={(r) => eloTier(r.elo).name}
-        to={(r) => `/jugador/${r.username}`}
-      />
+        <PreviewList
+          title="Top ranking ELO"
+          rows={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+          emptyText="Todavía nadie jugó un duelo rankeado."
+          detail={(r) => eloTier(r.elo).name}
+          to={(r) => `/jugador/${r.username}`}
+        />
+      </div>
     </div>
   )
 }

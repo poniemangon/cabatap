@@ -1,5 +1,12 @@
+.ranking-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .ranking-preview {
-  width: 50%;
+  flex: 1 1 320px;
+  min-width: 0;
   margin-bottom: 24px;
   padding: 12px;
   border-radius: 14px;
@@ -125,6 +132,6 @@
 
 @media (max-width: 768px) {
   .ranking-preview {
-    width: 100%;
+    flex-basis: 100%;
   }
 }
