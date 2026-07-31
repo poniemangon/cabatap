@@ -272,6 +272,21 @@
   width: 100%;
 }
 
+.sidebar-elo-summary {
+  margin: auto 0 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  font-size: 13px;
+  color: var(--text-h, #f5f5f5);
+}
+
+.sidebar-elo-link {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--accent-primary, #007aff);
+}
+
 .sidebar-logout-btn {
   margin-top: auto;
   width: 100%;
