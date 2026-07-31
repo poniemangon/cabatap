@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import BarrioPicker from './BarrioPicker'
 
-export default function DuelSetupModal({ barrios, friends, initialOpponentId = null, onClose, onStart }) {
+export default function DuelSetupModal({ barrios, friends, initialOpponentId = null, onClose, onStart, duelTimeLimit }) {
   const [selected, setSelected] = useState(() => new Set())
   const [opponentId, setOpponentId] = useState(() => initialOpponentId)
   const [timed, setTimed] = useState(true)
@@ -60,7 +60,7 @@ export default function DuelSetupModal({ barrios, friends, initialOpponentId = n
             className={`duel-type-btn${timed ? ' selected' : ''}`}
             onClick={() => setTimed(true)}
           >
-            ⏱ 8 segundos
+            ⏱ {duelTimeLimit} segundos
           </button>
           <button
             type="button"

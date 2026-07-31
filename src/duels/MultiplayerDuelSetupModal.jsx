@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import BarrioPicker from './BarrioPicker'
 
-export default function MultiplayerDuelSetupModal({ barrios, onClose, onStart }) {
+export default function MultiplayerDuelSetupModal({ barrios, onClose, onStart, duelTimeLimit }) {
   const [selected, setSelected] = useState(() => new Set())
   const [timed, setTimed] = useState(true)
 
@@ -36,7 +36,7 @@ export default function MultiplayerDuelSetupModal({ barrios, onClose, onStart })
             className={`duel-type-btn${timed ? ' selected' : ''}`}
             onClick={() => setTimed(true)}
           >
-            ⏱ 8 segundos
+            ⏱ {duelTimeLimit} segundos
           </button>
           <button
             type="button"

@@ -1482,6 +1482,7 @@ function App() {
           onChooseCompetitivo={() => startDaily(true)}
           tranquiPlayed={!!dailyStatusToday.tranqui}
           competitivoPlayed={!!dailyStatusToday.competitivo}
+          duelTimeLimit={duelTimeLimit}
         />
       </div>
     </div>
@@ -1508,6 +1509,7 @@ function App() {
           initialOpponentId={duelPreselectOpponentId}
           onClose={() => setDuelSetupOpen(false)}
           onStart={handleStartPrivateDuel}
+          duelTimeLimit={duelTimeLimit}
         />
       </div>
     </div>
@@ -1520,6 +1522,7 @@ function App() {
           barrios={barrios}
           onClose={() => setMultiplayerSetupOpen(false)}
           onStart={handleStartMultiplayerDuel}
+          duelTimeLimit={duelTimeLimit}
         />
       </div>
     </div>

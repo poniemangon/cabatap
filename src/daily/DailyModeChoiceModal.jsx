@@ -4,6 +4,7 @@ export default function DailyModeChoiceModal({
   onChooseCompetitivo,
   tranquiPlayed,
   competitivoPlayed,
+  duelTimeLimit,
 }) {
   const alreadyPlayed = tranquiPlayed || competitivoPlayed
   const viewResult = competitivoPlayed ? onChooseCompetitivo : onChooseTranqui
@@ -38,7 +39,9 @@ export default function DailyModeChoiceModal({
             <span className="duel-choice-icon">⏱</span>
             <span className="duel-choice-text">
               <span className="duel-choice-title">Modo competitivo</span>
-              <span className="duel-choice-desc">8s por ubicación, como un duelo — rankea contra todos hoy.</span>
+              <span className="duel-choice-desc">
+                {duelTimeLimit}s por ubicación, como un duelo — rankea contra todos hoy.
+              </span>
             </span>
           </button>
         </>
