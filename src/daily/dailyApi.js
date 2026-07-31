@@ -26,7 +26,7 @@ export async function submitDailyResult({ profileId, dayNumber, results, totalSc
 export async function getDailyLeaderboard(dayNumber) {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('*, profile:profile_id(username, avatar_url)')
+    .select('*, profile:profile_id(username, avatar_url, elo)')
     .eq('day_number', dayNumber)
     .eq('timed', true)
     .order('total_score', { ascending: false })
@@ -41,7 +41,7 @@ export async function getDailyLeaderboard(dayNumber) {
 export async function getDailyAverageLeaderboard() {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('profile_id, total_score, profile:profile_id(username, avatar_url)')
+    .select('profile_id, total_score, profile:profile_id(username, avatar_url, elo)')
     .eq('timed', true)
   if (error) throw error
 
@@ -121,7 +121,7 @@ export async function listMyDailyStats(profileId, limit = 30) {
 export async function getDailyStatById(id) {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('*, profile:profile_id(username, avatar_url)')
+    .select('*, profile:profile_id(username, avatar_url, elo)')
     .eq('id', id)
     .maybeSingle()
   if (error) throw error

@@ -12,6 +12,7 @@ import CustomGamePicker from './CustomGamePicker'
 import DuelSetupModal from './duels/DuelSetupModal'
 import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
 import DuelChoiceModal from './duels/DuelChoiceModal'
+import RankedDuelModal from './duels/RankedDuelModal'
 import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
 import { supabase, fetchAllRows } from './supabaseClient'
@@ -286,6 +287,7 @@ function App() {
   const [customOpen, setCustomOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  const [rankedDuelOpen, setRankedDuelOpen] = useState(false)
   const [duelChoiceOpen, setDuelChoiceOpen] = useState(false)
   const [duelSetupOpen, setDuelSetupOpen] = useState(false)
   const [duelFriends, setDuelFriends] = useState([])
@@ -900,9 +902,15 @@ function App() {
     handleStartCustom(specialBarrioIds)
   }
 
-  // Duelo 1v1: clicking "Duelo" always opens this chooser first — privado
-  // (friend/link + barrio picker) or random (instant matchmaking) — rather
-  // than blending both behind one setup screen.
+  // "Duelo rankeado": instant random matchmaking, affects ELO — just an
+  // informative popup with a "Jugar" button, no setup needed.
+  const openRankedDuel = () => {
+    if (!requireAuthOrGate() || duelInProgress) return
+    setRankedDuelOpen(true)
+  }
+
+  // "Duelo privado": always private (never touches ELO) — chooser between
+  // 1 vs 1 (friend/link + barrio picker) and multijugador (open room).
   const openDuelChoice = () => {
     if (!requireAuthOrGate() || duelInProgress) return
     setDuelChoiceOpen(true)
@@ -924,6 +932,7 @@ function App() {
 
   const openMultiplayerSetup = () => {
     if (!requireAuthOrGate() || duelInProgress) return
+    setDuelChoiceOpen(false)
     setMultiplayerSetupOpen(true)
   }
 
@@ -1013,7 +1022,7 @@ function App() {
   // nobody ever shows up).
   const handleStartRandomDuel = async () => {
     if (!requireAuthOrGate() || !profile) return
-    setDuelChoiceOpen(false)
+    setRankedDuelOpen(false)
     try {
       const candidate = await findOpenRandomDuel(profile.id)
       const claimed = candidate ? await claimDuel(candidate.id, profile.id) : null
@@ -1488,13 +1497,25 @@ function App() {
     </div>
   )
 
+  const rankedDuelPopup = rankedDuelOpen && (
+    <div className="modal-backdrop" onClick={() => setRankedDuelOpen(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <RankedDuelModal
+          onClose={() => setRankedDuelOpen(false)}
+          onPlay={handleStartRandomDuel}
+          duelTimeLimit={duelTimeLimit}
+        />
+      </div>
+    </div>
+  )
+
   const duelChoicePopup = duelChoiceOpen && (
     <div className="modal-backdrop" onClick={() => setDuelChoiceOpen(false)}>
       <div onClick={(e) => e.stopPropagation()}>
         <DuelChoiceModal
           onClose={() => setDuelChoiceOpen(false)}
-          onChoosePrivate={() => openDuelSetup()}
-          onChooseRandom={handleStartRandomDuel}
+          onChoose1v1={() => openDuelSetup()}
+          onChooseMultiplayer={openMultiplayerSetup}
         />
       </div>
     </div>
@@ -1531,8 +1552,8 @@ function App() {
   const sidebar = (
     <Sidebar
       onGoHome={handleGoHome}
-      onDuel={openDuelChoice}
-      onMultiplayerDuel={openMultiplayerSetup}
+      onDuel={openRankedDuel}
+      onMultiplayerDuel={openDuelChoice}
       duelInProgress={duelInProgress}
       onOpenProfile={() => navigate('/perfil')}
       isSignedIn={!!isSignedIn}
@@ -1572,8 +1593,8 @@ function App() {
         onOpenArchive={() => setArchiveOpen(true)}
         onOpenCustom={() => setCustomOpen(true)}
         onSpecialOnly={handleSpecialOnly}
-        onDuel={openDuelChoice}
-        onMultiplayerDuel={openMultiplayerSetup}
+        onDuel={openRankedDuel}
+        onMultiplayerDuel={openDuelChoice}
         onOpenAuth={openSignUp}
       />
     )
@@ -1902,6 +1923,7 @@ function App() {
       {archivePopup}
       {customPopup}
       {dailyChoicePopup}
+      {rankedDuelPopup}
       {duelChoicePopup}
       {duelSetupPopup}
       {multiplayerSetupPopup}

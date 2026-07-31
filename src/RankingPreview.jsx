@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
+import EloBadge from './EloBadge'
 import './RankingPreview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -30,7 +31,9 @@ function PreviewList({ title, rows, emptyText, detail, to }) {
                 ) : (
                   <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
                 )}
-                <span className="ranking-preview-name">{r.username || 'Jugador'}</span>
+                <span className="ranking-preview-name">
+                  {r.username || 'Jugador'} <EloBadge elo={r.elo} />
+                </span>
                 <span className="ranking-preview-score">{detail(r)}</span>
               </Link>
             </li>
@@ -65,7 +68,14 @@ export default function RankingPreview() {
 
       <PreviewList
         title="Top 5 de hoy"
-        rows={dayRows.map((r) => ({ key: r.id, id: r.id, avatarUrl: r.profile?.avatar_url, username: r.profile?.username, total_score: r.total_score }))}
+        rows={dayRows.map((r) => ({
+          key: r.id,
+          id: r.id,
+          avatarUrl: r.profile?.avatar_url,
+          username: r.profile?.username,
+          elo: r.profile?.elo,
+          total_score: r.total_score,
+        }))}
         emptyText="Nadie jugó en modo competitivo hoy todavía."
         detail={(r) => `${r.total_score} pts`}
         to={(r) => `/mapa-diario/${r.id}`}
@@ -73,7 +83,13 @@ export default function RankingPreview() {
 
       <PreviewList
         title="Top 5 histórico"
-        rows={avgRows.map((a) => ({ key: a.profileId, avatarUrl: a.profile?.avatar_url, username: a.profile?.username, avgScore: a.avgScore }))}
+        rows={avgRows.map((a) => ({
+          key: a.profileId,
+          avatarUrl: a.profile?.avatar_url,
+          username: a.profile?.username,
+          elo: a.profile?.elo,
+          avgScore: a.avgScore,
+        }))}
         emptyText="Todavía nadie jugó en modo competitivo."
         detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
         to={(a) => `/jugador/${a.username}`}

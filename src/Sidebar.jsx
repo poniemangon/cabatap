@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import EloBadge from './EloBadge'
 
 function timeAgo(isoString) {
   const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
@@ -87,7 +88,9 @@ export default function Sidebar({
                 <span className="sidebar-profile-avatar sidebar-profile-avatar-fallback">🙂</span>
               )}
               <span className="sidebar-profile-info">
-                <span className="sidebar-profile-name">{displayName}</span>
+                <span className="sidebar-profile-name">
+                  {displayName} <EloBadge elo={profile?.elo} />
+                </span>
                 <span className="sidebar-profile-link">Ver perfil</span>
               </span>
             </button>
@@ -144,7 +147,7 @@ export default function Sidebar({
               disabled={duelInProgress}
               onClick={withClose(onDuel)}
             >
-              <span className="sidebar-nav-icon">⚔️</span> Duelo 1 vs 1
+              <span className="sidebar-nav-icon">🏅</span> Duelo rankeado
             </button>
           )}
           {isSignedIn && (
@@ -154,7 +157,7 @@ export default function Sidebar({
               disabled={duelInProgress}
               onClick={withClose(onMultiplayerDuel)}
             >
-              <span className="sidebar-nav-icon">👥</span> Duelo multijugador
+              <span className="sidebar-nav-icon">🔒</span> Duelo privado
             </button>
           )}
         </nav>

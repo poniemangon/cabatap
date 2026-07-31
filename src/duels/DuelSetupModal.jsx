@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import BarrioPicker from './BarrioPicker'
+import EloBadge from '../EloBadge'
 
 export default function DuelSetupModal({ barrios, friends, initialOpponentId = null, onClose, onStart, duelTimeLimit }) {
   const [selected, setSelected] = useState(() => new Set())
@@ -41,7 +42,7 @@ export default function DuelSetupModal({ barrios, friends, initialOpponentId = n
               className={`duel-friend-chip${opponentId === f.id ? ' selected' : ''}`}
               onClick={() => setOpponentId(f.id)}
             >
-              {f.username}
+              {f.username} <EloBadge elo={f.elo} />
             </button>
           ))}
         </div>

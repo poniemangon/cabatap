@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CalendarPicker from './CalendarPicker'
+import EloBadge from './EloBadge'
 import useProfile from './hooks/useProfile'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
 import './RankingBoard.css'
@@ -17,7 +18,7 @@ function formatDailyDate(dayNumber) {
 
 const MAX_SIZE = 100
 
-function RankRow({ rank, avatarUrl, username, detail, to }) {
+function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
   return (
     <li>
       <Link to={to} className="ranking-row">
@@ -27,7 +28,9 @@ function RankRow({ rank, avatarUrl, username, detail, to }) {
         ) : (
           <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
         )}
-        <span className="ranking-row-name">{username || 'Jugador'}</span>
+        <span className="ranking-row-name">
+          {username || 'Jugador'} <EloBadge elo={elo} />
+        </span>
         <span className="ranking-row-detail">{detail}</span>
       </Link>
     </li>
@@ -73,6 +76,7 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to }
                 rank={i + 1}
                 avatarUrl={item.avatarUrl}
                 username={item.username}
+                elo={item.elo}
                 detail={renderDetail(item)}
                 to={to(item)}
               />
@@ -129,7 +133,13 @@ export default function RankingBoard() {
             Ver otro día
           </button>
         }
-        items={dayResults.map((r) => ({ key: r.id, avatarUrl: r.profile?.avatar_url, username: r.profile?.username, ...r }))}
+        items={dayResults.map((r) => ({
+          key: r.id,
+          avatarUrl: r.profile?.avatar_url,
+          username: r.profile?.username,
+          elo: r.profile?.elo,
+          ...r,
+        }))}
         emptyText="Nadie jugó en modo competitivo ese día."
         renderDetail={(r) => `${r.total_score} pts`}
         to={(r) => `/mapa-diario/${r.id}`}
@@ -137,7 +147,13 @@ export default function RankingBoard() {
 
       <LeaderboardSection
         title="Mejor promedio (histórico)"
-        items={averages.map((a) => ({ key: a.profileId, avatarUrl: a.profile?.avatar_url, username: a.profile?.username, ...a }))}
+        items={averages.map((a) => ({
+          key: a.profileId,
+          avatarUrl: a.profile?.avatar_url,
+          username: a.profile?.username,
+          elo: a.profile?.elo,
+          ...a,
+        }))}
         emptyText="Todavía nadie jugó en modo competitivo."
         renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
         to={(a) => `/jugador/${a.profile?.username}`}

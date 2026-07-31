@@ -5,6 +5,7 @@ import useProfile, { slugifyUsername } from '../hooks/useProfile'
 import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
 import { listMyDuels, listMyPendingDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
+import EloBadge from '../EloBadge'
 import './ProfilePage.css'
 
 const SEARCH_PAGE_SIZE = 8
@@ -42,7 +43,8 @@ function DuelRow({ duel, myProfileId, onOpen }) {
   }
 
   const iAmChallenger = duel.challenger_id === myProfileId
-  const opponentName = others[0]?.profile?.username || (iAmChallenger ? duel.opponent : duel.challenger)?.username || 'esperando rival'
+  const opponentProfile = others[0]?.profile || (iAmChallenger ? duel.opponent : duel.challenger)
+  const opponentName = opponentProfile?.username || 'esperando rival'
   const theirs = others[0]
 
   let verdict = 'Esperando al rival'
@@ -54,7 +56,9 @@ function DuelRow({ duel, myProfileId, onOpen }) {
 
   return (
     <li className="profile-duel-row profile-duel-row-clickable" onClick={onOpen}>
-      <span className="profile-duel-opponent">vs. {opponentName}</span>
+      <span className="profile-duel-opponent">
+        vs. {opponentName} <EloBadge elo={opponentProfile?.elo} />
+      </span>
       <span className="profile-duel-score">
         {mine.total_score} — {theirs ? theirs.total_score : '?'}
       </span>
@@ -256,6 +260,7 @@ export default function ProfilePage() {
           ) : (
             <h1 className="profile-username">
               {profileLoading ? 'Cargando...' : profile?.username}
+              {profile && <EloBadge elo={profile.elo} />}
               {profile && (
                 <button type="button" className="profile-username-edit-btn" onClick={startEditUsername}>
                   ✏️
@@ -298,7 +303,7 @@ export default function ProfilePage() {
                   return (
                     <li key={u.id} className="profile-friend-row">
                       <Link to={`/jugador/${u.username}`} className="profile-friend-name-link">
-                        {u.username}
+                        {u.username} <EloBadge elo={u.elo} />
                       </Link>
                       {status === 'none' && (
                         <button type="button" className="primary-btn secondary-btn" onClick={() => handleAddFriend(u)}>
@@ -345,7 +350,9 @@ export default function ProfilePage() {
             <ul className="profile-friend-list">
               {friends.incoming.map((f) => (
                 <li key={f.id} className="profile-friend-row">
-                  <span>{f.from.username}</span>
+                  <span>
+                    {f.from.username} <EloBadge elo={f.from.elo} />
+                  </span>
                   <span className="profile-friend-actions">
                     <button type="button" className="primary-btn secondary-btn" onClick={() => handleRespond(f.id, 'accepted')}>
                       Aceptar
@@ -366,7 +373,9 @@ export default function ProfilePage() {
             <ul className="profile-friend-list">
               {friends.outgoing.map((f) => (
                 <li key={f.id} className="profile-friend-row">
-                  <span>{f.to.username}</span>
+                  <span>
+                    {f.to.username} <EloBadge elo={f.to.elo} />
+                  </span>
                   <span className="profile-friend-pending">Pendiente</span>
                 </li>
               ))}
@@ -390,7 +399,9 @@ export default function ProfilePage() {
                     ) : (
                       <span className="friend-card-avatar friend-card-avatar-fallback">🙂</span>
                     )}
-                    <div className="friend-card-name">{f.friend.username}</div>
+                    <div className="friend-card-name">
+                      {f.friend.username} <EloBadge elo={f.friend.elo} />
+                    </div>
                     {hasHistory ? (
                       <div className="friend-card-h2h">
                         <span className="friend-card-h2h-wins">{h2h.wins}G</span>

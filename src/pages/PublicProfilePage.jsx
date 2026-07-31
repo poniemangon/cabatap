@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getProfileByUsername } from '../friends/friendsApi'
 import { listMyDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
+import EloBadge from '../EloBadge'
 import './ProfilePage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -37,7 +38,8 @@ function PublicDuelRow({ duel }) {
   return (
     <li className="profile-duel-row">
       <span className="profile-duel-opponent">
-        {a?.profile?.username || 'Jugador'} vs {b?.profile?.username || 'esperando rival'}
+        {a?.profile?.username || 'Jugador'} <EloBadge elo={a?.profile?.elo} /> vs{' '}
+        {b?.profile?.username || 'esperando rival'} <EloBadge elo={b?.profile?.elo} />
       </span>
       <span className="profile-duel-score">{b ? `${a.total_score} — ${b.total_score}` : `${a.total_score}`}</span>
     </li>
@@ -111,7 +113,9 @@ export default function PublicProfilePage() {
             ) : (
               <span className="profile-avatar profile-avatar-fallback">🙂</span>
             )}
-            <h1 className="profile-username">{profile.username}</h1>
+            <h1 className="profile-username">
+              {profile.username} <EloBadge elo={profile.elo} />
+            </h1>
           </header>
 
           <section className="profile-section">

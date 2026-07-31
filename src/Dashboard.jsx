@@ -51,14 +51,14 @@ export default function Dashboard({
               <span className="dashboard-mode-desc">Solo ubicaciones únicas: monumentos, lugares históricos y más.</span>
             </button>
             <button type="button" className="dashboard-mode-card" onClick={onDuel}>
-              <span className="dashboard-mode-icon">⚔️</span>
-              <span className="dashboard-mode-title">Duelo 1 vs 1</span>
-              <span className="dashboard-mode-desc">Privado (amigo o link) o random — elegís al entrar.</span>
+              <span className="dashboard-mode-icon">🏅</span>
+              <span className="dashboard-mode-title">Duelo rankeado</span>
+              <span className="dashboard-mode-desc">Emparejamiento instantáneo — afecta tu ELO.</span>
             </button>
             <button type="button" className="dashboard-mode-card" onClick={onMultiplayerDuel}>
-              <span className="dashboard-mode-icon">👥</span>
-              <span className="dashboard-mode-title">Duelo multijugador</span>
-              <span className="dashboard-mode-desc">Armá una sala abierta por link para varios jugadores.</span>
+              <span className="dashboard-mode-icon">🔒</span>
+              <span className="dashboard-mode-title">Duelo privado</span>
+              <span className="dashboard-mode-desc">1 vs 1 con amigos o multijugador — no afecta tu ELO.</span>
             </button>
           </>
         )}

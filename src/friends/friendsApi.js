@@ -11,7 +11,7 @@ export async function searchUsers(query, excludeProfileId, { page = 0, pageSize 
   const to = from + pageSize - 1
   const { data, error, count } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url', { count: 'exact' })
+    .select('id, username, avatar_url, elo', { count: 'exact' })
     .ilike('username', `%${query}%`)
     .neq('id', excludeProfileId)
     .order('username', { ascending: true })
@@ -25,7 +25,7 @@ export async function searchUsers(query, excludeProfileId, { page = 0, pageSize 
 export async function getProfileByUsername(username) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url')
+    .select('id, username, avatar_url, elo')
     .eq('username', username)
     .maybeSingle()
   if (error) throw error
@@ -61,7 +61,9 @@ export async function respondFriendRequest(friendshipId, status) {
 export async function listFriendships(profileId) {
   const { data, error } = await supabase
     .from('friendships')
-    .select('*, requester:requester_id(id, username, avatar_url), addressee:addressee_id(id, username, avatar_url)')
+    .select(
+      '*, requester:requester_id(id, username, avatar_url, elo), addressee:addressee_id(id, username, avatar_url, elo)',
+    )
     .or(`requester_id.eq.${profileId},addressee_id.eq.${profileId}`)
   if (error) throw error
 

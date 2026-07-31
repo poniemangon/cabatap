@@ -1379,3 +1379,60 @@
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
+
+.elo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.elo-badge-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.elo-bronze {
+  color: #cd7f32;
+}
+.elo-bronze .elo-badge-icon {
+  fill: #cd7f32;
+}
+
+.elo-silver {
+  color: #9ca3af;
+}
+.elo-silver .elo-badge-icon {
+  fill: #c0c0c0;
+}
+
+.elo-gold {
+  color: #b8860b;
+}
+.elo-gold .elo-badge-icon {
+  fill: #ffd700;
+}
+
+.elo-platinum {
+  color: #6b7280;
+}
+.elo-platinum .elo-badge-icon {
+  fill: #9ca3af;
+}
+
+.elo-master {
+  color: #8b5cf6;
+}
+.elo-master .elo-badge-icon {
+  fill: #8b5cf6;
+}
+
+.elo-grandmaster {
+  color: #ef4444;
+}
+.elo-grandmaster .elo-badge-icon {
+  fill: #ef4444;
+}

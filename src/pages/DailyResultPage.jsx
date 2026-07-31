@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ResultsMap from '../ResultsMap'
 import { getDailyStatById } from '../daily/dailyApi'
+import EloBadge from '../EloBadge'
 import './DailyResultPage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -59,7 +60,9 @@ export default function DailyResultPage() {
               <span className="daily-result-avatar daily-result-avatar-fallback">🙂</span>
             )}
             <div>
-              <h1 className="daily-result-username">{stat.profile?.username || 'Jugador'}</h1>
+              <h1 className="daily-result-username">
+                {stat.profile?.username || 'Jugador'} <EloBadge elo={stat.profile?.elo} />
+              </h1>
               <p className="daily-result-meta">
                 {formatDailyDate(stat.day_number)} — {stat.total_score} pts —{' '}
                 <span className={`daily-mode-tag${stat.timed ? ' daily-mode-tag-timed' : ''}`}>

@@ -60,7 +60,7 @@ export async function findOpenRandomDuel(excludeProfileId) {
 export async function getDuelByCode(inviteCode) {
   const { data, error } = await supabase
     .from('duels')
-    .select('*, challenger:challenger_id(id, username), opponent:opponent_id(id, username)')
+    .select('*, challenger:challenger_id(id, username, elo), opponent:opponent_id(id, username, elo)')
     .eq('invite_code', inviteCode)
     .maybeSingle()
   if (error) throw error
@@ -201,7 +201,7 @@ export function submitDuelResultBeacon({ duelId, profileId, results, totalScore 
 export async function getDuelResults(duelId) {
   const { data, error } = await supabase
     .from('duel_results')
-    .select('*, profile:profile_id(id, username)')
+    .select('*, profile:profile_id(id, username, elo)')
     .eq('duel_id', duelId)
     .order('total_score', { ascending: false })
   if (error) throw error
@@ -227,9 +227,9 @@ export async function listMyDuels(profileId) {
     .from('duels')
     .select(
       `*,
-      challenger:challenger_id(id, username),
-      opponent:opponent_id(id, username),
-      duel_results(profile_id, total_score, completed_at, profile:profile_id(id, username))`,
+      challenger:challenger_id(id, username, elo),
+      opponent:opponent_id(id, username, elo),
+      duel_results(profile_id, total_score, completed_at, profile:profile_id(id, username, elo))`,
     )
     .in('id', duelIds)
     .order('created_at', { ascending: false })
