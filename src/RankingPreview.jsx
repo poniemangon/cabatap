@@ -15,6 +15,27 @@ function todayDayNumber() {
 
 const TOP_N = 5
 
+function PreviewRow({ rank, row, detail, to }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  return (
+    <li>
+      <Link to={to} className="ranking-preview-row">
+        <span className="ranking-preview-rank">#{rank}</span>
+        {row.avatarUrl && !imgFailed ? (
+          <img src={row.avatarUrl} alt="" className="ranking-preview-avatar" onError={() => setImgFailed(true)} />
+        ) : (
+          <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
+        )}
+        <span className="ranking-preview-name-wrap">
+          <span className="ranking-preview-name">{row.username || 'Jugador'}</span>
+          <EloBadge elo={row.elo} />
+        </span>
+        <span className="ranking-preview-score">{detail}</span>
+      </Link>
+    </li>
+  )
+}
+
 function PreviewList({ title, rows, emptyText, detail, to }) {
   return (
     <div className="ranking-preview-section">
@@ -24,21 +45,7 @@ function PreviewList({ title, rows, emptyText, detail, to }) {
       ) : (
         <ul className="ranking-preview-list">
           {rows.map((r, i) => (
-            <li key={r.key}>
-              <Link to={to(r)} className="ranking-preview-row">
-                <span className="ranking-preview-rank">#{i + 1}</span>
-                {r.avatarUrl ? (
-                  <img src={r.avatarUrl} alt="" className="ranking-preview-avatar" />
-                ) : (
-                  <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
-                )}
-                <span className="ranking-preview-name-wrap">
-                  <span className="ranking-preview-name">{r.username || 'Jugador'}</span>
-                  <EloBadge elo={r.elo} />
-                </span>
-                <span className="ranking-preview-score">{detail(r)}</span>
-              </Link>
-            </li>
+            <PreviewRow key={r.key} rank={i + 1} row={r} detail={detail(r)} to={to(r)} />
           ))}
         </ul>
       )}

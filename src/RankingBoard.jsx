@@ -20,12 +20,13 @@ function formatDailyDate(dayNumber) {
 const MAX_SIZE = 100
 
 function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
+  const [imgFailed, setImgFailed] = useState(false)
   return (
     <li>
       <Link to={to} className="ranking-row">
         <span className="ranking-row-rank">#{rank}</span>
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="ranking-row-avatar" />
+        {avatarUrl && !imgFailed ? (
+          <img src={avatarUrl} alt="" className="ranking-row-avatar" onError={() => setImgFailed(true)} />
         ) : (
           <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
         )}
