@@ -206,10 +206,10 @@ const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
 const ELO_INFO_SESSION_KEY = 'ubicaba-elo-info-shown'
-// Fixed 5-round intro shown once per browser session to signed-out first-
-// time visitors, before they've ever seen a real map — a curated preview
-// rather than random corners. Indices into the intersections pool.
-const TEST_MAP_ROUND_INDICES = [4027, 4028, 4029, 4030, 4031]
+// Single-round tutorial (the Obelisco, pool_index 4000) shown once per
+// browser session to signed-out first-time visitors, before they've ever
+// seen a real map. Feeds straight into "jugar mapa del día" once it's over.
+const TEST_MAP_ROUND_INDICES = [4000]
 
 function loadStoredSession() {
   try {
@@ -284,6 +284,8 @@ function App() {
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
   const [registerPopupOpen, setRegisterPopupOpen] = useState(false)
+  const [tutorialIntroOpen, setTutorialIntroOpen] = useState(false)
+  const [playDailyPromptOpen, setPlayDailyPromptOpen] = useState(false)
   const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -500,13 +502,12 @@ function App() {
 
   const isReady = !!pool && !!barrios && initialized
 
-  // Waits for the test-map intro (see the mount effect above) to actually
-  // finish before nagging a first-time visitor to register — if they never
-  // reach gameOver on it this session (abandoned it, closed the tab), the
-  // popup just doesn't show rather than firing at some other arbitrary
-  // point. Still capped at once per session via REGISTER_POPUP_SESSION_KEY.
+  // Fires as soon as a signed-out visitor finishes a real "Mapa del día"
+  // attempt — whether they got there straight from the dashboard or via the
+  // one-round tutorial (see the mount effect above and playDailyPromptOpen
+  // below). Capped at once per session via REGISTER_POPUP_SESSION_KEY.
   useEffect(() => {
-    if (phase !== 'gameOver' || gameMode !== 'testmap' || isSignedIn) return
+    if (phase !== 'gameOver' || gameMode !== 'daily' || isSignedIn) return
     try {
       if (!sessionStorage.getItem(REGISTER_POPUP_SESSION_KEY)) {
         sessionStorage.setItem(REGISTER_POPUP_SESSION_KEY, '1')
@@ -516,6 +517,20 @@ function App() {
       // sessionStorage unavailable (private browsing, etc.); just skip the popup
     }
   }, [phase, gameMode, isSignedIn])
+
+  // Tutorial: the intro popup fires once, the instant the one-round preview
+  // game becomes active (see the mount effect above for how/when
+  // gameMode==='testmap' gets set up). Reaching gameOver on it — there's
+  // only ever one round — prompts "jugar mapa del día" next instead of the
+  // normal share/results screen, which wouldn't make sense for a single
+  // practice guess.
+  useEffect(() => {
+    if (view === 'game' && gameMode === 'testmap') setTutorialIntroOpen(true)
+  }, [view, gameMode])
+
+  useEffect(() => {
+    if (phase === 'gameOver' && gameMode === 'testmap') setPlayDailyPromptOpen(true)
+  }, [phase, gameMode])
 
   // Explains the ELO badge next to usernames to signed-in players — once per
   // browser session via ELO_INFO_SESSION_KEY, same mechanism as the register
@@ -656,14 +671,14 @@ function App() {
 
   const handleNextRound = useCallback(() => {
     setRoundIndex((i) => {
-      if (i + 1 >= TOTAL_ROUNDS) {
+      if (i + 1 >= roundIndices.length) {
         setPhase('gameOver')
         return i
       }
       setPhase('guessing')
       return i + 1
     })
-  }, [])
+  }, [roundIndices])
 
   // timeLeft is display-only (drives the HUD countdown). The actual "time's
   // up" decision is made from a local `ticksLeft` variable owned by this
@@ -1395,7 +1410,7 @@ function App() {
           </button>
         </div>
         <img src={registerImg} alt="" className="register-popup-image" />
-        <p className="special-suggest-text">Registrate para que tu mapa del día compita con todos los jugadores.</p>
+        <p className="special-suggest-text">Registrate para guardar tus puntajes y competir con otros jugadores.</p>
         <button
           type="button"
           className="primary-btn"
@@ -1405,6 +1420,50 @@ function App() {
           }}
         >
           Registrarme
+        </button>
+      </div>
+    </div>
+  )
+
+  const tutorialIntroPopup = tutorialIntroOpen && (
+    <div className="modal-backdrop" onClick={() => setTutorialIntroOpen(false)}>
+      <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>Tutorial</span>
+          <button type="button" className="calendar-close" onClick={() => setTutorialIntroOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="special-suggest-text">
+          Te voy a pasar una ubicación y vos tenés que tocar en el mapa donde creés que es. Cuanto más cerca, más
+          puntos.
+        </p>
+        <button type="button" className="primary-btn" onClick={() => setTutorialIntroOpen(false)}>
+          ¡Dale!
+        </button>
+      </div>
+    </div>
+  )
+
+  const playDailyPromptPopup = playDailyPromptOpen && (
+    <div className="modal-backdrop" onClick={() => setPlayDailyPromptOpen(false)}>
+      <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>¡Ahora la posta!</span>
+          <button type="button" className="calendar-close" onClick={() => setPlayDailyPromptOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="special-suggest-text">Eso era solo un ejemplo. ¿Jugamos el mapa del día de verdad?</p>
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={() => {
+            setPlayDailyPromptOpen(false)
+            handleDaily()
+          }}
+        >
+          Jugar mapa del día
         </button>
       </div>
     </div>
@@ -1676,7 +1735,7 @@ function App() {
               </button>
               <span className="final-score-label">Puntaje final</span>
               <span className="final-score-value">{totalScore}</span>
-              <span className="final-score-max">/ {TOTAL_ROUNDS * 100}</span>
+              <span className="final-score-max">/ {roundIndices.length * 100}</span>
             </div>
           ) : (
             <button
@@ -1684,7 +1743,7 @@ function App() {
               className="final-score-reopen"
               onClick={() => setScoreOverlayOpen(true)}
             >
-              🏆 {totalScore} / {TOTAL_ROUNDS * 100}
+              🏆 {totalScore} / {roundIndices.length * 100}
             </button>
           )}
         </div>
@@ -1869,7 +1928,7 @@ function App() {
       <>
         <header className="hud">
           <div className="hud-row">
-            <span className="round-label">Ronda {roundIndex + 1} / {TOTAL_ROUNDS}</span>
+            <span className="round-label">Ronda {roundIndex + 1} / {roundIndices.length}</span>
             {phase === 'guessing' && timeLimit != null && (
               <span className={`duel-timer${timeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {timeLeft}s</span>
             )}
@@ -1929,7 +1988,7 @@ function App() {
           <RoundResultModal
             points={results[roundIndex].points}
             distance={results[roundIndex].distance}
-            isLastRound={roundIndex + 1 >= TOTAL_ROUNDS}
+            isLastRound={roundIndex + 1 >= roundIndices.length}
             onNext={handleNextRound}
           />
         )}
@@ -1955,6 +2014,8 @@ function App() {
       {duelSetupPopup}
       {multiplayerSetupPopup}
       {registerPopup}
+      {tutorialIntroPopup}
+      {playDailyPromptPopup}
       {eloInfoPopup}
       {authGatePopup}
       {authModalPopup}
