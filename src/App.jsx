@@ -1434,7 +1434,7 @@ function App() {
             ✕
           </button>
         </div>
-        <p className="special-suggest-text">
+        <p className="special-suggest-text tutorial-popup-text">
           Encontrá moviendo el mapa y tocando donde creés que está la ubicación que figura en pantalla.
         </p>
         <button type="button" className="primary-btn" onClick={() => setTutorialIntroOpen(false)}>
@@ -1453,7 +1453,7 @@ function App() {
             ✕
           </button>
         </div>
-        <p className="special-suggest-text">Eso era solo un ejemplo. ¿Jugamos el mapa del día de verdad?</p>
+        <p className="special-suggest-text tutorial-popup-text">Eso era solo un ejemplo. ¿Jugamos el mapa del día de verdad?</p>
         <button
           type="button"
           className="primary-btn"

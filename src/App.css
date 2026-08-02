@@ -475,6 +475,11 @@
   color: var(--text-h, #f5f5f5);
 }
 
+.tutorial-popup-text {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
 .special-suggest-text a {
   color: var(--accent-secondary, #ffd60a);
   text-decoration: underline;
