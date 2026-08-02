@@ -308,8 +308,8 @@
 
 .rank-status-tooltip {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: -36px;
+  right: -4px;
   top: 100%;
   margin-top: 6px;
   padding: 10px 12px;
@@ -326,9 +326,14 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
+  /* Delayed on the way out (not the way in) so moving the pointer from the
+     icon down into the tooltip — crossing the unhoverable margin-top gap —
+     doesn't dismiss it before it's reachable. */
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+    opacity 0.15s ease 0.3s,
+    transform 0.15s ease 0.3s,
+    visibility 0s linear 0.3s,
+    pointer-events 0s linear 0.3s;
   pointer-events: none;
   z-index: 60;
 }
@@ -339,6 +344,9 @@
   visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .rank-status-tooltip a {
