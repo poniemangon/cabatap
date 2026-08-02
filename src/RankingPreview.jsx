@@ -87,7 +87,7 @@ export default function RankingPreview() {
             id: r.id,
             avatarUrl: r.profile?.avatar_url,
             username: r.profile?.username,
-            elo: r.profile?.elo,
+            elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
             total_score: r.total_score,
           }))}
           emptyText="Nadie jugó en modo competitivo hoy todavía."
@@ -101,7 +101,7 @@ export default function RankingPreview() {
             key: a.profileId,
             avatarUrl: a.profile?.avatar_url,
             username: a.profile?.username,
-            elo: a.profile?.elo,
+            elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
             avgScore: a.avgScore,
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."

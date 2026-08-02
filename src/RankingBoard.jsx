@@ -150,7 +150,7 @@ export default function RankingBoard() {
             key: r.id,
             avatarUrl: r.profile?.avatar_url,
             username: r.profile?.username,
-            elo: r.profile?.elo,
+            elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
             ...r,
           }))}
           emptyText="Nadie jugó en modo competitivo ese día."
@@ -164,7 +164,7 @@ export default function RankingBoard() {
             key: a.profileId,
             avatarUrl: a.profile?.avatar_url,
             username: a.profile?.username,
-            elo: a.profile?.elo,
+            elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
             ...a,
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."
