@@ -1429,14 +1429,13 @@ function App() {
     <div className="modal-backdrop" onClick={() => setTutorialIntroOpen(false)}>
       <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
         <div className="custom-modal-header">
-          <span>Tutorial</span>
+          <span>Cómo jugar</span>
           <button type="button" className="calendar-close" onClick={() => setTutorialIntroOpen(false)}>
             ✕
           </button>
         </div>
         <p className="special-suggest-text">
-          Te voy a pasar una ubicación y vos tenés que tocar en el mapa donde creés que es. Cuanto más cerca, más
-          puntos.
+          Encontrá moviendo el mapa y tocando donde creés que está la ubicación que figura en pantalla.
         </p>
         <button type="button" className="primary-btn" onClick={() => setTutorialIntroOpen(false)}>
           ¡Dale!
