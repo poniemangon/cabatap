@@ -326,27 +326,21 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
-  /* Delayed on the way out (not the way in) so moving the pointer from the
-     icon down into the tooltip — crossing the unhoverable margin-top gap —
-     doesn't dismiss it before it's reachable. */
   transition:
-    opacity 0.15s ease 0.3s,
-    transform 0.15s ease 0.3s,
-    visibility 0s linear 0.3s,
-    pointer-events 0s linear 0.3s;
+    opacity 0.15s ease,
+    transform 0.15s ease;
   pointer-events: none;
   z-index: 60;
 }
 
-.rank-status-info-wrap:hover .rank-status-tooltip,
-.rank-status-info-wrap:focus-visible .rank-status-tooltip {
+/* open/close is JS-driven (see RankStatus.jsx) — a pointer over either the
+   icon or the tooltip itself keeps it open, with a 300ms grace period on
+   leaving either one before it actually closes. */
+.rank-status-tooltip-open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
 }
 
 .rank-status-tooltip a {
