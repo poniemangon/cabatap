@@ -364,6 +364,18 @@
     z-index: 45;
     background: rgba(0, 0, 0, 0.5);
   }
+
+  .dashboard-daily-card {
+    order: 1;
+  }
+
+  .ranking-preview-cards {
+    order: 2;
+  }
+
+  .dashboard-grid {
+    order: 3;
+  }
 }
 
 .loading-screen {
@@ -1071,6 +1083,8 @@
 
 .dashboard {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   padding: 28px;
 }
