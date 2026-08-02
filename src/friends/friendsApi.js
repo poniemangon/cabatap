@@ -25,7 +25,7 @@ export async function searchUsers(query, excludeProfileId, { page = 0, pageSize 
 export async function getProfileByUsername(username) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url, elo')
+    .select('id, username, avatar_url, elo, ranked_games_played')
     .eq('username', username)
     .maybeSingle()
   if (error) throw error

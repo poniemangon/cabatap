@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import EloBadge from './EloBadge'
+import RankStatus from './RankStatus'
 
 function timeAgo(isoString) {
   const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
@@ -88,8 +89,9 @@ export default function Sidebar({
                 <span className="sidebar-profile-avatar sidebar-profile-avatar-fallback">🙂</span>
               )}
               <span className="sidebar-profile-info">
+                {profile && (profile.ranked_games_played > 0 ? null : <RankStatus />)}
                 <span className="sidebar-profile-name">{displayName}</span>
-                <EloBadge elo={profile?.elo} />
+                {profile?.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
                 <span className="sidebar-profile-link">Ver perfil</span>
               </span>
             </button>

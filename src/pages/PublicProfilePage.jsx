@@ -114,9 +114,12 @@ export default function PublicProfilePage() {
             ) : (
               <span className="profile-avatar profile-avatar-fallback">🙂</span>
             )}
-            <h1 className="profile-username">
-              {profile.username} <EloBadge elo={profile.elo} />
-            </h1>
+            <div className="profile-header-info">
+              {!(profile.ranked_games_played > 0) && <p className="profile-rank-status">(Sin ranking)</p>}
+              <h1 className="profile-username">
+                {profile.username} {profile.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
+              </h1>
+            </div>
           </header>
 
           <section className="profile-section">

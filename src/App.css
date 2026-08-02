@@ -267,6 +267,29 @@
   margin: 1px 0;
 }
 
+.rank-status-none {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text, #9ca3af);
+}
+
+.rank-status-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 9px;
+  font-style: normal;
+  cursor: help;
+}
+
 .sidebar-signup-btn {
   margin-top: auto;
   width: 100%;

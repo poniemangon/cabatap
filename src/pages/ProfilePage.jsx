@@ -242,6 +242,9 @@ export default function ProfilePage() {
           <span className="profile-avatar profile-avatar-fallback">🙂</span>
         )}
         <div className="profile-header-info">
+          {profile && !(profile.ranked_games_played > 0) && (
+            <p className="profile-rank-status">(Sin ranking)</p>
+          )}
           {editingUsername ? (
             <form className="profile-username-edit" onSubmit={handleSaveUsername}>
               <input
@@ -261,7 +264,7 @@ export default function ProfilePage() {
           ) : (
             <h1 className="profile-username">
               {profileLoading ? 'Cargando...' : profile?.username}
-              {profile && <EloBadge elo={profile.elo} />}
+              {profile?.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
               {profile && (
                 <button type="button" className="profile-username-edit-btn" onClick={startEditUsername}>
                   ✏️

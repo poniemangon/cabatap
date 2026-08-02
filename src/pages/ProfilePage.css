@@ -93,6 +93,13 @@
   gap: 10px;
 }
 
+.profile-rank-status {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #9ca3af);
+}
+
 .profile-username-edit-btn {
   border: none;
   background: transparent;
