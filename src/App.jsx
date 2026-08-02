@@ -1427,7 +1427,7 @@ function App() {
 
   const tutorialIntroPopup = tutorialIntroOpen && (
     <div className="modal-backdrop" onClick={() => setTutorialIntroOpen(false)}>
-      <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="custom-modal tutorial-popup" onClick={(e) => e.stopPropagation()}>
         <div className="custom-modal-header">
           <span>Cómo jugar</span>
           <button type="button" className="calendar-close" onClick={() => setTutorialIntroOpen(false)}>
@@ -1446,7 +1446,7 @@ function App() {
 
   const playDailyPromptPopup = playDailyPromptOpen && (
     <div className="modal-backdrop" onClick={() => setPlayDailyPromptOpen(false)}>
-      <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="custom-modal tutorial-popup" onClick={(e) => e.stopPropagation()}>
         <div className="custom-modal-header">
           <span>¡Ahora la posta!</span>
           <button type="button" className="calendar-close" onClick={() => setPlayDailyPromptOpen(false)}>
