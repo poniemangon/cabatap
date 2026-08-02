@@ -1910,10 +1910,16 @@ function App() {
           )}
 
           <div className="gameover-actions">
-            {!(gameMode === 'duel' && activeDuel?.matchmaking && !activeDuel?.closed_at && !duelOtherResult) && (
-              <button className="primary-btn secondary-btn" onClick={handleShare}>
-                {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
+            {gameMode === 'testmap' ? (
+              <button className="primary-btn secondary-btn" onClick={handleDaily}>
+                Jugar mapa del día
               </button>
+            ) : (
+              !(gameMode === 'duel' && activeDuel?.matchmaking && !activeDuel?.closed_at && !duelOtherResult) && (
+                <button className="primary-btn secondary-btn" onClick={handleShare}>
+                  {shareCopied ? '¡Copiado!' : 'Compartir resultado'}
+                </button>
+              )
             )}
             <button className="primary-btn" onClick={isSignedIn ? handleGoHome : () => openSignUp()}>
               {isSignedIn ? 'Ir al inicio' : 'Registrate'}
