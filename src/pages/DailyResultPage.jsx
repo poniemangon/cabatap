@@ -60,8 +60,10 @@ export default function DailyResultPage() {
               <span className="daily-result-avatar daily-result-avatar-fallback">🙂</span>
             )}
             <div>
+              {!(stat.profile?.ranked_games_played > 0) && <p className="daily-result-rank-status">(Sin ranking)</p>}
               <h1 className="daily-result-username">
-                {stat.profile?.username || 'Jugador'} <EloBadge elo={stat.profile?.elo} />
+                {stat.profile?.username || 'Jugador'}{' '}
+                {stat.profile?.ranked_games_played > 0 && <EloBadge elo={stat.profile.elo} />}
               </h1>
               <p className="daily-result-meta">
                 {formatDailyDate(stat.day_number)} — {stat.total_score} pts —{' '}
