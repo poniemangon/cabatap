@@ -17,7 +17,7 @@ export default function Dashboard({
         <div className="dashboard-daily-eyebrow">Desafío diario</div>
         <h1 className="dashboard-daily-title">Mapa del día</h1>
         <p className="dashboard-daily-text">
-          5 esquinas nuevas cada día. Todos juegan la misma partida — comparala con tus amigos.
+          5 esquinas nuevas cada día, en los mismos barrios para todos — comparala con tus amigos.
         </p>
         <button type="button" className="primary-btn dashboard-daily-btn" onClick={onDaily}>
           Jugar ahora

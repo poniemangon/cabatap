@@ -47,14 +47,9 @@ const SHARE_DOMAIN = window.location.origin
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
 
-// The daily/archive rotation is pinned to this fixed count, NOT the live pool
-// size. The pool now grows over time (special locations added via the admin
-// panel), and if the cycle length tracked that live count, every new row would
-// reshuffle which corners map to which past/future day. Anything at index
-// DAILY_CYCLE_POOL_SIZE or beyond simply never participates in the daily
-// cycle — it's still fully reachable via practice mode, custom-barrio games,
-// and direct share links, exactly like the original static-JSON behavior.
-const DAILY_CYCLE_POOL_SIZE = 4000
+// Fixed seed for the barrio shuffle below — not a secret, just needs to never
+// change so the daily cycle order stays stable across reloads/deploys.
+const BARRIO_SHUFFLE_SEED = 20240101
 
 function toRad(deg) {
   return (deg * Math.PI) / 180
@@ -83,15 +78,77 @@ function dayNumberForDate(date) {
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 
-// The first DAILY_CYCLE_POOL_SIZE rows are a fixed, pre-shuffled order (baked
-// in when the dataset was generated), so slicing consecutive windows of
-// TOTAL_ROUNDS gives a stable daily rotation with zero repeats until that
-// portion of the pool has been used once.
-function indicesForDay(dayNumber) {
-  const cycleLength = Math.floor(DAILY_CYCLE_POOL_SIZE / TOTAL_ROUNDS)
+// Deterministic PRNG (mulberry32) — used only to shuffle the barrio list
+// below with a fixed seed, so the shuffle is identical on every client/
+// reload instead of depending on Math.random.
+function mulberry32(seed) {
+  let s = seed
+  return () => {
+    s |= 0
+    s = (s + 0x6d2b79f5) | 0
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function seededShuffle(arr, seed) {
+  const rand = mulberry32(seed)
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+// Real barrios only — comuna 0 is the pseudo-barrio holding admin-added
+// "special locations" (famous landmarks), kept out of the normal daily
+// rotation just like before (see isAllSpecialSelection). Shuffled once with
+// a fixed seed so the day-to-day cycle order isn't just barrio_id ascending.
+function eligibleBarrioIdsShuffled(barrios) {
+  const ids = barrios.filter((b) => b.comuna !== 0).map((b) => b.barrio_id)
+  return seededShuffle(ids, BARRIO_SHUFFLE_SEED)
+}
+
+// Non-overlapping windows of TOTAL_ROUNDS barrios, same structure the old
+// intersection-based rotation used — day_number picks which window, so the
+// barrio set repeats every cycleLength days. Any leftover barrios beyond a
+// multiple of TOTAL_ROUNDS just never come up in the daily rotation (still
+// reachable via custom-barrio games).
+function barriosForDay(dayNumber, shuffledBarrioIds) {
+  const cycleLength = Math.floor(shuffledBarrioIds.length / TOTAL_ROUNDS)
+  if (cycleLength === 0) return shuffledBarrioIds.slice(0, TOTAL_ROUNDS)
   const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
   const start = cyclePos * TOTAL_ROUNDS
-  return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
+  return shuffledBarrioIds.slice(start, start + TOTAL_ROUNDS)
+}
+
+// The part that's actually random per player: one intersection per barrio,
+// freshly rolled every time this is called (registered or guest — nothing
+// here depends on who's asking), and the round order shuffled too — so two
+// players get the same 5 barrios today, but neither which exact corner nor
+// which round it lands on matches between them. The day's barrio *set* is
+// the only thing fixed for everyone.
+function randomIndicesForBarrios(pool, barrioIds) {
+  const byBarrio = new Map()
+  pool.forEach((it, i) => {
+    if (!byBarrio.has(it.barrio_id)) byBarrio.set(it.barrio_id, [])
+    byBarrio.get(it.barrio_id).push(i)
+  })
+  const indices = barrioIds
+    .map((id) => {
+      const candidates = byBarrio.get(id)
+      if (!candidates || candidates.length === 0) return null
+      return candidates[Math.floor(Math.random() * candidates.length)]
+    })
+    .filter((i) => i != null)
+  return shuffleSample(indices, indices.length)
+}
+
+function dailyRoundIndicesForDay(dayNumber, pool, barrios) {
+  const dayBarrioIds = barriosForDay(dayNumber, eligibleBarrioIdsShuffled(barrios))
+  return randomIndicesForBarrios(pool, dayBarrioIds)
 }
 
 // Signed-out guests never get a profiles row, so their daily result can't
@@ -361,19 +418,25 @@ function App() {
       markTestMapSeen()
       fresh = { roundIndices: TEST_MAP_ROUND_INDICES, gameMode: 'testmap', customBarrioIds: [] }
     } else {
+      const todayDayNumber = dayNumberForDate(new Date())
       fresh = {
-        roundIndices: indicesForDay(dayNumberForDate(new Date())),
+        dayNumber: todayDayNumber,
+        roundIndices: dailyRoundIndicesForDay(todayDayNumber, pool, barrios),
         gameMode: 'daily',
         customBarrioIds: [],
       }
     }
 
     const stored = loadStoredSession()
+    // 'daily' can't be resume-matched by comparing indices anymore — they're
+    // re-rolled per player on every fresh computation, so two calls the same
+    // day never come out equal. Match on the stored day_number instead; any
+    // other mode still compares indices directly like before.
     const isResume =
       !blockedByAuth &&
       stored &&
       stored.gameMode === fresh.gameMode &&
-      sameIndices(stored.roundIndices, fresh.roundIndices)
+      (fresh.gameMode === 'daily' ? stored.dayNumber === fresh.dayNumber : sameIndices(stored.roundIndices, fresh.roundIndices))
     const initial = isResume
       ? {
           roundIndices: stored.roundIndices,
@@ -558,7 +621,17 @@ function App() {
     try {
       sessionStorage.setItem(
         SESSION_STORAGE_KEY,
-        JSON.stringify({ roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view }),
+        JSON.stringify({
+          roundIndices,
+          gameMode,
+          customBarrioIds,
+          roundIndex,
+          phase,
+          results,
+          view,
+          // Only meaningful for 'daily' — see the mount effect's resume check.
+          dayNumber: gameMode === 'daily' ? dayNumberForDate(new Date()) : undefined,
+        }),
       )
     } catch {
       // sessionStorage unavailable (private browsing, etc.); ignore
@@ -829,7 +902,7 @@ function App() {
   }
 
   const handleSelectArchiveDay = (dayNumber) => {
-    startGame(indicesForDay(dayNumber), 'archive', { copyInvite: true })
+    startGame(dailyRoundIndicesForDay(dayNumber, pool, barrios), 'archive', { copyInvite: true })
   }
 
   const [dailyChoiceOpen, setDailyChoiceOpen] = useState(false)
@@ -885,7 +958,12 @@ function App() {
       })
       if (existing) {
         dailyResultSubmittedRef.current = true
-        setRoundIndices(indicesForDay(dayNumber))
+        // Corners are random per player now, so there's no way to recompute
+        // which ones this profile actually got — but the gameOver screen for
+        // an already-finished daily only ever reads `results` (which already
+        // has street names/points/distance baked in), never `roundIndices`
+        // itself beyond its length, so a same-length placeholder is enough.
+        setRoundIndices(new Array(existing.results.length).fill(0))
         setGameMode('daily')
         setCustomBarrioIds([])
         setResults(existing.results)
@@ -906,7 +984,8 @@ function App() {
       const stored = loadGuestDailyResult(dayNumber)
       if (stored) {
         dailyResultSubmittedRef.current = true
-        setRoundIndices(indicesForDay(dayNumber))
+        // Same reasoning as the signed-in branch above.
+        setRoundIndices(new Array(stored.results.length).fill(0))
         setGameMode('daily')
         setCustomBarrioIds([])
         setResults(stored.results)
@@ -918,7 +997,7 @@ function App() {
     }
 
     dailyResultSubmittedRef.current = false
-    startGame(indicesForDay(dayNumber), 'daily')
+    startGame(dailyRoundIndicesForDay(dayNumber, pool, barrios), 'daily')
   }
 
   const handleStartCustom = (selectedBarrioIds) => {
