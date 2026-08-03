@@ -7,6 +7,7 @@ import { getBadgesForProfiles } from './badges/badgesApi'
 import DailyWinBadge from './daily/DailyWinBadge'
 import { getDailyWinCountsForProfiles } from './daily/dailyWinsApi'
 import EloBadge, { eloTier } from './EloBadge'
+import EloInfoIcon from './EloInfoIcon'
 import './RankingPreview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -145,7 +146,9 @@ export default function RankingPreview() {
 
       <div className="ranking-preview">
         <div className="ranking-preview-header">
-          <h2 className="ranking-preview-title">🏅 Ranking de jugadores por ELO</h2>
+          <h2 className="ranking-preview-title">
+            🏅 Ranking de jugadores por ELO <EloInfoIcon />
+          </h2>
           <Link to="/ranking" className="ranking-preview-link">
             Ver ranking completo →
           </Link>

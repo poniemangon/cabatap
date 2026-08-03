@@ -1,9 +1,7 @@
-import { TIERS, EloTierIcon } from './EloBadge'
-
-function rangeLabel(tier) {
-  return tier.max === Infinity ? `${tier.min}+` : `${tier.min} - ${tier.max - 1}`
-}
-
+// Auto-shown once per browser session to signed-in visitors (see App.jsx's
+// ELO_INFO_SESSION_KEY effect) — a running author's-note announcement, not
+// the ELO explainer (that's EloInfoIcon's hover tooltip on the ranking
+// pages). Update the text here when there's something new to call out.
 export default function EloInfoModal({ onClose }) {
   return (
     <div className="custom-modal duel-choice-modal">
@@ -17,23 +15,6 @@ export default function EloInfoModal({ onClose }) {
       <p className="duel-setup-hint">
         Ahora el mapa del día es con ubicaciones random dentro de los mismos barrios.
       </p>
-
-      <p className="duel-setup-hint">
-        El número al lado de tu nombre es tu puntaje ELO: un ranking que sube y baja con los resultados de Duelo
-        rankeado, y define quién es el más capo de todos.
-      </p>
-
-      <ul className="elo-info-list">
-        {TIERS.map((tier) => (
-          <li key={tier.name} className="elo-info-row">
-            <span className={`elo-badge elo-info-tier ${tier.className}`}>
-              <EloTierIcon />
-              {tier.name}
-            </span>
-            <span className="elo-info-range">{rangeLabel(tier)}</span>
-          </li>
-        ))}
-      </ul>
 
       <button type="button" className="primary-btn start-custom-btn" onClick={onClose}>
         Entendido

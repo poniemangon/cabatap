@@ -349,6 +349,57 @@
   font-weight: 600;
 }
 
+/* Same hover/tooltip mechanism as .rank-status-info-wrap above, but this one
+   carries the full ELO explainer (paragraphs + tier list) and shows up
+   outside the sidebar's narrow column (ranking page, dashboard preview) —
+   fixed + JS-computed coordinates (see EloInfoIcon.jsx) instead of a
+   CSS-anchored absolute box, since this icon trails a heading whose wrap
+   point varies with card width; a fixed left/right anchor would overflow
+   the viewport in one context or the other. */
+.elo-info-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  outline: none;
+}
+
+.elo-info-icon-tooltip {
+  position: fixed;
+  width: 260px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #333);
+  background: #1a1a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text, #9ca3af);
+  text-align: left;
+  z-index: 30;
+}
+
+.elo-info-icon-tooltip-title {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--text-h, #f5f5f5);
+}
+
+.elo-info-icon-tooltip p {
+  margin: 0 0 8px;
+}
+
+.elo-info-icon-tooltip p:last-of-type {
+  margin-bottom: 0;
+}
+
+.elo-info-icon-tooltip a {
+  color: var(--accent-secondary, #ffd60a);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
 .sidebar-signup-btn {
   margin-top: auto;
   width: 100%;
