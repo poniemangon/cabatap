@@ -431,10 +431,16 @@ function App() {
     // 'daily' can't be resume-matched by comparing indices anymore — they're
     // re-rolled per player on every fresh computation, so two calls the same
     // day never come out equal. Match on the stored day_number instead; any
-    // other mode still compares indices directly like before.
+    // other mode still compares indices directly like before. Every mode
+    // also requires the stored session to belong to whoever's actually
+    // signed in right now — otherwise switching accounts in the same
+    // browser tab and reloading (e.g. testing multiple accounts) can resume
+    // a *different* account's finished daily/game straight into this one.
+    const sameAccount = (stored?.authUserId ?? null) === (authUser?.id ?? null)
     const isResume =
       !blockedByAuth &&
       stored &&
+      sameAccount &&
       stored.gameMode === fresh.gameMode &&
       (fresh.gameMode === 'daily' ? stored.dayNumber === fresh.dayNumber : sameIndices(stored.roundIndices, fresh.roundIndices))
     const initial = isResume
@@ -468,7 +474,7 @@ function App() {
       setSpecialSuggestOpen(true)
     }
     setInitialized(true)
-  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn])
+  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn, authUser?.id])
 
   // Signing up from the share-gate screen via the magic-link email flow
   // doesn't reload the page, so isSignedIn just flips true — this picks that
@@ -631,12 +637,17 @@ function App() {
           view,
           // Only meaningful for 'daily' — see the mount effect's resume check.
           dayNumber: gameMode === 'daily' ? dayNumberForDate(new Date()) : undefined,
+          // Whoever this session actually belongs to — a stale session from a
+          // different signed-in account (or a guest) must never get resumed
+          // into the account that's loading the page now, see the mount
+          // effect's resume check.
+          authUserId: authUser?.id ?? null,
         }),
       )
     } catch {
       // sessionStorage unavailable (private browsing, etc.); ignore
     }
-  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view])
+  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view, authUser?.id])
 
   const rounds = useMemo(() => (pool ? roundIndices.map((i) => pool[i]) : []), [pool, roundIndices])
   const shareLink = useMemo(
