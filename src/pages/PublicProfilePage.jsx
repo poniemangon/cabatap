@@ -128,31 +128,31 @@ export default function PublicProfilePage() {
               <div className="profile-stat-card">
                 <div className="profile-stat-title">1 vs 1 privado</div>
                 <div className="profile-stat-numbers">
-                  <span>{stats.oneVOnePrivate.played} jugados</span>
-                  <span>{stats.oneVOnePrivate.won} ganados</span>
-                  <span>{stats.oneVOnePrivate.tied} empatados</span>
+                  <span>✅ {stats.oneVOnePrivate.won}</span>
+                  <span>❌ {stats.oneVOnePrivate.played - stats.oneVOnePrivate.won - stats.oneVOnePrivate.tied}</span>
+                  <span>🟰 {stats.oneVOnePrivate.tied}</span>
                 </div>
               </div>
               <div className="profile-stat-card">
                 <div className="profile-stat-title">1 vs 1 rankeado</div>
                 <div className="profile-stat-numbers">
-                  <span>{stats.oneVOneRanked.played} jugados</span>
-                  <span>{stats.oneVOneRanked.won} ganados</span>
-                  <span>{stats.oneVOneRanked.tied} empatados</span>
+                  <span>✅ {stats.oneVOneRanked.won}</span>
+                  <span>❌ {stats.oneVOneRanked.played - stats.oneVOneRanked.won - stats.oneVOneRanked.tied}</span>
+                  <span>🟰 {stats.oneVOneRanked.tied}</span>
                 </div>
               </div>
               <div className="profile-stat-card">
                 <div className="profile-stat-title">Multijugador</div>
                 <div className="profile-stat-numbers">
-                  <span>{stats.multi.played} jugados</span>
-                  <span>{stats.multi.won} ganados</span>
-                  <span>{stats.multi.tied} empatados</span>
+                  <span>✅ {stats.multi.won}</span>
+                  <span>❌ {stats.multi.played - stats.multi.won - stats.multi.tied}</span>
+                  <span>🟰 {stats.multi.tied}</span>
                 </div>
               </div>
             </div>
             <p className="profile-empty-text" style={{ marginTop: 10 }}>
               Los duelos 1 vs 1 privados no son visibles para otros jugadores — estas estadísticas solo cuentan lo
-              que es público (duelos multijugador).
+              que es público (duelos rankeados).
             </p>
           </section>
 

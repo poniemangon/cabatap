@@ -440,7 +440,6 @@ export default function ProfilePage() {
         <div className="profile-stats-grid">
           <div className="profile-stat-card">
             <div className="profile-stat-title">1 vs 1 privado</div>
-            <div className="profile-stat-played">{stats.oneVOnePrivate.played} jugados</div>
             <div className="profile-stat-numbers">
               <span>✅ {stats.oneVOnePrivate.won}</span>
               <span>❌ {stats.oneVOnePrivate.played - stats.oneVOnePrivate.won - stats.oneVOnePrivate.tied}</span>
@@ -449,7 +448,6 @@ export default function ProfilePage() {
           </div>
           <div className="profile-stat-card">
             <div className="profile-stat-title">1 vs 1 rankeado</div>
-            <div className="profile-stat-played">{stats.oneVOneRanked.played} jugados</div>
             <div className="profile-stat-numbers">
               <span>✅ {stats.oneVOneRanked.won}</span>
               <span>❌ {stats.oneVOneRanked.played - stats.oneVOneRanked.won - stats.oneVOneRanked.tied}</span>
@@ -458,7 +456,6 @@ export default function ProfilePage() {
           </div>
           <div className="profile-stat-card">
             <div className="profile-stat-title">Multijugador</div>
-            <div className="profile-stat-played">{stats.multi.played} jugados</div>
             <div className="profile-stat-numbers">
               <span>✅ {stats.multi.won}</span>
               <span>❌ {stats.multi.played - stats.multi.won - stats.multi.tied}</span>
