@@ -27,15 +27,12 @@ export default function Dashboard({
         <button type="button" className="dashboard-mode-card" onClick={onPractice}>
           <span className="dashboard-mode-icon">🎯</span>
           <span className="dashboard-mode-title">Práctica</span>
-          <span className="dashboard-mode-desc">
-            {isSignedIn ? 'Sin límite de tiempo ni puntuación, jugá cuando quieras.' : 'Una práctica gratis por día.'}
-          </span>
         </button>
         <button type="button" className="dashboard-mode-card" onClick={onOpenCustom}>
           <span className="dashboard-mode-icon">⚙️</span>
           <span className="dashboard-mode-title">Personalizada</span>
           <span className="dashboard-mode-desc">
-            {isSignedIn ? 'Elegí barrios específicos para jugar.' : 'Elegí barrios específicos — una por día.'}
+          Elegí barrios específicos para jugar.
           </span>
         </button>
         <button type="button" className="dashboard-mode-card dashboard-mode-card-special" onClick={onSpecialOnly}>
@@ -43,8 +40,8 @@ export default function Dashboard({
           <span className="dashboard-mode-title">Especiales</span>
           <span className="dashboard-mode-desc">
             {isSignedIn
-              ? 'Solo ubicaciones únicas: monumentos, lugares históricos y más.'
-              : 'Solo ubicaciones únicas — una por día.'}
+             Solo ubicaciones únicas: monumentos, lugares históricos y más.
+          
           </span>
         </button>
 
