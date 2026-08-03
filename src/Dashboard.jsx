@@ -39,9 +39,7 @@ export default function Dashboard({
           <span className="dashboard-mode-icon">✨</span>
           <span className="dashboard-mode-title">Especiales</span>
           <span className="dashboard-mode-desc">
-            {isSignedIn
              Solo ubicaciones únicas: monumentos, lugares históricos y más.
-          
           </span>
         </button>
 
