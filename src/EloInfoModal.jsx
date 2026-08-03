@@ -4,13 +4,15 @@
 // pages). Update the text here when there's something new to call out.
 export default function EloInfoModal({ onClose }) {
   return (
-    <div className="custom-modal duel-choice-modal">
+    <div className="custom-modal duel-choice-modal author-note-modal">
       <div className="custom-modal-header">
         <span>Nota de autor</span>
         <button type="button" className="calendar-close" onClick={onClose}>
           ✕
         </button>
       </div>
+
+      <img src="/popup.png" alt="" className="author-note-image" />
 
       <p className="duel-setup-hint">
         Ahora el mapa del día es con ubicaciones random dentro de los mismos barrios.

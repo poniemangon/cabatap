@@ -11,6 +11,10 @@ import PublicProfilePage from './pages/PublicProfilePage.jsx'
 import RankingPage from './pages/RankingPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 
+console.log(
+  'Si ves esto, hablame en twitter respondiendo la siguiente adivinanza: si en Cordoba se rieron 3 personas antes que yo, que sucede?',
+)
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

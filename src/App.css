@@ -614,6 +614,23 @@
   text-align: center;
 }
 
+.author-note-modal .custom-modal-header span {
+  flex: 1;
+  text-align: center;
+}
+
+.author-note-modal .duel-setup-hint {
+  text-align: center;
+}
+
+.author-note-image {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto 12px;
+  border-radius: 12px;
+}
+
 .tutorial-popup-text {
   margin-bottom: 16px;
   text-align: center;
