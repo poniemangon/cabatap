@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { TIERS, EloTierIcon } from './EloBadge'
 
 const HIDE_DELAY_MS = 300
@@ -16,11 +16,19 @@ function rangeLabel(tier) {
 // this icon trails a heading whose wrap point varies with card width, so a
 // fixed left/right anchor overflows the viewport in one context or the
 // other. Clamping in JS keeps it on-screen everywhere it's used.
+//
+// The tooltip has no max-height/scroll — it's meant to just show all of its
+// content, however tall that is. So instead of constraining its size, a
+// layout effect measures it once it's actually rendered and, if it would
+// run past the bottom of the viewport, flips it to sit above the icon (or
+// clamps it against the top edge as a last resort) rather than letting it
+// spill off-screen unreachable.
 export default function EloInfoIcon() {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const hideTimeoutRef = useRef(null)
   const iconRef = useRef(null)
+  const tooltipRef = useRef(null)
 
   const cancelHide = () => {
     if (hideTimeoutRef.current) {
@@ -40,6 +48,21 @@ export default function EloInfoIcon() {
     }
     setOpen(true)
   }
+
+  useLayoutEffect(() => {
+    if (!open || !tooltipRef.current || !iconRef.current) return
+    const tooltipHeight = tooltipRef.current.getBoundingClientRect().height
+    const iconRect = iconRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - iconRect.bottom - 8
+    if (tooltipHeight <= spaceBelow) return // already fits below, nothing to adjust
+
+    const spaceAbove = iconRect.top - 8
+    const top =
+      tooltipHeight <= spaceAbove
+        ? iconRect.top - tooltipHeight - 8 // flip above the icon
+        : Math.max(8, window.innerHeight - tooltipHeight - 8) // doesn't fit either way — best-effort pin to the bottom edge
+    setPos((p) => (p.top === top ? p : { ...p, top }))
+  }, [open])
 
   const scheduleHide = () => {
     cancelHide()
@@ -61,6 +84,7 @@ export default function EloInfoIcon() {
       </span>
       {open && (
         <span
+          ref={tooltipRef}
           className="elo-info-icon-tooltip elo-info-icon-tooltip-open"
           role="tooltip"
           style={{ top: pos.top, left: pos.left }}
