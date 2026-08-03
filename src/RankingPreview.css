@@ -26,7 +26,6 @@
 .ranking-preview-title {
   margin: 0;
   font-size: 13px;
-  white-space: nowrap;
   color: var(--text-h, #f5f5f5);
 }
 
