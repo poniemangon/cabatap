@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import CalendarPicker from './CalendarPicker'
 import BadgeIcon from './badges/BadgeIcon'
 import { getBadgesForProfiles } from './badges/badgesApi'
+import DailyWinBadge from './daily/DailyWinBadge'
+import { getDailyWinCountsForProfiles } from './daily/dailyWinsApi'
 import EloBadge, { eloTier } from './EloBadge'
 import useProfile from './hooks/useProfile'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
@@ -21,7 +23,7 @@ function formatDailyDate(dayNumber) {
 
 const MAX_SIZE = 100
 
-function RankRow({ rank, avatarUrl, username, elo, badge, detail, to }) {
+function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail, to }) {
   const [imgFailed, setImgFailed] = useState(false)
   return (
     <li>
@@ -33,7 +35,7 @@ function RankRow({ rank, avatarUrl, username, elo, badge, detail, to }) {
           <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
         )}
         <span className="ranking-row-name">
-          {username || 'Jugador'} <BadgeIcon badge={badge} /> <EloBadge elo={elo} />
+          {username || 'Jugador'} <BadgeIcon badge={badge} /> <DailyWinBadge count={dailyWinCount} /> <EloBadge elo={elo} />
         </span>
         <span className="ranking-row-detail">{detail}</span>
       </Link>
@@ -57,7 +59,7 @@ function YourRankSummary({ profile, children }) {
   return <div className="ranking-your-summary">{children}</div>
 }
 
-function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, badges }) {
+function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, badges, dailyWinCounts }) {
   return (
     <section className="ranking-section">
       <div className="ranking-section-header">
@@ -78,6 +80,7 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, 
                 username={item.username}
                 elo={item.elo}
                 badge={badges?.get(item.profileId)}
+                dailyWinCount={dailyWinCounts?.get(item.profileId)}
                 detail={renderDetail(item)}
                 to={to(item)}
               />
@@ -98,6 +101,7 @@ export default function RankingBoard() {
   const [eloRows, setEloRows] = useState([])
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [badges, setBadges] = useState(new Map())
+  const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
   useEffect(() => {
     getDailyAverageLeaderboard().then(setAverages).catch(console.error)
@@ -119,6 +123,7 @@ export default function RankingBoard() {
     ]
     if (ids.length === 0) return
     getBadgesForProfiles(ids).then(setBadges).catch(console.error)
+    getDailyWinCountsForProfiles(ids).then(setDailyWinCounts).catch(console.error)
   }, [dayResults, averages, eloRows])
 
   const myAvgRank = profile ? averages.findIndex((a) => a.profileId === profile.id) + 1 : 0
@@ -172,6 +177,7 @@ export default function RankingBoard() {
           renderDetail={(r) => `${r.total_score} pts`}
           to={(r) => `/mapa-diario/${r.id}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
 
         <LeaderboardSection
@@ -188,6 +194,7 @@ export default function RankingBoard() {
           renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
           to={(a) => `/jugador/${a.profile?.username}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
       </div>
 
@@ -211,6 +218,7 @@ export default function RankingBoard() {
           renderDetail={(r) => eloTier(r.elo).name}
           to={(r) => `/jugador/${r.username}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
       </div>
 

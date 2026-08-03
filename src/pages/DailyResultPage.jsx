@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ResultsMap from '../ResultsMap'
 import { getDailyStatById } from '../daily/dailyApi'
+import DailyWinBadge from '../daily/DailyWinBadge'
+import { getDailyWinCount } from '../daily/dailyWinsApi'
 import BadgeIcon from '../badges/BadgeIcon'
 import { getBadgeForProfile } from '../badges/badgesApi'
 import EloBadge from '../EloBadge'
@@ -27,6 +29,7 @@ export default function DailyResultPage() {
   const [stat, setStat] = useState(null)
   const [error, setError] = useState(null)
   const [badge, setBadge] = useState(null)
+  const [dailyWinCount, setDailyWinCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +50,7 @@ export default function DailyResultPage() {
   useEffect(() => {
     if (!stat?.profile_id) return
     getBadgeForProfile(stat.profile_id).then(setBadge).catch(console.error)
+    getDailyWinCount(stat.profile_id).then(setDailyWinCount).catch(console.error)
   }, [stat?.profile_id])
 
   return (
@@ -72,6 +76,7 @@ export default function DailyResultPage() {
               <h1 className="daily-result-username">
                 {stat.profile?.username || 'Jugador'}{' '}
                 <BadgeIcon badge={badge} />
+                <DailyWinBadge count={dailyWinCount} />
                 {stat.profile?.ranked_games_played > 0 && <EloBadge elo={stat.profile.elo} />}
               </h1>
               <p className="daily-result-meta">

@@ -5,6 +5,8 @@ import useProfile, { slugifyUsername } from '../hooks/useProfile'
 import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
 import { listMyDuels, listMyPendingDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
+import DailyWinBadge from '../daily/DailyWinBadge'
+import { getDailyWinCount } from '../daily/dailyWinsApi'
 import EloBadge from '../EloBadge'
 import './ProfilePage.css'
 
@@ -81,6 +83,7 @@ export default function ProfilePage() {
   const [pendingDuels, setPendingDuels] = useState([])
   const [showPending, setShowPending] = useState(false)
   const [dailyStats, setDailyStats] = useState([])
+  const [dailyWinCount, setDailyWinCount] = useState(0)
   const [stats, setStats] = useState({
     oneVOnePrivate: { played: 0, won: 0, tied: 0 },
     oneVOneRanked: { played: 0, won: 0, tied: 0 },
@@ -109,6 +112,7 @@ export default function ProfilePage() {
     listMyPendingDuels(profile.id).then(setPendingDuels).catch(console.error)
     getDuelStats(profile.id).then(setStats).catch(console.error)
     listMyDailyStats(profile.id).then(setDailyStats).catch(console.error)
+    getDailyWinCount(profile.id).then(setDailyWinCount).catch(console.error)
   }, [profile])
 
   // Per-friend 1v1 win/loss record, for the "Tus amigos" cards. Only closed
@@ -264,6 +268,7 @@ export default function ProfilePage() {
           ) : (
             <h1 className="profile-username">
               {profileLoading ? 'Cargando...' : profile?.username}
+              <DailyWinBadge count={dailyWinCount} />
               {profile?.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
               {profile && (
                 <button type="button" className="profile-username-edit-btn" onClick={startEditUsername}>

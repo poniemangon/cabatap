@@ -4,6 +4,8 @@ import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyAp
 import { getEloLeaderboard } from './duels/duelApi'
 import BadgeIcon from './badges/BadgeIcon'
 import { getBadgesForProfiles } from './badges/badgesApi'
+import DailyWinBadge from './daily/DailyWinBadge'
+import { getDailyWinCountsForProfiles } from './daily/dailyWinsApi'
 import EloBadge, { eloTier } from './EloBadge'
 import './RankingPreview.css'
 
@@ -17,7 +19,7 @@ function todayDayNumber() {
 
 const TOP_N = 5
 
-function PreviewRow({ rank, row, detail, to, badge }) {
+function PreviewRow({ rank, row, detail, to, badge, dailyWinCount }) {
   const [imgFailed, setImgFailed] = useState(false)
   return (
     <li>
@@ -31,6 +33,7 @@ function PreviewRow({ rank, row, detail, to, badge }) {
         <span className="ranking-preview-name-wrap">
           <span className="ranking-preview-name">{row.username || 'Jugador'}</span>
           <BadgeIcon badge={badge} />
+          <DailyWinBadge count={dailyWinCount} />
           <EloBadge elo={row.elo} />
         </span>
         <span className="ranking-preview-score">{detail}</span>
@@ -39,7 +42,7 @@ function PreviewRow({ rank, row, detail, to, badge }) {
   )
 }
 
-function PreviewList({ title, rows, emptyText, detail, to, badges }) {
+function PreviewList({ title, rows, emptyText, detail, to, badges, dailyWinCounts }) {
   return (
     <div className="ranking-preview-section">
       <h3 className="ranking-preview-section-title">{title}</h3>
@@ -48,7 +51,15 @@ function PreviewList({ title, rows, emptyText, detail, to, badges }) {
       ) : (
         <ul className="ranking-preview-list">
           {rows.map((r, i) => (
-            <PreviewRow key={r.key} rank={i + 1} row={r} detail={detail(r)} to={to(r)} badge={badges?.get(r.profileId)} />
+            <PreviewRow
+              key={r.key}
+              rank={i + 1}
+              row={r}
+              detail={detail(r)}
+              to={to(r)}
+              badge={badges?.get(r.profileId)}
+              dailyWinCount={dailyWinCounts?.get(r.profileId)}
+            />
           ))}
         </ul>
       )}
@@ -61,6 +72,7 @@ export default function RankingPreview() {
   const [avgRows, setAvgRows] = useState([])
   const [eloRows, setEloRows] = useState([])
   const [badges, setBadges] = useState(new Map())
+  const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
   useEffect(() => {
     getDailyLeaderboard(todayDayNumber())
@@ -82,6 +94,7 @@ export default function RankingPreview() {
     ]
     if (ids.length === 0) return
     getBadgesForProfiles(ids).then(setBadges).catch(console.error)
+    getDailyWinCountsForProfiles(ids).then(setDailyWinCounts).catch(console.error)
   }, [dayRows, avgRows, eloRows])
 
   return (
@@ -109,6 +122,7 @@ export default function RankingPreview() {
           detail={(r) => `${r.total_score} pts`}
           to={(r) => `/mapa-diario/${r.id}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
 
         <PreviewList
@@ -125,6 +139,7 @@ export default function RankingPreview() {
           detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
           to={(a) => `/jugador/${a.username}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
       </div>
 
@@ -143,6 +158,7 @@ export default function RankingPreview() {
           detail={(r) => eloTier(r.elo).name}
           to={(r) => `/jugador/${r.username}`}
           badges={badges}
+          dailyWinCounts={dailyWinCounts}
         />
       </div>
     </div>

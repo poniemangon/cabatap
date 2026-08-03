@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BadgeIcon from './badges/BadgeIcon'
 import { getBadgeForProfile } from './badges/badgesApi'
+import DailyWinBadge from './daily/DailyWinBadge'
+import { getDailyWinCount } from './daily/dailyWinsApi'
 import EloBadge from './EloBadge'
 import RankStatus from './RankStatus'
 
@@ -45,15 +47,18 @@ export default function Sidebar({
   const [notifPanelOpen, setNotifPanelOpen] = useState(false)
   const [notifPanelPos, setNotifPanelPos] = useState({ top: 0, left: 0 })
   const [badge, setBadge] = useState(null)
+  const [dailyWinCount, setDailyWinCount] = useState(0)
   const bellRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     if (!profile?.id) {
       setBadge(null)
+      setDailyWinCount(0)
       return
     }
     getBadgeForProfile(profile.id).then(setBadge).catch(console.error)
+    getDailyWinCount(profile.id).then(setDailyWinCount).catch(console.error)
   }, [profile?.id])
 
   const withClose = (fn) => () => {
@@ -103,6 +108,7 @@ export default function Sidebar({
                 {profile && (profile.ranked_games_played > 0 ? null : <RankStatus />)}
                 <span className="sidebar-profile-name">{displayName}</span>
                 <BadgeIcon badge={badge} />
+                <DailyWinBadge count={dailyWinCount} />
                 {profile?.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
                 <span className="sidebar-profile-link">Ver perfil</span>
               </span>
