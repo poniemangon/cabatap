@@ -27,23 +27,17 @@ export default function Dashboard({
         <button type="button" className="dashboard-mode-card" onClick={onPractice}>
           <span className="dashboard-mode-icon">🎯</span>
           <span className="dashboard-mode-title">Práctica</span>
-          <span className="dashboard-mode-desc">
-          Igual que el mapa del día
-          </span>
+          <span className="dashboard-mode-desc">Igual que el mapa del día</span>
         </button>
         <button type="button" className="dashboard-mode-card" onClick={onOpenCustom}>
           <span className="dashboard-mode-icon">⚙️</span>
           <span className="dashboard-mode-title">Personalizada</span>
-          <span className="dashboard-mode-desc">
-          Elegí barrios específicos para jugar.
-          </span>
+          <span className="dashboard-mode-desc">Elegí barrios específicos para jugar.</span>
         </button>
         <button type="button" className="dashboard-mode-card dashboard-mode-card-special" onClick={onSpecialOnly}>
           <span className="dashboard-mode-icon">✨</span>
           <span className="dashboard-mode-title">Especiales</span>
-          <span className="dashboard-mode-desc">
-             Solo ubicaciones únicas: monumentos, lugares históricos y más.
-          </span>
+          <span className="dashboard-mode-desc">Solo ubicaciones únicas: monumentos, lugares históricos y más.</span>
         </button>
 
         {isSignedIn && (

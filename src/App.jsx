@@ -30,6 +30,7 @@ import {
   computeWinnerId,
   closeDuel,
   findOpenRandomDuel,
+  cancelUnclaimedDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted, notifyDuelMatched } from './notifications/notificationsApi'
 import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
@@ -1485,6 +1486,20 @@ function App() {
     }
   }
 
+  // Random matchmaking, still unclaimed: unlike a private duel there's no
+  // "declare yourself the winner" option that makes sense here (nobody else
+  // ever queued up), so canceling just deletes the row outright instead of
+  // leaving it lingering as a stale "esperando rival" entry.
+  const handleCancelDuel = async () => {
+    if (!activeDuel) return
+    try {
+      await cancelUnclaimedDuel(activeDuel.id)
+      handleGoHome()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   if (loadError) {
     return (
       <div className="app">
@@ -2083,6 +2098,11 @@ function App() {
                           Cerrar duelo
                         </button>
                       </>
+                    )}
+                    {activeDuel.matchmaking && (
+                      <button type="button" className="primary-btn secondary-btn" onClick={handleCancelDuel}>
+                        Cancelar duelo
+                      </button>
                     )}
                   </div>
                 </>

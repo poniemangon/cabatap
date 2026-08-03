@@ -57,6 +57,16 @@ export async function findOpenRandomDuel(excludeProfileId) {
   return data
 }
 
+// Deletes a "Duelo random" outright — only valid while it's still
+// unclaimed (no opponent, not closed), enforced by the RLS delete policy
+// added in 0015_duel_cancel_matchmaking.sql. Used when the challenger backs
+// out instead of waiting for a rival, so it stops lingering as a stale
+// "esperando rival" entry.
+export async function cancelUnclaimedDuel(duelId) {
+  const { error } = await supabase.from('duels').delete().eq('id', duelId).is('opponent_id', null).is('closed_at', null)
+  if (error) throw error
+}
+
 export async function getDuelByCode(inviteCode) {
   const { data, error } = await supabase
     .from('duels')
