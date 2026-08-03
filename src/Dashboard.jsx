@@ -27,6 +27,9 @@ export default function Dashboard({
         <button type="button" className="dashboard-mode-card" onClick={onPractice}>
           <span className="dashboard-mode-icon">🎯</span>
           <span className="dashboard-mode-title">Práctica</span>
+          <span className="dashboard-mode-desc">
+          Igual que el mapa del día
+          </span>
         </button>
         <button type="button" className="dashboard-mode-card" onClick={onOpenCustom}>
           <span className="dashboard-mode-icon">⚙️</span>
