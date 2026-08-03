@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
 import { getEloLeaderboard } from './duels/duelApi'
+import BadgeIcon from './badges/BadgeIcon'
+import { getBadgesForProfiles } from './badges/badgesApi'
 import EloBadge, { eloTier } from './EloBadge'
 import './RankingPreview.css'
 
@@ -15,7 +17,7 @@ function todayDayNumber() {
 
 const TOP_N = 5
 
-function PreviewRow({ rank, row, detail, to }) {
+function PreviewRow({ rank, row, detail, to, badge }) {
   const [imgFailed, setImgFailed] = useState(false)
   return (
     <li>
@@ -28,6 +30,7 @@ function PreviewRow({ rank, row, detail, to }) {
         )}
         <span className="ranking-preview-name-wrap">
           <span className="ranking-preview-name">{row.username || 'Jugador'}</span>
+          <BadgeIcon badge={badge} />
           <EloBadge elo={row.elo} />
         </span>
         <span className="ranking-preview-score">{detail}</span>
@@ -36,7 +39,7 @@ function PreviewRow({ rank, row, detail, to }) {
   )
 }
 
-function PreviewList({ title, rows, emptyText, detail, to }) {
+function PreviewList({ title, rows, emptyText, detail, to, badges }) {
   return (
     <div className="ranking-preview-section">
       <h3 className="ranking-preview-section-title">{title}</h3>
@@ -45,7 +48,7 @@ function PreviewList({ title, rows, emptyText, detail, to }) {
       ) : (
         <ul className="ranking-preview-list">
           {rows.map((r, i) => (
-            <PreviewRow key={r.key} rank={i + 1} row={r} detail={detail(r)} to={to(r)} />
+            <PreviewRow key={r.key} rank={i + 1} row={r} detail={detail(r)} to={to(r)} badge={badges?.get(r.profileId)} />
           ))}
         </ul>
       )}
@@ -57,6 +60,7 @@ export default function RankingPreview() {
   const [dayRows, setDayRows] = useState([])
   const [avgRows, setAvgRows] = useState([])
   const [eloRows, setEloRows] = useState([])
+  const [badges, setBadges] = useState(new Map())
 
   useEffect(() => {
     getDailyLeaderboard(todayDayNumber())
@@ -69,6 +73,16 @@ export default function RankingPreview() {
       .then(setEloRows)
       .catch(console.error)
   }, [])
+
+  useEffect(() => {
+    const ids = [
+      ...dayRows.map((r) => r.profile_id),
+      ...avgRows.map((a) => a.profileId),
+      ...eloRows.map((r) => r.id),
+    ]
+    if (ids.length === 0) return
+    getBadgesForProfiles(ids).then(setBadges).catch(console.error)
+  }, [dayRows, avgRows, eloRows])
 
   return (
     <div className="ranking-preview-cards">
@@ -85,6 +99,7 @@ export default function RankingPreview() {
           rows={dayRows.map((r) => ({
             key: r.id,
             id: r.id,
+            profileId: r.profile_id,
             avatarUrl: r.profile?.avatar_url,
             username: r.profile?.username,
             elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
@@ -93,12 +108,14 @@ export default function RankingPreview() {
           emptyText="Nadie jugó en modo competitivo hoy todavía."
           detail={(r) => `${r.total_score} pts`}
           to={(r) => `/mapa-diario/${r.id}`}
+          badges={badges}
         />
 
         <PreviewList
           title="Top mapa del día promedio histórico"
           rows={avgRows.map((a) => ({
             key: a.profileId,
+            profileId: a.profileId,
             avatarUrl: a.profile?.avatar_url,
             username: a.profile?.username,
             elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
@@ -107,6 +124,7 @@ export default function RankingPreview() {
           emptyText="Todavía nadie jugó en modo competitivo."
           detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
           to={(a) => `/jugador/${a.username}`}
+          badges={badges}
         />
       </div>
 
@@ -120,10 +138,11 @@ export default function RankingPreview() {
 
         <PreviewList
           title="Top ranking ELO"
-          rows={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+          rows={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           detail={(r) => eloTier(r.elo).name}
           to={(r) => `/jugador/${r.username}`}
+          badges={badges}
         />
       </div>
     </div>

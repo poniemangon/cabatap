@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CalendarPicker from './CalendarPicker'
+import BadgeIcon from './badges/BadgeIcon'
+import { getBadgesForProfiles } from './badges/badgesApi'
 import EloBadge, { eloTier } from './EloBadge'
 import useProfile from './hooks/useProfile'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
@@ -19,7 +21,7 @@ function formatDailyDate(dayNumber) {
 
 const MAX_SIZE = 100
 
-function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
+function RankRow({ rank, avatarUrl, username, elo, badge, detail, to }) {
   const [imgFailed, setImgFailed] = useState(false)
   return (
     <li>
@@ -31,7 +33,7 @@ function RankRow({ rank, avatarUrl, username, elo, detail, to }) {
           <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
         )}
         <span className="ranking-row-name">
-          {username || 'Jugador'} <EloBadge elo={elo} />
+          {username || 'Jugador'} <BadgeIcon badge={badge} /> <EloBadge elo={elo} />
         </span>
         <span className="ranking-row-detail">{detail}</span>
       </Link>
@@ -55,7 +57,7 @@ function YourRankSummary({ profile, children }) {
   return <div className="ranking-your-summary">{children}</div>
 }
 
-function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to }) {
+function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, badges }) {
   return (
     <section className="ranking-section">
       <div className="ranking-section-header">
@@ -75,6 +77,7 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to }
                 avatarUrl={item.avatarUrl}
                 username={item.username}
                 elo={item.elo}
+                badge={badges?.get(item.profileId)}
                 detail={renderDetail(item)}
                 to={to(item)}
               />
@@ -94,6 +97,7 @@ export default function RankingBoard() {
   const [dayResults, setDayResults] = useState([])
   const [eloRows, setEloRows] = useState([])
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [badges, setBadges] = useState(new Map())
 
   useEffect(() => {
     getDailyAverageLeaderboard().then(setAverages).catch(console.error)
@@ -106,6 +110,16 @@ export default function RankingBoard() {
   useEffect(() => {
     getEloLeaderboard().then(setEloRows).catch(console.error)
   }, [])
+
+  useEffect(() => {
+    const ids = [
+      ...dayResults.map((r) => r.profile_id),
+      ...averages.map((a) => a.profileId),
+      ...eloRows.map((r) => r.id),
+    ]
+    if (ids.length === 0) return
+    getBadgesForProfiles(ids).then(setBadges).catch(console.error)
+  }, [dayResults, averages, eloRows])
 
   const myAvgRank = profile ? averages.findIndex((a) => a.profileId === profile.id) + 1 : 0
   const myAvgEntry = myAvgRank ? averages[myAvgRank - 1] : null
@@ -148,6 +162,7 @@ export default function RankingBoard() {
           }
           items={dayResults.map((r) => ({
             key: r.id,
+            profileId: r.profile_id,
             avatarUrl: r.profile?.avatar_url,
             username: r.profile?.username,
             elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
@@ -156,12 +171,14 @@ export default function RankingBoard() {
           emptyText="Nadie jugó en modo competitivo ese día."
           renderDetail={(r) => `${r.total_score} pts`}
           to={(r) => `/mapa-diario/${r.id}`}
+          badges={badges}
         />
 
         <LeaderboardSection
           title="Top mapa del día promedio histórico"
           items={averages.map((a) => ({
             key: a.profileId,
+            profileId: a.profileId,
             avatarUrl: a.profile?.avatar_url,
             username: a.profile?.username,
             elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
@@ -170,6 +187,7 @@ export default function RankingBoard() {
           emptyText="Todavía nadie jugó en modo competitivo."
           renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
           to={(a) => `/jugador/${a.profile?.username}`}
+          badges={badges}
         />
       </div>
 
@@ -188,10 +206,11 @@ export default function RankingBoard() {
 
         <LeaderboardSection
           title="Top ranking ELO"
-          items={eloRows.map((r) => ({ key: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+          items={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           renderDetail={(r) => eloTier(r.elo).name}
           to={(r) => `/jugador/${r.username}`}
+          badges={badges}
         />
       </div>
 

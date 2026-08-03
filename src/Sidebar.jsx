@@ -1,5 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import BadgeIcon from './badges/BadgeIcon'
+import { getBadgeForProfile } from './badges/badgesApi'
 import EloBadge from './EloBadge'
 import RankStatus from './RankStatus'
 
@@ -42,8 +44,17 @@ export default function Sidebar({
 }) {
   const [notifPanelOpen, setNotifPanelOpen] = useState(false)
   const [notifPanelPos, setNotifPanelPos] = useState({ top: 0, left: 0 })
+  const [badge, setBadge] = useState(null)
   const bellRef = useRef(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setBadge(null)
+      return
+    }
+    getBadgeForProfile(profile.id).then(setBadge).catch(console.error)
+  }, [profile?.id])
 
   const withClose = (fn) => () => {
     fn()
@@ -91,6 +102,7 @@ export default function Sidebar({
               <span className="sidebar-profile-info">
                 {profile && (profile.ranked_games_played > 0 ? null : <RankStatus />)}
                 <span className="sidebar-profile-name">{displayName}</span>
+                <BadgeIcon badge={badge} />
                 {profile?.ranked_games_played > 0 && <EloBadge elo={profile.elo} />}
                 <span className="sidebar-profile-link">Ver perfil</span>
               </span>
