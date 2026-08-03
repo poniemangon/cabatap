@@ -4,7 +4,6 @@ export default function Dashboard({
   isSignedIn,
   onDaily,
   onPractice,
-  onOpenArchive,
   onOpenCustom,
   onSpecialOnly,
   onDuel,
@@ -25,31 +24,32 @@ export default function Dashboard({
       </div>
 
       <div className="dashboard-grid">
-        <button type="button" className="dashboard-mode-card" onClick={onOpenArchive}>
-          <span className="dashboard-mode-icon">📁</span>
-          <span className="dashboard-mode-title">Archivo</span>
-          <span className="dashboard-mode-desc">Accedé a desafíos diarios anteriores.</span>
+        <button type="button" className="dashboard-mode-card" onClick={onPractice}>
+          <span className="dashboard-mode-icon">🎯</span>
+          <span className="dashboard-mode-title">Práctica</span>
+          <span className="dashboard-mode-desc">
+            {isSignedIn ? 'Sin límite de tiempo ni puntuación, jugá cuando quieras.' : 'Una práctica gratis por día.'}
+          </span>
+        </button>
+        <button type="button" className="dashboard-mode-card" onClick={onOpenCustom}>
+          <span className="dashboard-mode-icon">⚙️</span>
+          <span className="dashboard-mode-title">Personalizada</span>
+          <span className="dashboard-mode-desc">
+            {isSignedIn ? 'Elegí barrios específicos para jugar.' : 'Elegí barrios específicos — una por día.'}
+          </span>
+        </button>
+        <button type="button" className="dashboard-mode-card dashboard-mode-card-special" onClick={onSpecialOnly}>
+          <span className="dashboard-mode-icon">✨</span>
+          <span className="dashboard-mode-title">Especiales</span>
+          <span className="dashboard-mode-desc">
+            {isSignedIn
+              ? 'Solo ubicaciones únicas: monumentos, lugares históricos y más.'
+              : 'Solo ubicaciones únicas — una por día.'}
+          </span>
         </button>
 
         {isSignedIn && (
           <>
-            <button type="button" className="dashboard-mode-card" onClick={onPractice}>
-              <span className="dashboard-mode-icon">🎯</span>
-              <span className="dashboard-mode-title">Práctica</span>
-              <span className="dashboard-mode-desc">Sin límite de tiempo ni puntuación, jugá cuando quieras.</span>
-            </button>
-            <button type="button" className="dashboard-mode-card" onClick={onOpenCustom}>
-              <span className="dashboard-mode-icon">⚙️</span>
-              <span className="dashboard-mode-title">Personalizada</span>
-              <span className="dashboard-mode-desc">Elegí barrios específicos para jugar.</span>
-            </button>
-            <button type="button" className="dashboard-mode-card dashboard-mode-card-special" onClick={onSpecialOnly}>
-              <span className="dashboard-mode-icon">✨</span>
-              <span className="dashboard-mode-title">
-                Especiales <span className="menu-item-eyebrow">En desarrollo</span>
-              </span>
-              <span className="dashboard-mode-desc">Solo ubicaciones únicas: monumentos, lugares históricos y más.</span>
-            </button>
             <button type="button" className="dashboard-mode-card" onClick={onDuel}>
               <span className="dashboard-mode-icon">🏅</span>
               <span className="dashboard-mode-title">Duelo rankeado</span>

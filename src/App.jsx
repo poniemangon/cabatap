@@ -7,7 +7,6 @@ import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import Dashboard from './Dashboard'
 import RoundResultModal from './RoundResultModal'
-import CalendarPicker from './CalendarPicker'
 import CustomGamePicker from './CustomGamePicker'
 import DuelSetupModal from './duels/DuelSetupModal'
 import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
@@ -151,16 +150,21 @@ function dailyRoundIndicesForDay(dayNumber, pool, barrios) {
   return randomIndicesForBarrios(pool, dayBarrioIds)
 }
 
-// Signed-out guests never get a profiles row, so their daily result can't
-// be persisted to daily_stats — tracked in sessionStorage instead, scoped
-// to the current browser session (not localStorage) so it doesn't survive
-// closing the browser. Only ever used for tranqui, the one mode guests can
-// play (see handleDaily).
+// Signed-out guests never get a profiles row, so per-mode results can't be
+// persisted to the DB — tracked in sessionStorage instead, scoped to the
+// current browser session (not localStorage) so it doesn't survive closing
+// the browser. Used for every guest-playable mode that's capped at once a
+// day: daily (tranqui), practice, and custom (see handleDaily/handlePractice/
+// handleStartCustom) — each mode gets its own key so the three allowances
+// track independently.
 const GUEST_DAILY_SESSION_KEY = 'ubicaba-guest-daily-result'
+const GUEST_PRACTICE_SESSION_KEY = 'ubicaba-guest-practice-result'
+const GUEST_CUSTOM_SESSION_KEY = 'ubicaba-guest-custom-result'
+const GUEST_SPECIAL_SESSION_KEY = 'ubicaba-guest-special-result'
 
-function loadGuestDailyResult(dayNumber) {
+function loadGuestResult(key, dayNumber) {
   try {
-    const raw = sessionStorage.getItem(GUEST_DAILY_SESSION_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (parsed.dayNumber !== dayNumber) return null
@@ -170,9 +174,9 @@ function loadGuestDailyResult(dayNumber) {
   }
 }
 
-function saveGuestDailyResult(dayNumber, results, totalScore) {
+function saveGuestResult(key, dayNumber, results, totalScore) {
   try {
-    sessionStorage.setItem(GUEST_DAILY_SESSION_KEY, JSON.stringify({ dayNumber, results, totalScore }))
+    sessionStorage.setItem(key, JSON.stringify({ dayNumber, results, totalScore }))
   } catch {
     // sessionStorage unavailable (e.g. private browsing) — worst case a
     // guest can replay, no data loss since nothing was ever persisted
@@ -302,9 +306,9 @@ function isAllSpecialSelection(barrioIds, barrios) {
   return barrioIds.every((id) => barrios.find((b) => b.barrio_id === id)?.comuna === 0)
 }
 
-// Only 'daily' and 'archive' are playable without an account — everything
-// else (including a bare '?share=' link, since it's indistinguishable from a
-// practice roll) bounces a signed-out visitor back to the dashboard.
+// Only 'daily' is playable without an account — everything else (including
+// a bare '?share=' link, since it's indistinguishable from a practice roll)
+// bounces a signed-out visitor back to the dashboard.
 function requiresAuth(mode) {
   return mode === 'practice' || mode === 'custom' || mode === 'linked' || mode === 'duel'
 }
@@ -345,7 +349,6 @@ function App() {
   const [playDailyPromptOpen, setPlayDailyPromptOpen] = useState(false)
   const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
-  const [archiveOpen, setArchiveOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -361,6 +364,9 @@ function App() {
   const [duelResultsLoading, setDuelResultsLoading] = useState(false)
   const duelResultSubmittedRef = useRef(false)
   const dailyResultSubmittedRef = useRef(false)
+  const guestModeResultSubmittedRef = useRef(false)
+  const [practiceLimitOpen, setPracticeLimitOpen] = useState(false)
+  const [specialThanksOpen, setSpecialThanksOpen] = useState(false)
 
   const [authGateOpen, setAuthGateOpen] = useState(false)
 
@@ -823,6 +829,7 @@ function App() {
   }, [phase, roundIndex, timeLimit, current])
 
   const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
+    guestModeResultSubmittedRef.current = false
     setRoundIndices(indices)
     setGameMode(mode)
     setCustomBarrioIds(barrioIds)
@@ -881,8 +888,6 @@ function App() {
         dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
       } else if (gameMode === 'custom') {
         modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
-      } else if (gameMode === 'archive') {
-        modeLine = 'Archivo'
       } else {
         modeLine = 'Modo práctica'
       }
@@ -907,13 +912,35 @@ function App() {
     return false
   }, [isSignedIn])
 
-  const handlePractice = () => {
-    if (!requireAuthOrGate()) return
-    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'practice')
+  // Drops straight into an already-finished guest attempt (practice/custom/
+  // special) instead of a fresh game — same idea as startDaily's guest
+  // branch. `stored.results` already has everything the gameOver screen
+  // needs; roundIndices only needs to be the right *length* (see the daily
+  // refactor's identical reasoning).
+  const showGuestStoredResult = (stored, mode, barrioIds = []) => {
+    setRoundIndices(new Array(stored.results.length).fill(0))
+    setGameMode(mode)
+    setCustomBarrioIds(barrioIds)
+    setResults(stored.results)
+    setPhase('gameOver')
+    setView('game')
+    window.history.replaceState(null, '', '/')
   }
 
-  const handleSelectArchiveDay = (dayNumber) => {
-    startGame(dailyRoundIndicesForDay(dayNumber, pool, barrios), 'archive', { copyInvite: true })
+  // Signed-in: unchanged, unlimited practice. Signed-out: capped at one a
+  // day, same session-persisted-result pattern as the guest daily flow (see
+  // loadGuestResult/GUEST_PRACTICE_SESSION_KEY) — re-entering "Práctica"
+  // after already using today's shows that result instead of a fresh game.
+  const handlePractice = () => {
+    if (!isSignedIn) {
+      const dayNumber = dayNumberForDate(new Date())
+      const stored = loadGuestResult(GUEST_PRACTICE_SESSION_KEY, dayNumber)
+      if (stored) {
+        showGuestStoredResult(stored, 'practice')
+        return
+      }
+    }
+    startGame(pickRandomIndices(pool.length, TOTAL_ROUNDS), 'practice')
   }
 
   const [dailyChoiceOpen, setDailyChoiceOpen] = useState(false)
@@ -992,17 +1019,10 @@ function App() {
         return
       }
     } else if (!timed) {
-      const stored = loadGuestDailyResult(dayNumber)
+      const stored = loadGuestResult(GUEST_DAILY_SESSION_KEY, dayNumber)
       if (stored) {
         dailyResultSubmittedRef.current = true
-        // Same reasoning as the signed-in branch above.
-        setRoundIndices(new Array(stored.results.length).fill(0))
-        setGameMode('daily')
-        setCustomBarrioIds([])
-        setResults(stored.results)
-        setPhase('gameOver')
-        setView('game')
-        window.history.replaceState(null, '', '/')
+        showGuestStoredResult(stored, 'daily')
         return
       }
     }
@@ -1011,14 +1031,43 @@ function App() {
     startGame(dailyRoundIndicesForDay(dayNumber, pool, barrios), 'daily')
   }
 
+  // Same signed-out treatment as handlePractice — capped at one a day, per
+  // session-persisted result — except "custom" actually covers two distinct
+  // guest allowances tracked separately: a plain custom-barrio game and a
+  // special-locations-only one (handleSpecialOnly below), told apart by
+  // isAllSpecialSelection since both funnel through this same function.
   const handleStartCustom = (selectedBarrioIds) => {
-    if (!requireAuthOrGate()) return
+    const isSpecial = isAllSpecialSelection(selectedBarrioIds, barrios)
+    if (!isSignedIn) {
+      const dayNumber = dayNumberForDate(new Date())
+      const key = isSpecial ? GUEST_SPECIAL_SESSION_KEY : GUEST_CUSTOM_SESSION_KEY
+      const stored = loadGuestResult(key, dayNumber)
+      if (stored) {
+        showGuestStoredResult(stored, 'custom', selectedBarrioIds)
+        return
+      }
+    }
     const selectedSet = new Set(selectedBarrioIds)
     const candidateIndices = []
     pool.forEach((it, i) => {
       if (selectedSet.has(it.barrio_id)) candidateIndices.push(i)
     })
     startGame(sampleRoundIndices(candidateIndices, TOTAL_ROUNDS), 'custom', { barrioIds: selectedBarrioIds })
+  }
+
+  // Skips the barrio-picker entirely for a guest who's already used today's
+  // custom allowance — no point letting them pick barrios just to land on
+  // yesterday's-flavor result anyway.
+  const handleOpenCustom = () => {
+    if (!isSignedIn) {
+      const dayNumber = dayNumberForDate(new Date())
+      const stored = loadGuestResult(GUEST_CUSTOM_SESSION_KEY, dayNumber)
+      if (stored) {
+        showGuestStoredResult(stored, 'custom')
+        return
+      }
+    }
+    setCustomOpen(true)
   }
 
   const handleSpecialOnly = () => {
@@ -1287,7 +1336,7 @@ function App() {
   }, [gameMode, phase, activeDuel, profile, rounds])
 
   // Saves today's daily attempt to the profile — only "daily" (today's
-  // challenge via handleDaily), not "archive" (past days) or any other mode.
+  // challenge via handleDaily), not any other mode.
   // Tranqui and competitivo save as separate rows (see dailyApi.js). For
   // competitivo, the rank fetch is chained *after* the submit resolves —
   // fetching it independently would usually race ahead of my own row
@@ -1302,9 +1351,9 @@ function App() {
 
     if (!profile) {
       // Signed-out guests can only play tranqui — persisted locally for this
-      // browser session (see loadGuestDailyResult) so re-entering "Mapa del
-      // día" shows this result instead of allowing a fresh replay.
-      saveGuestDailyResult(dayNumber, results, totalScore)
+      // browser session (see loadGuestResult) so re-entering "Mapa del día"
+      // shows this result instead of allowing a fresh replay.
+      saveGuestResult(GUEST_DAILY_SESSION_KEY, dayNumber, results, totalScore)
       return
     }
 
@@ -1321,6 +1370,28 @@ function App() {
         dailyResultSubmittedRef.current = false
       })
   }, [phase, gameMode, profile, results, totalScore, dailyTimed])
+
+  // Same one-a-day guest cap as "Mapa del día", extended to practice/custom/
+  // special — signed-in players are unaffected (no DB row, no limit, this
+  // is purely a guest sessionStorage thing). Pops the matching nudge once
+  // the result is saved: special locations get a thank-you + feedback ask,
+  // everything else points toward a duel (the thing that actually needs an
+  // account) to play more today.
+  useEffect(() => {
+    if (phase !== 'gameOver' || isSignedIn) return
+    if (gameMode !== 'practice' && gameMode !== 'custom') return
+    if (guestModeResultSubmittedRef.current) return
+    guestModeResultSubmittedRef.current = true
+
+    const dayNumber = dayNumberForDate(new Date())
+    const isSpecial = gameMode === 'custom' && isAllSpecialSelection(customBarrioIds, barrios)
+    const key =
+      gameMode === 'practice' ? GUEST_PRACTICE_SESSION_KEY : isSpecial ? GUEST_SPECIAL_SESSION_KEY : GUEST_CUSTOM_SESSION_KEY
+    saveGuestResult(key, dayNumber, results, totalScore)
+
+    if (isSpecial) setSpecialThanksOpen(true)
+    else setPracticeLimitOpen(true)
+  }, [phase, gameMode, isSignedIn, results, totalScore, customBarrioIds, barrios])
 
   // Closing the tab mid-competitivo (ranked) run abandons it, mirroring the
   // duel tab-close behavior above: every round goes to 0 and is submitted as
@@ -1430,27 +1501,6 @@ function App() {
     )
   }
 
-  const archivePopup = archiveOpen && (
-    <div className="modal-backdrop" onClick={() => setArchiveOpen(false)}>
-      <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="calendar-modal-header">
-          <span>Elegí una fecha</span>
-          <button type="button" className="calendar-close" onClick={() => setArchiveOpen(false)}>
-            ✕
-          </button>
-        </div>
-        <CalendarPicker
-          dayNumberForDate={dayNumberForDate}
-          todayDayNumber={dayNumberForDate(new Date())}
-          onSelectDay={(dayNumber) => {
-            setArchiveOpen(false)
-            handleSelectArchiveDay(dayNumber)
-          }}
-        />
-      </div>
-    </div>
-  )
-
   const customPopup = customOpen && (
     <div className="modal-backdrop" onClick={() => setCustomOpen(false)}>
       <div onClick={(e) => e.stopPropagation()}>
@@ -1510,6 +1560,48 @@ function App() {
           }}
         >
           Registrarme
+        </button>
+      </div>
+    </div>
+  )
+
+  const practiceLimitPopup = practiceLimitOpen && (
+    <div className="modal-backdrop" onClick={() => setPracticeLimitOpen(false)}>
+      <div className="custom-modal duel-choice-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>Duelo rankeado o privado</span>
+          <button type="button" className="calendar-close" onClick={() => setPracticeLimitOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="duel-setup-hint" style={{ textAlign: 'center' }}>
+          Para jugar más mapas armá un duelo privado o rankeado.
+        </p>
+        <button type="button" className="primary-btn start-custom-btn" onClick={() => setPracticeLimitOpen(false)}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  )
+
+  const specialThanksPopup = specialThanksOpen && (
+    <div className="modal-backdrop" onClick={() => setSpecialThanksOpen(false)}>
+      <div className="custom-modal duel-choice-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>¡Gracias por jugar!</span>
+          <button type="button" className="calendar-close" onClick={() => setSpecialThanksOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="duel-setup-hint" style={{ textAlign: 'center' }}>
+          Sugerime lugares nuevos por{' '}
+          <a href="https://x.com/poniemangon" target="_blank" rel="noopener noreferrer">
+            Twitter
+          </a>
+          .
+        </p>
+        <button type="button" className="primary-btn start-custom-btn" onClick={() => setSpecialThanksOpen(false)}>
+          Entendido
         </button>
       </div>
     </div>
@@ -1765,8 +1857,7 @@ function App() {
         isSignedIn={!!isSignedIn}
         onDaily={handleDaily}
         onPractice={handlePractice}
-        onOpenArchive={() => setArchiveOpen(true)}
-        onOpenCustom={() => setCustomOpen(true)}
+        onOpenCustom={handleOpenCustom}
         onSpecialOnly={handleSpecialOnly}
         onDuel={openRankedDuel}
         onMultiplayerDuel={openDuelChoice}
@@ -2101,7 +2192,6 @@ function App() {
           {credits}
         </div>
       </div>
-      {archivePopup}
       {customPopup}
       {dailyChoicePopup}
       {rankedDuelPopup}
@@ -2109,6 +2199,8 @@ function App() {
       {duelSetupPopup}
       {multiplayerSetupPopup}
       {registerPopup}
+      {practiceLimitPopup}
+      {specialThanksPopup}
       {tutorialIntroPopup}
       {playDailyPromptPopup}
       {eloInfoPopup}
