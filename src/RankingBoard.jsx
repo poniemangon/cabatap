@@ -6,6 +6,7 @@ import { getBadgesForProfiles } from './badges/badgesApi'
 import DailyWinBadge from './daily/DailyWinBadge'
 import { getDailyWinCountsForProfiles } from './daily/dailyWinsApi'
 import EloBadge, { eloTier } from './EloBadge'
+import EloInfoModal from './EloInfoModal'
 import useProfile from './hooks/useProfile'
 import { getDailyAverageLeaderboard, getDailyLeaderboard } from './daily/dailyApi'
 import { getEloLeaderboard } from './duels/duelApi'
@@ -100,6 +101,7 @@ export default function RankingBoard() {
   const [dayResults, setDayResults] = useState([])
   const [eloRows, setEloRows] = useState([])
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [badges, setBadges] = useState(new Map())
   const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
@@ -199,7 +201,17 @@ export default function RankingBoard() {
       </div>
 
       <div className="ranking-board">
-        <h2 className="ranking-board-title">🏅 Ranking de jugadores por ELO</h2>
+        <h2 className="ranking-board-title">
+          🏅 Ranking de jugadores por ELO{' '}
+          <button
+            type="button"
+            className="rank-status-info"
+            aria-label="¿Qué es ELO?"
+            onClick={() => setEloInfoOpen(true)}
+          >
+            i
+          </button>
+        </h2>
         <p className="ranking-subtitle">Solo cuenta el resultado de Duelo rankeado.</p>
 
         <YourRankSummary profile={profile}>
@@ -221,6 +233,14 @@ export default function RankingBoard() {
           dailyWinCounts={dailyWinCounts}
         />
       </div>
+
+      {eloInfoOpen && (
+        <div className="modal-backdrop" onClick={() => setEloInfoOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <EloInfoModal onClose={() => setEloInfoOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {calendarOpen && (
         <div className="modal-backdrop" onClick={() => setCalendarOpen(false)}>

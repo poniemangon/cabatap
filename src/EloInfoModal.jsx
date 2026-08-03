@@ -8,15 +8,19 @@ export default function EloInfoModal({ onClose }) {
   return (
     <div className="custom-modal duel-choice-modal">
       <div className="custom-modal-header">
-        <span>¿Qué es ese número al lado de tu nombre?</span>
+        <span>Nota de autor</span>
         <button type="button" className="calendar-close" onClick={onClose}>
           ✕
         </button>
       </div>
 
       <p className="duel-setup-hint">
-        Es tu puntaje ELO: un ranking que sube y baja con los resultados de Duelo rankeado, y define quién es el más
-        capo de todos.
+        Ahora el mapa del día es con ubicaciones random dentro de los mismos barrios.
+      </p>
+
+      <p className="duel-setup-hint">
+        El número al lado de tu nombre es tu puntaje ELO: un ranking que sube y baja con los resultados de Duelo
+        rankeado, y define quién es el más capo de todos.
       </p>
 
       <ul className="elo-info-list">
