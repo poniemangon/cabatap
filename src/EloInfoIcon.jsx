@@ -41,9 +41,15 @@ export default function EloInfoIcon() {
     cancelHide()
     if (iconRef.current) {
       const rect = iconRef.current.getBoundingClientRect()
+      const iconCenter = rect.left + rect.width / 2
       setPos({
         top: rect.bottom + 8,
-        left: Math.min(Math.max(rect.right - TOOLTIP_WIDTH, 8), window.innerWidth - TOOLTIP_WIDTH - 8),
+        // Centered under the icon by default — right-anchoring it looked
+        // fine when the icon sat near the right edge of a narrow card, but
+        // on a wider one it left the box hanging far to the left of the
+        // icon it's supposed to be attached to. Only clamp when centering
+        // would actually run past the viewport edge.
+        left: Math.min(Math.max(iconCenter - TOOLTIP_WIDTH / 2, 8), window.innerWidth - TOOLTIP_WIDTH - 8),
       })
     }
     setOpen(true)
