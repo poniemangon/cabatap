@@ -4,6 +4,7 @@ export default function Dashboard({
   isSignedIn,
   onDaily,
   onPractice,
+  onOpenArchive,
   onOpenCustom,
   onSpecialOnly,
   onDuel,
@@ -24,6 +25,11 @@ export default function Dashboard({
       </div>
 
       <div className="dashboard-grid">
+        <button type="button" className="dashboard-mode-card" onClick={onOpenArchive}>
+          <span className="dashboard-mode-icon">📁</span>
+          <span className="dashboard-mode-title">Archivo</span>
+          <span className="dashboard-mode-desc">Desafíos diarios (modo tranqui) anteriores.</span>
+        </button>
         <button type="button" className="dashboard-mode-card" onClick={onPractice}>
           <span className="dashboard-mode-icon">🎯</span>
           <span className="dashboard-mode-title">Práctica</span>

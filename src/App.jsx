@@ -7,6 +7,7 @@ import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import Dashboard from './Dashboard'
 import RoundResultModal from './RoundResultModal'
+import CalendarPicker from './CalendarPicker'
 import CustomGamePicker from './CustomGamePicker'
 import DuelSetupModal from './duels/DuelSetupModal'
 import MultiplayerDuelSetupModal from './duels/MultiplayerDuelSetupModal'
@@ -146,9 +147,34 @@ function randomIndicesForBarrios(pool, barrioIds) {
   return shuffleSample(indices, indices.length)
 }
 
+// Competitivo only — see tranquiRoundIndicesForDay below for tranqui's
+// separate, fully-deterministic seed.
 function dailyRoundIndicesForDay(dayNumber, pool, barrios) {
   const dayBarrioIds = barriosForDay(dayNumber, eligibleBarrioIdsShuffled(barrios))
   return randomIndicesForBarrios(pool, dayBarrioIds)
+}
+
+// Tranqui's seed is intentionally the OLD daily scheme, not the
+// barrio+random one above: every player gets the literal same 5 corners on
+// a given day, which is what makes "Archivo" (replaying a past day)
+// meaningful — it's reproducible from day_number alone, nothing to
+// randomize per player. Competitivo keeps the newer random-within-barrio
+// behavior (dailyRoundIndicesForDay) since that one's not meant to be
+// reproducible or archivable.
+//
+// The first DAILY_CYCLE_POOL_SIZE rows are a fixed, pre-shuffled order
+// (baked in when the dataset was generated), so slicing consecutive
+// windows of TOTAL_ROUNDS gives a stable rotation with zero repeats until
+// that portion of the pool cycles back. Anything at index
+// DAILY_CYCLE_POOL_SIZE or beyond (special locations added later via the
+// admin panel) never participates in this rotation — still reachable via
+// practice, custom-barrio games, and direct share links.
+const DAILY_CYCLE_POOL_SIZE = 4000
+function tranquiRoundIndicesForDay(dayNumber) {
+  const cycleLength = Math.floor(DAILY_CYCLE_POOL_SIZE / TOTAL_ROUNDS)
+  const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
+  const start = cyclePos * TOTAL_ROUNDS
+  return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
 }
 
 // Signed-out guests never get a profiles row, so per-mode results can't be
@@ -307,9 +333,9 @@ function isAllSpecialSelection(barrioIds, barrios) {
   return barrioIds.every((id) => barrios.find((b) => b.barrio_id === id)?.comuna === 0)
 }
 
-// Only 'daily' is playable without an account — everything else (including
-// a bare '?share=' link, since it's indistinguishable from a practice roll)
-// bounces a signed-out visitor back to the dashboard.
+// Only 'daily' and 'archive' are playable without an account — everything
+// else (including a bare '?share=' link, since it's indistinguishable from
+// a practice roll) bounces a signed-out visitor back to the dashboard.
 function requiresAuth(mode) {
   return mode === 'practice' || mode === 'custom' || mode === 'linked' || mode === 'duel'
 }
@@ -351,6 +377,7 @@ function App() {
   const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [customOpen, setCustomOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [rankedDuelOpen, setRankedDuelOpen] = useState(false)
@@ -889,6 +916,8 @@ function App() {
         dateLine = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
       } else if (gameMode === 'custom') {
         modeLine = `Partida personalizada - solo barrios de ${customBarrioNames.join(', ')}`
+      } else if (gameMode === 'archive') {
+        modeLine = 'Archivo'
       } else {
         modeLine = 'Modo práctica'
       }
@@ -1029,7 +1058,7 @@ function App() {
     }
 
     dailyResultSubmittedRef.current = false
-    startGame(dailyRoundIndicesForDay(dayNumber, pool, barrios), 'daily')
+    startGame(timed ? dailyRoundIndicesForDay(dayNumber, pool, barrios) : tranquiRoundIndicesForDay(dayNumber), 'daily')
   }
 
   // Same signed-out treatment as handlePractice — capped at one a day, per
@@ -1069,6 +1098,15 @@ function App() {
       }
     }
     setCustomOpen(true)
+  }
+
+  // Tranqui-only: past days replay the exact same 5 corners everyone else
+  // got that day (tranquiRoundIndicesForDay is deterministic), unlike
+  // competitivo's random-within-barrio seed which isn't meant to be
+  // reproducible. No auth gate (tranqui itself doesn't need one), no daily
+  // cap, no persistence — freely replayable, same as it always was.
+  const handleSelectArchiveDay = (dayNumber) => {
+    startGame(tranquiRoundIndicesForDay(dayNumber), 'archive', { copyInvite: true })
   }
 
   const handleSpecialOnly = () => {
@@ -1337,7 +1375,7 @@ function App() {
   }, [gameMode, phase, activeDuel, profile, rounds])
 
   // Saves today's daily attempt to the profile — only "daily" (today's
-  // challenge via handleDaily), not any other mode.
+  // challenge via handleDaily), not "archive" (past days) or any other mode.
   // Tranqui and competitivo save as separate rows (see dailyApi.js). For
   // competitivo, the rank fetch is chained *after* the submit resolves —
   // fetching it independently would usually race ahead of my own row
@@ -1508,6 +1546,27 @@ function App() {
           onStart={(selectedBarrioIds) => {
             setCustomOpen(false)
             handleStartCustom(selectedBarrioIds)
+          }}
+        />
+      </div>
+    </div>
+  )
+
+  const archivePopup = archiveOpen && (
+    <div className="modal-backdrop" onClick={() => setArchiveOpen(false)}>
+      <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="calendar-modal-header">
+          <span>Elegí una fecha</span>
+          <button type="button" className="calendar-close" onClick={() => setArchiveOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <CalendarPicker
+          dayNumberForDate={dayNumberForDate}
+          todayDayNumber={dayNumberForDate(new Date())}
+          onSelectDay={(dayNumber) => {
+            setArchiveOpen(false)
+            handleSelectArchiveDay(dayNumber)
           }}
         />
       </div>
@@ -1854,6 +1913,7 @@ function App() {
         isSignedIn={!!isSignedIn}
         onDaily={handleDaily}
         onPractice={handlePractice}
+        onOpenArchive={() => setArchiveOpen(true)}
         onOpenCustom={handleOpenCustom}
         onSpecialOnly={handleSpecialOnly}
         onDuel={openRankedDuel}
@@ -2190,6 +2250,7 @@ function App() {
         </div>
       </div>
       {customPopup}
+      {archivePopup}
       {dailyChoicePopup}
       {rankedDuelPopup}
       {duelChoicePopup}
