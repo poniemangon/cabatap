@@ -24,7 +24,9 @@ export default function DailyModeChoiceModal({
         <span className="duel-choice-text">
           <span className="duel-choice-title">Modo tranqui</span>
           <span className="duel-choice-desc">
-            {tranquiPlayed ? 'Ya lo completaste — mirar resultado.' : 'Sin límite de tiempo, no rankea contra nadie.'}
+            {tranquiPlayed
+              ? 'Ya lo completaste — mirar resultado.'
+              : 'Mismas ubicaciones para todos. Sin límite de tiempo, no rankea contra nadie.'}
           </span>
         </span>
       </button>
@@ -36,7 +38,7 @@ export default function DailyModeChoiceModal({
           <span className="duel-choice-desc">
             {competitivoPlayed
               ? 'Ya lo completaste — mirar resultado.'
-              : `${duelTimeLimit}s por ubicación, como un duelo — rankea contra todos hoy.`}
+              : `Mismos barrios, ubicaciones random. ${duelTimeLimit}s por ubicación, como un duelo — rankea contra todos hoy.`}
           </span>
         </span>
       </button>

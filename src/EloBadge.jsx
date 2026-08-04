@@ -2,7 +2,7 @@
 // apply_duel_elo() in 0021_duel_elo.sql) — private duels and multiplayer
 // never move this number. Boundaries are inclusive on the low end, so the
 // 1000 starting rating lands in Gold, not Silver. `min` is derived from the
-// previous tier's `max` (both here and in EloInfoModal) so the displayed
+// previous tier's `max` (both here and in EloInfoIcon) so the displayed
 // ranges stay non-overlapping — e.g. Bronze 0-499, Silver 500-999.
 export const TIERS = [
   { name: 'Bronze', min: 0, max: 500, className: 'elo-bronze' },

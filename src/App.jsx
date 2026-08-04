@@ -15,7 +15,6 @@ import DuelChoiceModal from './duels/DuelChoiceModal'
 import RankedDuelModal from './duels/RankedDuelModal'
 import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
-import EloInfoModal from './EloInfoModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -293,7 +292,6 @@ function shareIndicesToUrl(indices, barrioIds) {
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
-const ELO_INFO_SESSION_KEY = 'ubicaba-elo-info-shown'
 // Single-round tutorial (the Obelisco, pool_index 4000) shown once per
 // browser session to signed-out first-time visitors, before they've ever
 // seen a real map. Feeds straight into "jugar mapa del día" once it's over.
@@ -374,7 +372,6 @@ function App() {
   const [registerPopupOpen, setRegisterPopupOpen] = useState(false)
   const [tutorialIntroOpen, setTutorialIntroOpen] = useState(false)
   const [playDailyPromptOpen, setPlayDailyPromptOpen] = useState(false)
-  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
   const [customOpen, setCustomOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -634,22 +631,6 @@ function App() {
   useEffect(() => {
     if (phase === 'gameOver' && gameMode === 'testmap') setPlayDailyPromptOpen(true)
   }, [phase, gameMode])
-
-  // Explains the ELO badge next to usernames to signed-in players — once per
-  // browser session via ELO_INFO_SESSION_KEY, same mechanism as the register
-  // popup above. Fires as soon as the profile loads, not gated on any
-  // particular screen.
-  useEffect(() => {
-    if (!isSignedIn || !profile) return
-    try {
-      if (!sessionStorage.getItem(ELO_INFO_SESSION_KEY)) {
-        sessionStorage.setItem(ELO_INFO_SESSION_KEY, '1')
-        setEloInfoOpen(true)
-      }
-    } catch {
-      // sessionStorage unavailable (private browsing, etc.); just skip the popup
-    }
-  }, [isSignedIn, profile])
 
   const customBarrioNames = useMemo(
     () => (barrios ? barrios.filter((b) => customBarrioIds.includes(b.barrio_id)).map((b) => b.nombre) : []),
@@ -1706,14 +1687,6 @@ function App() {
     </div>
   )
 
-  const eloInfoPopup = eloInfoOpen && (
-    <div className="modal-backdrop" onClick={() => setEloInfoOpen(false)}>
-      <div onClick={(e) => e.stopPropagation()}>
-        <EloInfoModal onClose={() => setEloInfoOpen(false)} />
-      </div>
-    </div>
-  )
-
   const authModalPopup = authModalOpen && (
     <div className="modal-backdrop" onClick={() => setAuthModalOpen(false)}>
       <div onClick={(e) => e.stopPropagation()}>
@@ -2261,7 +2234,6 @@ function App() {
       {specialThanksPopup}
       {tutorialIntroPopup}
       {playDailyPromptPopup}
-      {eloInfoPopup}
       {authGatePopup}
       {authModalPopup}
     </div>
