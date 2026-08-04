@@ -22,7 +22,11 @@ function formatDailyDate(dayNumber) {
 // a non-participant can see (multiplayer duels are public, 1v1 ones aren't),
 // so calling the same functions here naturally shows only what's actually
 // visible to whoever's looking, no separate "public" logic needed.
-function PublicDuelRow({ duel }) {
+//
+// profileId is whoever's profile page this is (not the visitor) — their own
+// name gets colored green/red depending on whether they won or lost that
+// particular duel, so a third party scanning the list can tell at a glance.
+function PublicDuelRow({ duel, profileId }) {
   const ranked = [...duel.duel_results].sort((a, b) => b.total_score - a.total_score)
   if (duel.is_multiplayer) {
     return (
@@ -35,11 +39,18 @@ function PublicDuelRow({ duel }) {
     )
   }
   const [a, b] = ranked
+  const profileNameClass = (result) => {
+    if (!result || result.profile_id !== profileId || !b) return ''
+    if (a.total_score === b.total_score) return ''
+    return result === (a.total_score > b.total_score ? a : b) ? ' profile-duel-name-won' : ' profile-duel-name-lost'
+  }
   return (
     <li className="profile-duel-row">
       <span className="profile-duel-opponent">
-        {a?.profile?.username || 'Jugador'} <EloBadge elo={a?.profile?.elo} /> vs{' '}
-        {b?.profile?.username || 'esperando rival'} <EloBadge elo={b?.profile?.elo} />
+        <span className={`profile-duel-name${profileNameClass(a)}`}>{a?.profile?.username || 'Jugador'}</span>{' '}
+        <EloBadge elo={a?.profile?.elo} /> vs{' '}
+        <span className={`profile-duel-name${profileNameClass(b)}`}>{b?.profile?.username || 'esperando rival'}</span>{' '}
+        <EloBadge elo={b?.profile?.elo} />
       </span>
       <span className="profile-duel-score">{b ? `${a.total_score} — ${b.total_score}` : `${a.total_score}`}</span>
     </li>
@@ -158,7 +169,7 @@ export default function PublicProfilePage() {
             ) : (
               <ul className="profile-duel-list">
                 {duels.map((d) => (
-                  <PublicDuelRow key={d.id} duel={d} />
+                  <PublicDuelRow key={d.id} duel={d} profileId={profile.id} />
                 ))}
               </ul>
             )}

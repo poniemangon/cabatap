@@ -395,6 +395,14 @@
   flex: 1;
 }
 
+.profile-duel-name-won {
+  color: #22c55e;
+}
+
+.profile-duel-name-lost {
+  color: #b91c1c;
+}
+
 .daily-mode-tag {
   display: inline-block;
   margin-left: 8px;
