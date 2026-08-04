@@ -1506,6 +1506,10 @@
   .gameover-actions {
     flex-direction: column;
   }
+
+  .duel-result-actions {
+    flex-direction: column;
+  }
 }
 
 .gameover-actions .primary-btn {
