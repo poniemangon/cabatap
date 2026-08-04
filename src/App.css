@@ -1495,7 +1495,7 @@
   flex-direction: column;
   align-items: stretch;
   max-height: 45svh;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .gameover-actions {
@@ -1535,9 +1535,7 @@
   text-align: left;
   border: 1px solid var(--border, #e5e4e7);
   border-radius: 8px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
+  flex-shrink: 0;
 }
 
 .breakdown li {
