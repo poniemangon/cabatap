@@ -62,9 +62,24 @@ export async function findOpenRandomDuel(excludeProfileId) {
 // added in 0027_duel_close_delete.sql. This is what "Cerrar duelo" actually
 // does now for a 1v1 with no response: no self-declared forfeit win, the
 // duel just goes away. Matchmaking duels have no equivalent — see App.jsx.
+//
+// A delete Postgrest can't match (RLS blocks it, or the row's already gone)
+// doesn't come back as an error — it silently "succeeds" having touched 0
+// rows. The .select() forces us to see that, so a policy that isn't
+// actually in place yet fails loudly here instead of the button quietly
+// doing nothing.
 export async function deletePrivateDuel(duelId) {
-  const { error } = await supabase.from('duels').delete().eq('id', duelId).eq('matchmaking', false).is('closed_at', null)
+  const { data, error } = await supabase
+    .from('duels')
+    .delete()
+    .eq('id', duelId)
+    .eq('matchmaking', false)
+    .is('closed_at', null)
+    .select('id')
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo borrar el duelo (RLS lo bloqueó o ya no existe).')
+  }
 }
 
 export async function getDuelByCode(inviteCode) {
