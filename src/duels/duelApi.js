@@ -57,13 +57,13 @@ export async function findOpenRandomDuel(excludeProfileId) {
   return data
 }
 
-// Deletes a "Duelo random" outright — only valid while it's still
-// unclaimed (no opponent, not closed), enforced by the RLS delete policy
-// added in 0015_duel_cancel_matchmaking.sql. Used when the challenger backs
-// out instead of waiting for a rival, so it stops lingering as a stale
-// "esperando rival" entry.
-export async function cancelUnclaimedDuel(duelId) {
-  const { error } = await supabase.from('duels').delete().eq('id', duelId).is('opponent_id', null).is('closed_at', null)
+// Deletes a private (never matchmaking) duel outright — only valid while
+// nobody but the closer has a result yet, enforced by the RLS delete policy
+// added in 0027_duel_close_delete.sql. This is what "Cerrar duelo" actually
+// does now for a 1v1 with no response: no self-declared forfeit win, the
+// duel just goes away. Matchmaking duels have no equivalent — see App.jsx.
+export async function deletePrivateDuel(duelId) {
+  const { error } = await supabase.from('duels').delete().eq('id', duelId).eq('matchmaking', false).is('closed_at', null)
   if (error) throw error
 }
 

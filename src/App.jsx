@@ -30,7 +30,7 @@ import {
   computeWinnerId,
   closeDuel,
   findOpenRandomDuel,
-  cancelUnclaimedDuel,
+  deletePrivateDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted, notifyDuelMatched } from './notifications/notificationsApi'
 import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
@@ -1467,33 +1467,15 @@ function App() {
   }
 
   // Private 1v1 (not matchmaking): whoever's already played can end it
-  // themselves whenever they want instead of waiting on the rival — same
-  // freedom multiplayer's creator already had. Winner is always the caller,
-  // since this only applies while just 1 side has a result.
+  // themselves whenever they want instead of waiting on the rival. Deletes
+  // the duel outright rather than declaring the closer the winner by
+  // forfeit — only applies while just 1 side has a result. Matchmaking
+  // duels have no equivalent: once queued for a random rival there's no
+  // early-close option, only waiting.
   const handleCloseSoloDuel = async () => {
     if (!activeDuel || !profile || duelResults.length !== 1) return
     try {
-      const updated = await closeDuel(activeDuel.id, profile.id)
-      if (!updated) return
-      setActiveDuel(updated)
-      notifyDuelCompleted(
-        updated.id,
-        duelResults.map((r) => r.profile_id),
-        { inviteCode: updated.invite_code, isMultiplayer: false },
-      ).catch(console.error)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  // Random matchmaking, still unclaimed: unlike a private duel there's no
-  // "declare yourself the winner" option that makes sense here (nobody else
-  // ever queued up), so canceling just deletes the row outright instead of
-  // leaving it lingering as a stale "esperando rival" entry.
-  const handleCancelDuel = async () => {
-    if (!activeDuel) return
-    try {
-      await cancelUnclaimedDuel(activeDuel.id)
+      await deletePrivateDuel(activeDuel.id)
       handleGoHome()
     } catch (e) {
       console.error(e)
@@ -2098,11 +2080,6 @@ function App() {
                           Cerrar duelo
                         </button>
                       </>
-                    )}
-                    {activeDuel.matchmaking && (
-                      <button type="button" className="primary-btn secondary-btn" onClick={handleCancelDuel}>
-                        Cancelar duelo
-                      </button>
                     )}
                   </div>
                 </>
