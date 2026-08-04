@@ -1495,10 +1495,12 @@
   flex-direction: column;
   align-items: stretch;
   max-height: 45svh;
+  overflow: hidden;
 }
 
 .gameover-actions {
   display: flex;
+  flex-shrink: 0;
   gap: 12px;
 }
 
@@ -1534,6 +1536,8 @@
   border: 1px solid var(--border, #e5e4e7);
   border-radius: 8px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .breakdown li {
