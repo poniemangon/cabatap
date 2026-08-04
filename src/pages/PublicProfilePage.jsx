@@ -85,15 +85,10 @@ export default function PublicProfilePage() {
   }, [username])
 
   // Tranqui and competitivo save as separate daily_stats rows for the same
-  // day_number — collapse to one card per day, preferring competitivo when
-  // both exist (see ProfilePage.jsx's identical dedupedDailyStats).
-  const dedupedDailyStats = useMemo(() => {
-    const byDay = new Map()
-    for (const d of dailyStats) {
-      const existing = byDay.get(d.day_number)
-      if (!existing || (d.timed && !existing.timed)) byDay.set(d.day_number, d)
-    }
-    return [...byDay.values()].sort((a, b) => b.day_number - a.day_number)
+  // day_number — both show up as their own row (see ProfilePage.jsx's
+  // identical sortedDailyStats).
+  const sortedDailyStats = useMemo(() => {
+    return [...dailyStats].sort((a, b) => b.day_number - a.day_number || Number(b.timed) - Number(a.timed))
   }, [dailyStats])
 
   return (
@@ -171,11 +166,11 @@ export default function PublicProfilePage() {
 
           <section className="profile-section">
             <h2 className="profile-section-title">Mapas diarios jugados</h2>
-            {dedupedDailyStats.length === 0 ? (
+            {sortedDailyStats.length === 0 ? (
               <p className="profile-empty-text">Todavía no jugó ningún mapa diario.</p>
             ) : (
               <ul className="profile-duel-list">
-                {dedupedDailyStats.map((d) => (
+                {sortedDailyStats.map((d) => (
                   <li
                     key={d.id}
                     className="profile-duel-row profile-duel-row-clickable"
@@ -183,7 +178,9 @@ export default function PublicProfilePage() {
                   >
                     <span className="profile-duel-opponent">
                       {formatDailyDate(d.day_number)}
-                      {d.timed && <span className="daily-mode-tag daily-mode-tag-timed">⏱ Competitivo</span>}
+                      <span className={`daily-mode-tag${d.timed ? ' daily-mode-tag-timed' : ''}`}>
+                        {d.timed ? '⏱ Competitivo' : '🧘 Tranqui'}
+                      </span>
                     </span>
                     <span className="profile-duel-score">{d.total_score} pts</span>
                   </li>

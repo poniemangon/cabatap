@@ -36,7 +36,10 @@ function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail,
           <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
         )}
         <span className="ranking-row-name">
-          {username || 'Jugador'} <BadgeIcon badge={badge} /> <DailyWinBadge count={dailyWinCount} /> <EloBadge elo={elo} />
+          <span className="ranking-row-username">{username || 'Jugador'}</span>
+          <BadgeIcon badge={badge} />
+          <DailyWinBadge count={dailyWinCount} />
+          <EloBadge elo={elo} />
         </span>
         <span className="ranking-row-detail">{detail}</span>
       </Link>

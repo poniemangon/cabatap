@@ -159,7 +159,7 @@
 .sidebar-notif-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 99999999;
 }
 
 .sidebar-notif-panel {
@@ -169,7 +169,7 @@
      instead of being cut off by the sidebar's own bounding box. Max
      z-index so nothing else (modals, popups) can ever render on top of it. */
   position: fixed;
-  z-index: 9999;
+  z-index: 99999999;
   width: 260px;
   max-height: 320px;
   overflow-y: auto;
@@ -330,7 +330,7 @@
     opacity 0.15s ease,
     transform 0.15s ease;
   pointer-events: none;
-  z-index: 60;
+  z-index: 99999999;
 }
 
 /* open/close is JS-driven (see RankStatus.jsx) — a pointer over either the
@@ -376,7 +376,7 @@
   line-height: 1.4;
   color: var(--text, #9ca3af);
   text-align: left;
-  z-index: 30;
+  z-index: 99999999;
   /* white-space is inherited — on the dashboard this sits inside
      .ranking-preview-title, which sets nowrap on its own compact heading.
      Being position:fixed only escapes layout, not the DOM tree, so without
@@ -717,7 +717,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 30;
+  z-index: 99999999;
   display: flex;
   flex-direction: column;
   min-width: 200px;
@@ -770,7 +770,7 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 99999999;
   display: flex;
   align-items: center;
   justify-content: center;
