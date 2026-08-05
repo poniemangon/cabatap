@@ -71,12 +71,16 @@ function DuelRow({ duel, myProfileId, onOpen }) {
 
 export default function ProfilePage() {
   const { isLoaded: authLoaded, isSignedIn } = useAuth()
-  const { profile, loading: profileLoading, updateUsername } = useProfile()
+  const { profile, loading: profileLoading, updateUsername, updateAvatarUrl } = useProfile()
   const navigate = useNavigate()
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [usernameStatus, setUsernameStatus] = useState(null)
+
+  const [editingAvatar, setEditingAvatar] = useState(false)
+  const [avatarUrlInput, setAvatarUrlInput] = useState('')
+  const [avatarStatus, setAvatarStatus] = useState(null)
 
   const [friends, setFriends] = useState({ accepted: [], incoming: [], outgoing: [] })
   const [duels, setDuels] = useState([])
@@ -228,6 +232,29 @@ export default function ProfilePage() {
     navigate('/', { state: { challengeFriendId: friendId } })
   }
 
+  const startEditAvatar = () => {
+    setAvatarUrlInput(profile.avatar_url || '')
+    setAvatarStatus(null)
+    setEditingAvatar(true)
+  }
+
+  const handleSaveAvatar = async (e) => {
+    e.preventDefault()
+    const cleaned = avatarUrlInput.trim()
+    if (!cleaned) {
+      setAvatarStatus({ type: 'error', text: 'Pegá una URL de imagen.' })
+      return
+    }
+    try {
+      await updateAvatarUrl(cleaned)
+      setEditingAvatar(false)
+      setAvatarStatus(null)
+    } catch (err) {
+      console.error(err)
+      setAvatarStatus({ type: 'error', text: 'No se pudo cambiar la foto de perfil.' })
+    }
+  }
+
   return (
     <div className="profile-page">
       <Link to="/" className="profile-back-link">
@@ -235,10 +262,15 @@ export default function ProfilePage() {
       </Link>
 
       <header className="profile-header">
-        {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="profile-avatar" />
-        ) : (
-          <span className="profile-avatar profile-avatar-fallback">🙂</span>
+        {profile && (
+          <button type="button" className="profile-avatar-wrap" onClick={startEditAvatar}>
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="profile-avatar" />
+            ) : (
+              <span className="profile-avatar profile-avatar-fallback">🙂</span>
+            )}
+            <span className="profile-avatar-edit-overlay">✏️</span>
+          </button>
         )}
         <div className="profile-header-info">
           {profile && !(profile.ranked_games_played > 0) && (
@@ -471,7 +503,13 @@ export default function ProfilePage() {
                 key={d.id}
                 duel={d}
                 myProfileId={profile.id}
-                onOpen={() => navigate(`/duelo/${d.invite_code}`)}
+                // Closed duels go to the read-only results page (map +
+                // per-round breakdown, same as any player's public profile
+                // uses) — no reason to route back through the play/claim
+                // flow for something already decided. Still-open ones keep
+                // going to /duelo/:code, since that's where "Cerrar duelo"
+                // and similar in-progress actions actually live.
+                onOpen={() => navigate(d.closed_at ? `/duelo-resultado/${d.id}` : `/duelo/${d.invite_code}`)}
               />
             ))}
           </ul>
@@ -528,6 +566,40 @@ export default function ProfilePage() {
           </ul>
         )}
       </section>
+
+      {editingAvatar && (
+        <div className="modal-backdrop" onClick={() => setEditingAvatar(false)}>
+          <div className="custom-modal profile-avatar-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="custom-modal-header">
+              <span>Cambiar foto de perfil</span>
+              <button type="button" className="calendar-close" onClick={() => setEditingAvatar(false)}>
+                ✕
+              </button>
+            </div>
+            <form className="profile-avatar-form" onSubmit={handleSaveAvatar}>
+              <input
+                type="url"
+                value={avatarUrlInput}
+                onChange={(e) => setAvatarUrlInput(e.target.value)}
+                placeholder="https://..."
+                className="profile-username-input profile-avatar-url-input"
+                autoFocus
+              />
+              {avatarStatus && (
+                <p className={`profile-search-status profile-search-status-${avatarStatus.type}`}>{avatarStatus.text}</p>
+              )}
+              <div className="profile-avatar-form-actions">
+                <button type="submit" className="primary-btn secondary-btn">
+                  Guardar
+                </button>
+                <button type="button" className="primary-btn secondary-btn" onClick={() => setEditingAvatar(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

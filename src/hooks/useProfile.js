@@ -118,5 +118,21 @@ export default function useProfile() {
     [profile],
   )
 
-  return { profile, loading, updateUsername }
+  const updateAvatarUrl = useCallback(
+    async (newAvatarUrl) => {
+      if (!profile) throw new Error('No profile loaded')
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: newAvatarUrl })
+        .eq('id', profile.id)
+        .select()
+        .single()
+      if (error) throw error
+      setProfile(data)
+      return data
+    },
+    [profile],
+  )
+
+  return { profile, loading, updateUsername, updateAvatarUrl }
 }
