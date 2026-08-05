@@ -70,6 +70,18 @@ export default function DuelResultPage() {
     return entries
   }, [ranked])
 
+  // Per-round comparison table: street name (same for every participant,
+  // taken from whoever has that round) + each participant's distance/points
+  // for it, colored to match their map dot and leaderboard entry.
+  const roundCount = Math.max(0, ...ranked.map((p) => p.results?.length ?? 0))
+  const streetForRound = (roundIdx) => {
+    for (const p of ranked) {
+      const r = p.results?.[roundIdx]
+      if (r) return r.street2 ? `${r.street1} y ${r.street2}` : r.street1
+    }
+    return `Ronda ${roundIdx + 1}`
+  }
+
   return (
     <div className="duel-result-page">
       <Link to="/" className="duel-result-back-link">
@@ -99,6 +111,38 @@ export default function DuelResultPage() {
               {mapEntries.length > 0 && (
                 <div className="duel-result-map">
                   <ResultsMap results={mapEntries} pendingGuess={null} clickEnabled={false} onPick={() => {}} />
+                </div>
+              )}
+
+              {roundCount > 0 && (
+                <div className="duel-result-breakdown-wrap">
+                  <table className="duel-result-breakdown">
+                    <thead>
+                      <tr>
+                        <th>Ronda</th>
+                        {ranked.map((p, i) => (
+                          <th key={p.profile_id} style={{ color: PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length] }}>
+                            {p.profile?.username || 'Jugador'}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: roundCount }).map((_, roundIdx) => (
+                        <tr key={roundIdx}>
+                          <td className="duel-result-breakdown-street">{streetForRound(roundIdx)}</td>
+                          {ranked.map((p, i) => {
+                            const r = p.results?.[roundIdx]
+                            return (
+                              <td key={p.profile_id} style={{ color: PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length] }}>
+                                {r ? (r.distance == null ? 'Sin respuesta' : `${Math.round(r.distance)} m — ${r.points} pts`) : '—'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 

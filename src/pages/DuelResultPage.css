@@ -69,6 +69,42 @@
   flex-shrink: 0;
 }
 
+.duel-result-breakdown-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #262626);
+}
+
+.duel-result-breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.duel-result-breakdown th,
+.duel-result-breakdown td {
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border, #262626);
+}
+
+.duel-result-breakdown thead th {
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.duel-result-breakdown tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.duel-result-breakdown-street {
+  color: var(--text-h, #f5f5f5);
+  font-weight: 600;
+  white-space: normal;
+}
+
 .duel-result-list {
   list-style: none;
   padding: 0;
