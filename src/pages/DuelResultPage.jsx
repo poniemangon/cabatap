@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getDuelById, getDuelResults, computeWinnerId } from '../duels/duelApi'
 import EloBadge from '../EloBadge'
+import ResultsMap from '../ResultsMap'
 import './DuelResultPage.css'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('es-AR', { dateStyle: 'long', timeStyle: 'short' })
 }
+
+// One color per participant so their guesses are tellable apart on the
+// shared map — red is already taken by the actual-location pin, so it's
+// left out here.
+const PARTICIPANT_COLORS = ['#007aff', '#22c55e', '#a855f7', '#f59e0b', '#14b8a6', '#ec4899']
 
 export default function DuelResultPage() {
   const { id } = useParams()
@@ -42,6 +48,28 @@ export default function DuelResultPage() {
   const ranked = [...results].sort((a, b) => b.total_score - a.total_score)
   const winnerId = duel?.closed_at ? duel.winner_id : results.length >= 2 ? computeWinnerId(results) : null
 
+  // Merges every participant's per-round results into one flat list
+  // ResultsMap can render as a single overlay: same rounds, one guess dot
+  // per participant (colored per PARTICIPANT_COLORS), the shared
+  // actual-location pin drawn only once per round (see skipActualMarker in
+  // ResultsMap.jsx) since every participant's actual location is identical.
+  const mapEntries = useMemo(() => {
+    const entries = []
+    ranked.forEach((participant, pIdx) => {
+      const color = PARTICIPANT_COLORS[pIdx % PARTICIPANT_COLORS.length]
+      ;(participant.results || []).forEach((round, roundIdx) => {
+        entries.push({
+          ...round,
+          actualLabel: `R${roundIdx + 1}`,
+          skipActualMarker: pIdx !== 0,
+          guessColor: color,
+          guessBorderColor: color,
+        })
+      })
+    })
+    return entries
+  }, [ranked])
+
   return (
     <div className="duel-result-page">
       <Link to="/" className="duel-result-back-link">
@@ -67,23 +95,35 @@ export default function DuelResultPage() {
           {ranked.length === 0 ? (
             <p className="duel-result-meta">Todavía nadie jugó este duelo.</p>
           ) : (
-            <ul className="duel-result-list">
-              {ranked.map((r, i) => (
-                <li key={r.profile_id} className="duel-result-row">
-                  <span className="duel-result-rank">#{i + 1}</span>
-                  <span className="duel-result-name">
-                    {r.profile?.username ? (
-                      <Link to={`/jugador/${r.profile.username}`}>{r.profile.username}</Link>
-                    ) : (
-                      'Jugador'
-                    )}{' '}
-                    <EloBadge elo={r.profile?.elo} />
-                    {r.profile_id === winnerId && ' 🏆'}
-                  </span>
-                  <span className="duel-result-score">{r.total_score}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              {mapEntries.length > 0 && (
+                <div className="duel-result-map">
+                  <ResultsMap results={mapEntries} pendingGuess={null} clickEnabled={false} onPick={() => {}} />
+                </div>
+              )}
+
+              <ul className="duel-result-list">
+                {ranked.map((r, i) => (
+                  <li key={r.profile_id} className="duel-result-row">
+                    <span className="duel-result-rank">#{i + 1}</span>
+                    <span
+                      className="duel-result-color-dot"
+                      style={{ background: PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length] }}
+                    />
+                    <span className="duel-result-name">
+                      {r.profile?.username ? (
+                        <Link to={`/jugador/${r.profile.username}`}>{r.profile.username}</Link>
+                      ) : (
+                        'Jugador'
+                      )}{' '}
+                      <EloBadge elo={r.profile?.elo} />
+                      {r.profile_id === winnerId && ' 🏆'}
+                    </span>
+                    <span className="duel-result-score">{r.total_score}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           {ranked.length >= 2 && duel.closed_at && (

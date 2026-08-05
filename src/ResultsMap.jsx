@@ -139,16 +139,30 @@ export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick
 
     // A round can have no guess at all (duel timed out with no click) — show
     // just the actual-location marker for those, skip the guess marker/line.
+    //
+    // Optional per-entry overrides (used by DuelResultPage to overlay every
+    // participant's guesses on one map): actualLabel replaces the default
+    // "R{i+1}" tag, skipActualMarker omits the red actual-location pin (so
+    // it's only drawn once per round instead of once per participant —
+    // they'd all sit at the exact same coordinates anyway), guessColor/
+    // guessBorderColor recolor that entry's guess dot per-participant.
     const features = []
     results.forEach((r, i) => {
-      const actualMarker = new maplibregl.Marker({ element: createActualMarkerEl(`R${i + 1}`), anchor: 'bottom' })
-        .setLngLat([r.actual[1], r.actual[0]])
-        .addTo(map)
-      markersRef.current.push(actualMarker)
+      if (!r.skipActualMarker) {
+        const actualMarker = new maplibregl.Marker({
+          element: createActualMarkerEl(r.actualLabel ?? `R${i + 1}`),
+          anchor: 'bottom',
+        })
+          .setLngLat([r.actual[1], r.actual[0]])
+          .addTo(map)
+        markersRef.current.push(actualMarker)
+      }
 
       if (!r.guess) return
 
-      const guessMarker = new maplibregl.Marker({ element: createDot('#007aff', '#0056b3') })
+      const guessMarker = new maplibregl.Marker({
+        element: createDot(r.guessColor ?? '#007aff', r.guessBorderColor ?? '#0056b3'),
+      })
         .setLngLat([r.guess[1], r.guess[0]])
         .addTo(map)
       markersRef.current.push(guessMarker)

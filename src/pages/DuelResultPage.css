@@ -53,6 +53,22 @@
   color: var(--text, #9ca3af);
 }
 
+.duel-result-map {
+  position: relative;
+  height: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border, #262626);
+  margin-bottom: 16px;
+}
+
+.duel-result-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .duel-result-list {
   list-style: none;
   padding: 0;
