@@ -92,6 +92,25 @@ export async function getDuelByCode(inviteCode) {
   return data
 }
 
+// Read-only lookup by id for DuelResultPage — unlike getDuelByCode (used by
+// the /duelo/:code play/claim flow), this never claims an open slot or
+// starts a game, it's purely for viewing a duel's results from a profile's
+// duel history. RLS already limits what's fetchable here: multiplayer
+// duels are public, private 1v1s only resolve for participants.
+export async function getDuelById(id) {
+  const { data, error } = await supabase
+    .from('duels')
+    .select(
+      `*,
+      challenger:challenger_id(id, username, elo),
+      opponent:opponent_id(id, username, elo)`,
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 // 1v1 only: locks in the single opponent slot on an unclaimed invite. Not
 // used for multiplayer duels, which have no slot to claim. maybeSingle (not
 // single) so losing a claim race — someone else grabbed it first — returns

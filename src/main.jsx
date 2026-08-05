@@ -7,6 +7,7 @@ import './index.css'
 import App from './App.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import DailyResultPage from './pages/DailyResultPage.jsx'
+import DuelResultPage from './pages/DuelResultPage.jsx'
 import PublicProfilePage from './pages/PublicProfilePage.jsx'
 import RankingPage from './pages/RankingPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/duelo/:code" element={<App />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/mapa-diario/:id" element={<DailyResultPage />} />
+        <Route path="/duelo-resultado/:id" element={<DuelResultPage />} />
         <Route path="/jugador/:username" element={<PublicProfilePage />} />
         <Route path="/ranking" element={<RankingPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

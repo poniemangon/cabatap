@@ -26,11 +26,15 @@ function formatDailyDate(dayNumber) {
 // profileId is whoever's profile page this is (not the visitor) — their own
 // name gets colored green/red depending on whether they won or lost that
 // particular duel, so a third party scanning the list can tell at a glance.
-function PublicDuelRow({ duel, profileId }) {
+function PublicDuelRow({ duel, profileId, navigate }) {
   const ranked = [...duel.duel_results].sort((a, b) => b.total_score - a.total_score)
+  // Read-only results page, not the play/claim route (/duelo/:code) — for a
+  // still-open multiplayer duel, that route would let a third-party viewer
+  // actually join and play it just from clicking a "see results" row.
+  const openDuel = () => navigate(`/duelo-resultado/${duel.id}`)
   if (duel.is_multiplayer) {
     return (
-      <li className="profile-duel-row">
+      <li className="profile-duel-row profile-duel-row-clickable" onClick={openDuel}>
         <span className="profile-duel-opponent">Duelo multijugador</span>
         <span className="profile-duel-score">
           {ranked.map((r) => `${r.profile?.username || 'Jugador'}: ${r.total_score}`).join(' · ')}
@@ -45,7 +49,7 @@ function PublicDuelRow({ duel, profileId }) {
     return result === (a.total_score > b.total_score ? a : b) ? ' profile-duel-name-won' : ' profile-duel-name-lost'
   }
   return (
-    <li className="profile-duel-row">
+    <li className="profile-duel-row profile-duel-row-clickable" onClick={openDuel}>
       <span className="profile-duel-opponent">
         <span className={`profile-duel-name${profileNameClass(a)}`}>{a?.profile?.username || 'Jugador'}</span>{' '}
         <EloBadge elo={a?.profile?.elo} /> vs{' '}
@@ -169,7 +173,7 @@ export default function PublicProfilePage() {
             ) : (
               <ul className="profile-duel-list">
                 {duels.map((d) => (
-                  <PublicDuelRow key={d.id} duel={d} profileId={profile.id} />
+                  <PublicDuelRow key={d.id} duel={d} profileId={profile.id} navigate={navigate} />
                 ))}
               </ul>
             )}
