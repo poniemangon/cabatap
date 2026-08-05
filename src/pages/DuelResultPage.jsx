@@ -160,7 +160,7 @@ export default function DuelResultPage() {
                       ) : (
                         'Jugador'
                       )}{' '}
-                      <EloBadge elo={r.profile?.elo} />
+                      {r.profile?.ranked_games_played > 0 && <EloBadge elo={r.profile.elo} />}
                       {r.profile_id === winnerId && ' 🏆'}
                     </span>
                     <span className="duel-result-score">{r.total_score}</span>

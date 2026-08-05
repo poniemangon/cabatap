@@ -250,7 +250,7 @@ export function submitDuelResultBeacon({ duelId, profileId, results, totalScore 
 export async function getDuelResults(duelId) {
   const { data, error } = await supabase
     .from('duel_results')
-    .select('*, profile:profile_id(id, username, elo)')
+    .select('*, profile:profile_id(id, username, elo, ranked_games_played)')
     .eq('duel_id', duelId)
     .order('total_score', { ascending: false })
   if (error) throw error
