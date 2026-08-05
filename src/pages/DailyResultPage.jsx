@@ -7,6 +7,7 @@ import { getDailyWinCount } from '../daily/dailyWinsApi'
 import BadgeIcon from '../badges/BadgeIcon'
 import { getBadgeForProfile } from '../badges/badgesApi'
 import EloBadge from '../EloBadge'
+import Avatar from '../Avatar'
 import './DailyResultPage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -66,11 +67,7 @@ export default function DailyResultPage() {
       ) : (
         <>
           <header className="daily-result-header">
-            {stat.profile?.avatar_url ? (
-              <img src={stat.profile.avatar_url} alt="" className="daily-result-avatar" />
-            ) : (
-              <span className="daily-result-avatar daily-result-avatar-fallback">🙂</span>
-            )}
+            <Avatar src={stat.profile?.avatar_url} baseClass="daily-result-avatar" />
             <div>
               {!(stat.profile?.ranked_games_played > 0) && <p className="daily-result-rank-status">(Sin ranking)</p>}
               <h1 className="daily-result-username">

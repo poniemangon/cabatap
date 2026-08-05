@@ -4,6 +4,7 @@ import { getProfileByUsername } from '../friends/friendsApi'
 import { listMyDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
 import EloBadge from '../EloBadge'
+import Avatar from '../Avatar'
 import './ProfilePage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -119,11 +120,7 @@ export default function PublicProfilePage() {
       ) : (
         <>
           <header className="profile-header">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="profile-avatar" />
-            ) : (
-              <span className="profile-avatar profile-avatar-fallback">🙂</span>
-            )}
+            <Avatar src={profile.avatar_url} baseClass="profile-avatar" />
             <div className="profile-header-info">
               {!(profile.ranked_games_played > 0) && <p className="profile-rank-status">(Sin ranking)</p>}
               <h1 className="profile-username">

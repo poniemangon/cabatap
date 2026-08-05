@@ -44,8 +44,11 @@ async function ensureProfile(user) {
     // created, which for every migrated user is a Clerk-era image. Only
     // overwrite when a fresh one is actually available: an email/password
     // session has no provider avatar, and should never null out an existing
-    // one just because this particular sign-in didn't supply it.
-    if (!avatarUrl || avatarUrl === existing.avatar_url) return existing
+    // one just because this particular sign-in didn't supply it. Never
+    // overwrite a manually-chosen avatar (updateAvatarUrl below) — without
+    // this check, the very next sign-in/session refresh would silently
+    // revert it back to the provider's photo.
+    if (!avatarUrl || avatarUrl === existing.avatar_url || existing.avatar_is_custom) return existing
     const { data: updated, error: updateError } = await supabase
       .from('profiles')
       .update({ avatar_url: avatarUrl })
@@ -123,7 +126,7 @@ export default function useProfile() {
       if (!profile) throw new Error('No profile loaded')
       const { data, error } = await supabase
         .from('profiles')
-        .update({ avatar_url: newAvatarUrl })
+        .update({ avatar_url: newAvatarUrl, avatar_is_custom: true })
         .eq('id', profile.id)
         .select()
         .single()

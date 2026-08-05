@@ -6,6 +6,7 @@ import DailyWinBadge from './daily/DailyWinBadge'
 import { getDailyWinCount } from './daily/dailyWinsApi'
 import EloBadge from './EloBadge'
 import RankStatus from './RankStatus'
+import Avatar from './Avatar'
 
 function timeAgo(isoString) {
   const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
@@ -99,11 +100,7 @@ export default function Sidebar({
         {isSignedIn && (
           <div className="sidebar-top-row">
             <button type="button" className="sidebar-profile-row" onClick={withClose(onOpenProfile)}>
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="sidebar-profile-avatar" />
-              ) : (
-                <span className="sidebar-profile-avatar sidebar-profile-avatar-fallback">🙂</span>
-              )}
+              <Avatar src={profile?.avatar_url} baseClass="sidebar-profile-avatar" />
               <span className="sidebar-profile-info">
                 {profile && (profile.ranked_games_played > 0 ? null : <RankStatus />)}
                 <span className="sidebar-profile-name">{displayName}</span>

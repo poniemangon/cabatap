@@ -8,6 +8,7 @@ import { listMyDailyStats } from '../daily/dailyApi'
 import DailyWinBadge from '../daily/DailyWinBadge'
 import { getDailyWinCount } from '../daily/dailyWinsApi'
 import EloBadge from '../EloBadge'
+import Avatar from '../Avatar'
 import './ProfilePage.css'
 
 const SEARCH_PAGE_SIZE = 8
@@ -264,11 +265,7 @@ export default function ProfilePage() {
       <header className="profile-header">
         {profile && (
           <button type="button" className="profile-avatar-wrap" onClick={startEditAvatar}>
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="profile-avatar" />
-            ) : (
-              <span className="profile-avatar profile-avatar-fallback">🙂</span>
-            )}
+            <Avatar src={profile.avatar_url} baseClass="profile-avatar" />
             <span className="profile-avatar-edit-overlay">✏️</span>
           </button>
         )}
@@ -430,11 +427,7 @@ export default function ProfilePage() {
                 const hasHistory = h2h && (h2h.wins > 0 || h2h.losses > 0)
                 return (
                   <div key={f.id} className="friend-card">
-                    {f.friend.avatar_url ? (
-                      <img src={f.friend.avatar_url} alt="" className="friend-card-avatar" />
-                    ) : (
-                      <span className="friend-card-avatar friend-card-avatar-fallback">🙂</span>
-                    )}
+                    <Avatar src={f.friend.avatar_url} baseClass="friend-card-avatar" />
                     <div className="friend-card-name">
                       {f.friend.username} <EloBadge elo={f.friend.elo} />
                     </div>
