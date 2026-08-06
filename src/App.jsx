@@ -289,6 +289,17 @@ function shareIndicesToUrl(indices, barrioIds) {
   return barrioIds && barrioIds.length ? `${base}&barrios=${barrioIds.join('-')}` : base
 }
 
+// Every copyable/shareable link in the app carries ?referral=<username> —
+// 'unlogged' for a signed-out sharer (see 0035_unlogged_referral_user.sql),
+// so visits arriving through it still count towards *someone*, same as a
+// signed-in sharer's own username would. Handles both "url already has a
+// ?query" (shareIndicesToUrl's ?share=...) and "bare url" (a duel invite,
+// or the site root) cases.
+function appendReferral(url, username) {
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}referral=${encodeURIComponent(username)}`
+}
+
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
@@ -665,18 +676,19 @@ function App() {
   }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view, authUser?.id])
 
   const rounds = useMemo(() => (pool ? roundIndices.map((i) => pool[i]) : []), [pool, roundIndices])
+  // Every copyable link in the app is tagged with this — 'unlogged' when
+  // nobody's signed in, so even an anonymous sharer's visits still count
+  // towards something (see referrals table, 0033/0035).
+  const referralUsername = profile?.username || 'unlogged'
   const shareLink = useMemo(
-    () => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices, gameMode === 'custom' ? customBarrioIds : undefined)}`,
-    [roundIndices, gameMode, customBarrioIds],
+    () =>
+      appendReferral(
+        `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices, gameMode === 'custom' ? customBarrioIds : undefined)}`,
+        referralUsername,
+      ),
+    [roundIndices, gameMode, customBarrioIds, referralUsername],
   )
-  // Daily-map shares tag the link with ?referral=<username> so a new
-  // signup arriving through it can be attributed back to whoever shared it
-  // (see referrals table, 0033_referrals.sql) — only when there's an
-  // actual username to attribute it to.
-  const resultShareLink =
-    gameMode === 'daily'
-      ? `${SHARE_DOMAIN}${profile?.username ? `?referral=${encodeURIComponent(profile.username)}` : ''}`
-      : shareLink
+  const resultShareLink = gameMode === 'daily' ? appendReferral(SHARE_DOMAIN, referralUsername) : shareLink
 
   const barrioCounts = useMemo(() => {
     const counts = new Map()
@@ -865,7 +877,7 @@ function App() {
     }
 
     if (copyInvite) {
-      const text = `Unite a mi partida en el link ${SHARE_DOMAIN}${shareIndicesToUrl(indices, urlBarrioIds)}`
+      const text = `Unite a mi partida en el link ${appendReferral(`${SHARE_DOMAIN}${shareIndicesToUrl(indices, urlBarrioIds)}`, referralUsername)}`
       navigator.clipboard
         .writeText(text)
         .then(() => {
@@ -882,7 +894,7 @@ function App() {
       // Duels share their own invite link (not the generic round-indices
       // link) plus who you played and both/everyone's scores, instead of the
       // emoji-breakdown format the other modes use.
-      const link = `${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`
+      const link = appendReferral(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`, referralUsername)
       if (activeDuel.is_multiplayer) {
         const ranked = [...duelResults].sort((a, b) => b.total_score - a.total_score)
         const lines = ranked.map(
@@ -2044,7 +2056,7 @@ function App() {
                         className="primary-btn secondary-btn"
                         onClick={() => {
                           navigator.clipboard
-                            .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
+                            .writeText(appendReferral(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`, referralUsername))
                             .then(() => {
                               setMenuCopied(true)
                               setTimeout(() => setMenuCopied(false), 2000)
@@ -2106,7 +2118,7 @@ function App() {
                           className="primary-btn secondary-btn"
                           onClick={() => {
                             navigator.clipboard
-                              .writeText(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`)
+                              .writeText(appendReferral(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`, referralUsername))
                               .then(() => {
                                 setMenuCopied(true)
                                 setTimeout(() => setMenuCopied(false), 2000)
