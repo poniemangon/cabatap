@@ -1,8 +1,11 @@
 -- Run this manually in the Supabase SQL editor.
 --
--- Adds unique_users to daily_map_stats() — a player who completed both
--- ranked and unranked the same day counts once there, not twice, unlike
--- `total` (which counts attempts, so that same player contributes 2 there).
+-- unique_users: walks every daily_stats row for a given day in order,
+-- keeping a running list of profile_ids already seen that day. A row whose
+-- profile_id isn't in that list yet adds 1 and gets added to the list; a
+-- repeat profile_id (ranked + unranked same day) adds nothing. `total`
+-- still counts every row (attempts), so that same player contributes 2
+-- there but only 1 to unique_users.
 --
 -- Also caps results at "today" in Buenos Aires. Before this session's
 -- dayNumberForDate() fix (App.jsx), a device with its clock/timezone ahead
@@ -19,6 +22,12 @@ set search_path = public
 as $$
 declare
   today_ar int;
+  rec record;
+  cur_day int := null;
+  day_total bigint := 0;
+  day_ranked bigint := 0;
+  day_unranked bigint := 0;
+  seen_profiles uuid[] := '{}';
 begin
   if not is_admin_user() then
     raise exception 'not authorized';
@@ -26,16 +35,46 @@ begin
 
   today_ar := ((now() at time zone 'America/Argentina/Buenos_Aires')::date - date '2024-01-01');
 
-  return query
-    select
-      ds.day_number,
-      count(*) as total,
-      count(*) filter (where ds.timed) as ranked,
-      count(*) filter (where not ds.timed) as unranked,
-      count(distinct ds.profile_id) as unique_users
+  for rec in
+    select ds.day_number as d, ds.profile_id as p, ds.timed as t
     from daily_stats ds
     where ds.day_number <= today_ar
-    group by ds.day_number
-    order by ds.day_number desc;
+    order by ds.day_number desc, ds.profile_id
+  loop
+    if cur_day is not null and rec.d <> cur_day then
+      day_number := cur_day;
+      total := day_total;
+      ranked := day_ranked;
+      unranked := day_unranked;
+      unique_users := array_length(seen_profiles, 1);
+      return next;
+
+      day_total := 0;
+      day_ranked := 0;
+      day_unranked := 0;
+      seen_profiles := '{}';
+    end if;
+    cur_day := rec.d;
+
+    day_total := day_total + 1;
+    if rec.t then
+      day_ranked := day_ranked + 1;
+    else
+      day_unranked := day_unranked + 1;
+    end if;
+
+    if not (rec.p = any(seen_profiles)) then
+      seen_profiles := seen_profiles || rec.p;
+    end if;
+  end loop;
+
+  if cur_day is not null then
+    day_number := cur_day;
+    total := day_total;
+    ranked := day_ranked;
+    unranked := day_unranked;
+    unique_users := array_length(seen_profiles, 1);
+    return next;
+  end if;
 end;
 $$;
