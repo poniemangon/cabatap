@@ -14,6 +14,11 @@
 -- than the real current day in Buenos Aires from what the admin panel
 -- shows, so a stray bad row can't surface as a bogus "current" tile.
 
+-- Postgres won't let create-or-replace change an existing function's
+-- return-table shape (adding unique_users counts as changing it), so the
+-- old signature has to be dropped first.
+drop function if exists daily_map_stats();
+
 create or replace function daily_map_stats()
 returns table(day_number int, total bigint, ranked bigint, unranked bigint, unique_users bigint)
 language plpgsql
