@@ -13,8 +13,11 @@ import './RankingPreview.css'
 const DAY_MS = 24 * 60 * 60 * 1000
 const EPOCH_UTC = Date.UTC(2024, 0, 1)
 function todayDayNumber() {
-  const now = new Date()
-  const utcMidnight = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  // Argentina is fixed UTC-3 year-round (no DST) — shift "now" by that
+  // offset before reading calendar fields, so "today" always means today
+  // in Buenos Aires regardless of the player's device timezone.
+  const arInstant = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const utcMidnight = Date.UTC(arInstant.getUTCFullYear(), arInstant.getUTCMonth(), arInstant.getUTCDate())
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 

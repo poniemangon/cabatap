@@ -18,6 +18,13 @@ function dayNumberForDate(date) {
   const utcMidnight = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
+// Argentina is fixed UTC-3 year-round (no DST) — same shift App.jsx's
+// nowInBuenosAires() applies, kept in sync so "today" means today in Buenos
+// Aires regardless of the player's device timezone.
+function nowInBuenosAires() {
+  const arInstant = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  return new Date(arInstant.getUTCFullYear(), arInstant.getUTCMonth(), arInstant.getUTCDate())
+}
 function formatDailyDate(dayNumber) {
   return new Date(EPOCH_UTC + dayNumber * DAY_MS).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
 }
@@ -98,7 +105,7 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, 
 
 export default function RankingBoard() {
   const { profile } = useProfile()
-  const todayDayNumber = dayNumberForDate(new Date())
+  const todayDayNumber = dayNumberForDate(nowInBuenosAires())
   const [averages, setAverages] = useState([])
   const [dayNumber, setDayNumber] = useState(todayDayNumber)
   const [dayResults, setDayResults] = useState([])

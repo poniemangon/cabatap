@@ -78,6 +78,14 @@ function dayNumberForDate(date) {
   return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
 }
 
+// Argentina is fixed UTC-3 year-round (no DST) — shift "now" by that offset
+// before reading calendar fields, so "today" for the daily map always means
+// today in Buenos Aires, regardless of the player's device timezone.
+function nowInBuenosAires() {
+  const arInstant = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  return new Date(arInstant.getUTCFullYear(), arInstant.getUTCMonth(), arInstant.getUTCDate())
+}
+
 // Deterministic PRNG (mulberry32) — used only to shuffle the barrio list
 // below with a fixed seed, so the shuffle is identical on every client/
 // reload instead of depending on Math.random.
@@ -460,7 +468,7 @@ function App() {
       markTestMapSeen()
       fresh = { roundIndices: TEST_MAP_ROUND_INDICES, gameMode: 'testmap', customBarrioIds: [] }
     } else {
-      const todayDayNumber = dayNumberForDate(new Date())
+      const todayDayNumber = dayNumberForDate(nowInBuenosAires())
       fresh = {
         dayNumber: todayDayNumber,
         roundIndices: dailyRoundIndicesForDay(todayDayNumber, pool, barrios),
@@ -662,7 +670,7 @@ function App() {
           results,
           view,
           // Only meaningful for 'daily' — see the mount effect's resume check.
-          dayNumber: gameMode === 'daily' ? dayNumberForDate(new Date()) : undefined,
+          dayNumber: gameMode === 'daily' ? dayNumberForDate(nowInBuenosAires()) : undefined,
           // Whoever this session actually belongs to — a stale session from a
           // different signed-in account (or a guest) must never get resumed
           // into the account that's loading the page now, see the mount
@@ -963,7 +971,7 @@ function App() {
   // after already using today's shows that result instead of a fresh game.
   const handlePractice = () => {
     if (!isSignedIn) {
-      const dayNumber = dayNumberForDate(new Date())
+      const dayNumber = dayNumberForDate(nowInBuenosAires())
       const stored = loadGuestResult(GUEST_PRACTICE_SESSION_KEY, dayNumber)
       if (stored) {
         showGuestStoredResult(stored, 'practice')
@@ -983,7 +991,7 @@ function App() {
   useEffect(() => {
     if (!dailyChoiceOpen || !profile) return
     let cancelled = false
-    const dayNumber = dayNumberForDate(new Date())
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
     Promise.all([getMyDailyStat(profile.id, dayNumber, false), getMyDailyStat(profile.id, dayNumber, true)])
       .then(([tranqui, competitivo]) => {
         if (!cancelled) setDailyStatusToday({ tranqui, competitivo })
@@ -1016,7 +1024,7 @@ function App() {
     setDailyChoiceOpen(false)
     setDailyTimed(timed)
     setDailyRankInfo(null)
-    const dayNumber = dayNumberForDate(new Date())
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
 
     if (profile) {
       const cached = timed ? dailyStatusToday.competitivo : dailyStatusToday.tranqui
@@ -1069,7 +1077,7 @@ function App() {
   const handleStartCustom = (selectedBarrioIds) => {
     const isSpecial = isAllSpecialSelection(selectedBarrioIds, barrios)
     if (!isSignedIn) {
-      const dayNumber = dayNumberForDate(new Date())
+      const dayNumber = dayNumberForDate(nowInBuenosAires())
       const key = isSpecial ? GUEST_SPECIAL_SESSION_KEY : GUEST_CUSTOM_SESSION_KEY
       const stored = loadGuestResult(key, dayNumber)
       if (stored) {
@@ -1090,7 +1098,7 @@ function App() {
   // yesterday's-flavor result anyway.
   const handleOpenCustom = () => {
     if (!isSignedIn) {
-      const dayNumber = dayNumberForDate(new Date())
+      const dayNumber = dayNumberForDate(nowInBuenosAires())
       const stored = loadGuestResult(GUEST_CUSTOM_SESSION_KEY, dayNumber)
       if (stored) {
         showGuestStoredResult(stored, 'custom')
@@ -1386,7 +1394,7 @@ function App() {
     if (phase !== 'gameOver' || gameMode !== 'daily') return
     if (dailyResultSubmittedRef.current) return
     dailyResultSubmittedRef.current = true
-    const dayNumber = dayNumberForDate(new Date())
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
 
     if (!profile) {
       // Signed-out guests can only play tranqui — persisted locally for this
@@ -1422,7 +1430,7 @@ function App() {
     if (guestModeResultSubmittedRef.current) return
     guestModeResultSubmittedRef.current = true
 
-    const dayNumber = dayNumberForDate(new Date())
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
     const isSpecial = gameMode === 'custom' && isAllSpecialSelection(customBarrioIds, barrios)
     const key =
       gameMode === 'practice' ? GUEST_PRACTICE_SESSION_KEY : isSpecial ? GUEST_SPECIAL_SESSION_KEY : GUEST_CUSTOM_SESSION_KEY
@@ -1453,7 +1461,7 @@ function App() {
         distance: null,
         points: 0,
       }))
-      const dayNumber = dayNumberForDate(new Date())
+      const dayNumber = dayNumberForDate(nowInBuenosAires())
       submitDailyResultBeacon({ profileId: profile.id, dayNumber, results: zeroed, totalScore: 0, timed: true })
     }
     window.addEventListener('pagehide', handleClose)
@@ -1563,7 +1571,7 @@ function App() {
         </div>
         <CalendarPicker
           dayNumberForDate={dayNumberForDate}
-          todayDayNumber={dayNumberForDate(new Date())}
+          todayDayNumber={dayNumberForDate(nowInBuenosAires())}
           onSelectDay={(dayNumber) => {
             setArchiveOpen(false)
             handleSelectArchiveDay(dayNumber)
