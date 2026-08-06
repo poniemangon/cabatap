@@ -669,7 +669,14 @@ function App() {
     () => `${SHARE_DOMAIN}${shareIndicesToUrl(roundIndices, gameMode === 'custom' ? customBarrioIds : undefined)}`,
     [roundIndices, gameMode, customBarrioIds],
   )
-  const resultShareLink = gameMode === 'daily' ? SHARE_DOMAIN : shareLink
+  // Daily-map shares tag the link with ?referral=<username> so a new
+  // signup arriving through it can be attributed back to whoever shared it
+  // (see referrals table, 0033_referrals.sql) — only when there's an
+  // actual username to attribute it to.
+  const resultShareLink =
+    gameMode === 'daily'
+      ? `${SHARE_DOMAIN}${profile?.username ? `?referral=${encodeURIComponent(profile.username)}` : ''}`
+      : shareLink
 
   const barrioCounts = useMemo(() => {
     const counts = new Map()

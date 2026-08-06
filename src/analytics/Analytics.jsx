@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 
 const SESSION_KEY = 'ubicaba-analytics-session'
+const REFERRAL_RECORDED_KEY = 'ubicaba-referral-recorded'
 const HEARTBEAT_MS = 45000
 
 // Stable per-browser id, signed-in or not — same trust model as any
@@ -37,6 +38,23 @@ function logPageview(sessionId, path) {
     .then(({ error }) => error && console.error(error))
 }
 
+// Daily-map share links carry ?referral=<username> (App.jsx's
+// resultShareLink) — bumps that user's visit_count once per browser
+// session per referrer, so a refresh or repeat visit via the same link
+// within the session doesn't inflate the count.
+function recordReferralVisit(search) {
+  const referrer = new URLSearchParams(search).get('referral')
+  if (!referrer) return
+  try {
+    if (sessionStorage.getItem(REFERRAL_RECORDED_KEY) === referrer) return
+    sessionStorage.setItem(REFERRAL_RECORDED_KEY, referrer)
+  } catch {
+    // sessionStorage unavailable — fall through and record anyway, worst
+    // case a private-browsing visitor's refresh double-counts once
+  }
+  supabase.rpc('record_referral_visit', { referrer_username: referrer }).then(({ error }) => error && console.error(error))
+}
+
 // Renders nothing — mounted once at the router root so it survives every
 // route change and can watch location for pageview logging.
 export default function Analytics() {
@@ -48,6 +66,11 @@ export default function Analytics() {
     heartbeat(sessionId)
     const interval = setInterval(() => heartbeat(sessionId), HEARTBEAT_MS)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    recordReferralVisit(location.search)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
