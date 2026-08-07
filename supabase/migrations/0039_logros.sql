@@ -19,7 +19,8 @@ create table logros (
   created_at timestamptz not null default now()
 );
 
-create table logros_jugador (
+-- Pivot/junction table: one row per (profile, logro) pair earned.
+create table logros_jugadores (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references profiles(id) on delete cascade,
   logro_id uuid not null references logros(id) on delete cascade,
@@ -27,10 +28,10 @@ create table logros_jugador (
   unique (profile_id, logro_id)
 );
 
-create index logros_jugador_profile_idx on logros_jugador (profile_id);
+create index logros_jugadores_profile_idx on logros_jugadores (profile_id);
 
 alter table logros enable row level security;
-alter table logros_jugador enable row level security;
+alter table logros_jugadores enable row level security;
 
 create policy "active logros are viewable by everyone"
   on logros for select
@@ -41,8 +42,8 @@ create policy "admins can manage logros"
   using (is_admin_user())
   with check (is_admin_user());
 
-create policy "logros_jugador are viewable by everyone"
-  on logros_jugador for select
+create policy "logros_jugadores are viewable by everyone"
+  on logros_jugadores for select
   using (true);
 
 -- No insert/update/delete policy for anon/authenticated on purpose — the
@@ -97,7 +98,7 @@ begin
     my_elo_rank := null;
   end if;
 
-  insert into logros_jugador (profile_id, logro_id)
+  insert into logros_jugadores (profile_id, logro_id)
   select target_profile_id, l.id
   from logros l
   where l.is_active
