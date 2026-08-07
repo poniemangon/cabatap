@@ -366,7 +366,7 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const openSignUp = () => setAuthModalOpen(true)
   const { profile, loading: profileLoading } = useProfile()
-  const { notifications, unreadCount, markAllRead, deleteNotification, pruneOld, toasts, dismissToast } =
+  const { notifications, unreadCount, openNotifications, deleteNotification, toasts, dismissToast } =
     useNotifications(profile)
 
   const [pool, setPool] = useState(null)
@@ -1904,8 +1904,7 @@ function App() {
       onClose={() => setSidebarOpen(false)}
       notifications={notifications}
       unreadCount={unreadCount}
-      onOpenNotifications={markAllRead}
-      onCloseNotifications={pruneOld}
+      onOpenNotifications={openNotifications}
       onDeleteNotification={deleteNotification}
       onNotificationClick={handleNotificationClick}
     />

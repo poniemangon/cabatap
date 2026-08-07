@@ -10,10 +10,10 @@ export function notificationText(n) {
   return 'Notificación'
 }
 
-// Notifications don't stick around: deleted on click (see deleteNotification)
-// or, failing that, once they're a day old. There's no scheduled job for the
-// latter, so it's pruned opportunistically instead — on every list load, and
-// also whenever the notifications panel closes (see useNotifications).
+// Notifications don't stick around: deleted on click, 5 minutes after the
+// panel that showed them was opened (see useNotifications' openNotifications),
+// or, failing both, once they're a day old — pruned opportunistically here,
+// on every list load, since there's no scheduled job for it.
 export async function pruneOldNotifications(profileId) {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   await supabase.from('notifications').delete().eq('profile_id', profileId).lt('created_at', oneDayAgo)

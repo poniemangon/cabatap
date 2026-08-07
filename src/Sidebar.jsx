@@ -36,7 +36,6 @@ export default function Sidebar({
   notifications = [],
   unreadCount = 0,
   onOpenNotifications,
-  onCloseNotifications,
   onNotificationClick,
   onDeleteNotification,
 }) {
@@ -77,12 +76,10 @@ export default function Sidebar({
     }
     setNotifPanelOpen(opening)
     if (opening) onOpenNotifications?.()
-    else onCloseNotifications?.()
   }
 
   const closeNotifPanel = () => {
     setNotifPanelOpen(false)
-    onCloseNotifications?.()
   }
 
   const handleNotificationClick = (n) => {

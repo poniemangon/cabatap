@@ -1,18 +1,40 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getLogrosForProfile } from './logrosApi'
 import './LogrosStrip.css'
 
+const POPUP_WIDTH = 160
+
 function LogroItem({ logro }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const itemRef = useRef(null)
+
+  // The popup is position:fixed (not absolute) because .logros-strip scrolls
+  // horizontally — overflow-x: auto implicitly forces overflow-y: auto too
+  // (CSS spec pairs them), which would clip an absolutely-positioned popup
+  // rising above the row. Fixed positioning, computed from the icon's actual
+  // on-screen spot, escapes that clipping — same technique Sidebar.jsx uses
+  // for its notification panel.
+  const openPopup = () => {
+    const rect = itemRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPos({
+      top: rect.top - 8,
+      left: Math.min(Math.max(rect.left + rect.width / 2, POPUP_WIDTH / 2 + 8), window.innerWidth - POPUP_WIDTH / 2 - 8),
+    })
+    setOpen(true)
+  }
 
   return (
     <div
+      ref={itemRef}
       className="logro-item"
-      onMouseEnter={() => setOpen(true)}
+      onMouseEnter={openPopup}
       onMouseLeave={() => setOpen(false)}
       onClick={(e) => {
         e.stopPropagation()
-        setOpen((v) => !v)
+        if (open) setOpen(false)
+        else openPopup()
       }}
     >
       {logro.image_url ? (
@@ -22,7 +44,11 @@ function LogroItem({ logro }) {
       )}
       <span className="logro-item-title">{logro.title}</span>
       {open && (
-        <div className="logro-item-popup" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="logro-item-popup"
+          style={{ top: pos.top, left: pos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {logro.image_url ? (
             <img src={logro.image_url} alt="" className="logro-item-popup-img" />
           ) : (

@@ -4,11 +4,11 @@ import {
   deleteNotification as deleteNotificationRow,
   listNotifications,
   markNotificationsRead,
-  pruneOldNotifications,
   subscribeToNotifications,
 } from '../notifications/notificationsApi'
 
 const TOAST_DURATION_MS = 6000
+const OPEN_CLEANUP_DELAY_MS = 5 * 60 * 1000
 
 export default function useNotifications(profile) {
   const [notifications, setNotifications] = useState([])
@@ -44,31 +44,35 @@ export default function useNotifications(profile) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id])
 
-  const markAllRead = useCallback(() => {
+  // Called every time the notifications popup opens: marks whatever's
+  // currently unread as read, and schedules those same rows (exactly the
+  // ones visible at this open, not by their own age) to be deleted 5
+  // minutes from now — a "you've had a chance to see this" timer that
+  // starts on open, not on close and not on how old the notification is.
+  // Reopening later just schedules a fresh 5-minute timer for whatever's
+  // showing then; deleting an already-deleted row is a harmless no-op.
+  const openNotifications = useCallback(() => {
     const unreadIds = notifications.filter((n) => !n.read_at).map((n) => n.id)
-    if (unreadIds.length === 0) return
-    setNotifications((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: new Date().toISOString() })))
-    markNotificationsRead(unreadIds).catch(console.error)
+    if (unreadIds.length > 0) {
+      setNotifications((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: new Date().toISOString() })))
+      markNotificationsRead(unreadIds).catch(console.error)
+    }
+
+    const idsAtOpen = notifications.map((n) => n.id)
+    if (idsAtOpen.length === 0) return
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => !idsAtOpen.includes(n.id)))
+      idsAtOpen.forEach((id) => deleteNotificationRow(id).catch(console.error))
+    }, OPEN_CLEANUP_DELAY_MS)
   }, [notifications])
 
-  // Notifications are dismissed by deleting them outright, not just marking
-  // read — clicking one (to act on it) is the main way they go away, with
-  // pruneOld (below) and listNotifications' own 1-day prune as backstops for
-  // ones never clicked.
+  // Notifications are also dismissed by deleting them outright when clicked
+  // (to act on it) — the main way they go away before the 5-minute timer
+  // above would've cleared them anyway.
   const deleteNotification = useCallback((id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
     deleteNotificationRow(id).catch(console.error)
   }, [])
-
-  // Called when the notifications panel closes — prunes anything older than
-  // a day, both locally (so the list doesn't show stale rows next open) and
-  // server-side.
-  const pruneOld = useCallback(() => {
-    if (!profile?.id) return
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
-    setNotifications((prev) => prev.filter((n) => new Date(n.created_at).getTime() >= oneDayAgo))
-    pruneOldNotifications(profile.id).catch(console.error)
-  }, [profile?.id])
 
   const dismissToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -76,5 +80,5 @@ export default function useNotifications(profile) {
 
   const unreadCount = notifications.filter((n) => !n.read_at).length
 
-  return { notifications, unreadCount, markAllRead, deleteNotification, pruneOld, toasts, dismissToast }
+  return { notifications, unreadCount, openNotifications, deleteNotification, toasts, dismissToast }
 }
