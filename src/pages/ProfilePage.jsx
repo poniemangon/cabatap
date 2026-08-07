@@ -458,7 +458,7 @@ export default function ProfilePage() {
 
       <section className="profile-section">
         <h2 className="profile-section-title">Logros</h2>
-        <LogrosStrip profileId={profile.id} />
+        <LogrosStrip profileId={profile?.id} />
       </section>
 
       <section className="profile-section">
