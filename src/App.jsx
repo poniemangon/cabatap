@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
 import Sidebar from './Sidebar'
+import NotificationToasts from './notifications/NotificationToasts'
 import TopBar from './TopBar'
 import Dashboard from './Dashboard'
 import RoundResultModal from './RoundResultModal'
@@ -365,7 +366,8 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const openSignUp = () => setAuthModalOpen(true)
   const { profile, loading: profileLoading } = useProfile()
-  const { notifications, unreadCount, markAllRead, deleteNotification } = useNotifications(profile)
+  const { notifications, unreadCount, markAllRead, deleteNotification, pruneOld, toasts, dismissToast } =
+    useNotifications(profile)
 
   const [pool, setPool] = useState(null)
   const [barrios, setBarrios] = useState(null)
@@ -1290,6 +1292,20 @@ function App() {
     handleGoHome()
   }
 
+  const handleNotificationClick = (n) => {
+    if (n.type === 'duel_completed' || n.type === 'duel_matched') {
+      // /duelo/:code renders the same App instance as "/" — react-router
+      // doesn't remount it across sibling routes, so navigating alone
+      // only changes the URL param; the loader effect only runs when
+      // view is explicitly 'duel-loading'.
+      setDuelClaimError(null)
+      setView('duel-loading')
+      navigate(`/duelo/${n.data.invite_code}`)
+    } else if (n.type === 'friend_request' || n.type === 'logro_earned') {
+      navigate('/perfil')
+    }
+  }
+
   const refreshDuelResults = useCallback(async () => {
     if (!activeDuel) return
     setDuelResultsLoading(true)
@@ -1889,19 +1905,19 @@ function App() {
       notifications={notifications}
       unreadCount={unreadCount}
       onOpenNotifications={markAllRead}
+      onCloseNotifications={pruneOld}
       onDeleteNotification={deleteNotification}
-      onNotificationClick={(n) => {
-        if (n.type === 'duel_completed' || n.type === 'duel_matched') {
-          // /duelo/:code renders the same App instance as "/" — react-router
-          // doesn't remount it across sibling routes, so navigating alone
-          // only changes the URL param; the loader effect only runs when
-          // view is explicitly 'duel-loading'.
-          setDuelClaimError(null)
-          setView('duel-loading')
-          navigate(`/duelo/${n.data.invite_code}`)
-        } else if (n.type === 'friend_request') {
-          navigate('/perfil')
-        }
+      onNotificationClick={handleNotificationClick}
+    />
+  )
+
+  const notificationToasts = (
+    <NotificationToasts
+      toasts={toasts}
+      onDismiss={dismissToast}
+      onClick={(n) => {
+        handleNotificationClick(n)
+        deleteNotification(n.id)
       }}
     />
   )
@@ -2241,6 +2257,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      {notificationToasts}
       <div className={`app-shell-content${authGateOpen ? ' app-shell-blurred' : ''}`}>
         {sidebar}
         <div className="app-main">

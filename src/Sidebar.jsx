@@ -7,6 +7,7 @@ import { getDailyWinCount } from './daily/dailyWinsApi'
 import EloBadge from './EloBadge'
 import RankStatus from './RankStatus'
 import Avatar from './Avatar'
+import { notificationText } from './notifications/notificationsApi'
 
 function timeAgo(isoString) {
   const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
@@ -17,13 +18,6 @@ function timeAgo(isoString) {
   if (hours < 24) return `hace ${hours} h`
   const days = Math.floor(hours / 24)
   return `hace ${days} d`
-}
-
-function notificationText(n) {
-  if (n.type === 'friend_request') return `${n.data?.from_username || 'Alguien'} te envió una solicitud de amistad`
-  if (n.type === 'duel_completed') return 'Tu duelo terminó — ver resultado'
-  if (n.type === 'duel_matched') return `${n.data?.opponent_username || 'Alguien'} respondió tu duelo`
-  return 'Notificación'
 }
 
 export default function Sidebar({
@@ -42,6 +36,7 @@ export default function Sidebar({
   notifications = [],
   unreadCount = 0,
   onOpenNotifications,
+  onCloseNotifications,
   onNotificationClick,
   onDeleteNotification,
 }) {
@@ -82,10 +77,16 @@ export default function Sidebar({
     }
     setNotifPanelOpen(opening)
     if (opening) onOpenNotifications?.()
+    else onCloseNotifications?.()
+  }
+
+  const closeNotifPanel = () => {
+    setNotifPanelOpen(false)
+    onCloseNotifications?.()
   }
 
   const handleNotificationClick = (n) => {
-    setNotifPanelOpen(false)
+    closeNotifPanel()
     onNotificationClick?.(n)
     onDeleteNotification?.(n.id)
     onClose?.()
@@ -118,7 +119,7 @@ export default function Sidebar({
               </button>
               {notifPanelOpen && (
                 <>
-                  <div className="sidebar-notif-backdrop" onClick={() => setNotifPanelOpen(false)} />
+                  <div className="sidebar-notif-backdrop" onClick={closeNotifPanel} />
                   <div
                     className="sidebar-notif-panel"
                     style={{ top: notifPanelPos.top, left: notifPanelPos.left }}

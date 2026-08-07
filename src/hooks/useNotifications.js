@@ -4,11 +4,15 @@ import {
   deleteNotification as deleteNotificationRow,
   listNotifications,
   markNotificationsRead,
+  pruneOldNotifications,
   subscribeToNotifications,
 } from '../notifications/notificationsApi'
 
+const TOAST_DURATION_MS = 6000
+
 export default function useNotifications(profile) {
   const [notifications, setNotifications] = useState([])
+  const [toasts, setToasts] = useState([])
 
   useEffect(() => {
     if (!profile) {
@@ -24,6 +28,10 @@ export default function useNotifications(profile) {
 
     const channel = subscribeToNotifications(profile.id, (row) => {
       setNotifications((prev) => [row, ...prev])
+      setToasts((prev) => [...prev, row])
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== row.id))
+      }, TOAST_DURATION_MS)
     })
 
     return () => {
@@ -45,13 +53,28 @@ export default function useNotifications(profile) {
 
   // Notifications are dismissed by deleting them outright, not just marking
   // read — clicking one (to act on it) is the main way they go away, with
-  // listNotifications' 1-day prune as the backstop for ones never clicked.
+  // pruneOld (below) and listNotifications' own 1-day prune as backstops for
+  // ones never clicked.
   const deleteNotification = useCallback((id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
     deleteNotificationRow(id).catch(console.error)
   }, [])
 
+  // Called when the notifications panel closes — prunes anything older than
+  // a day, both locally (so the list doesn't show stale rows next open) and
+  // server-side.
+  const pruneOld = useCallback(() => {
+    if (!profile?.id) return
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    setNotifications((prev) => prev.filter((n) => new Date(n.created_at).getTime() >= oneDayAgo))
+    pruneOldNotifications(profile.id).catch(console.error)
+  }, [profile?.id])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
+
   const unreadCount = notifications.filter((n) => !n.read_at).length
 
-  return { notifications, unreadCount, markAllRead, deleteNotification }
+  return { notifications, unreadCount, markAllRead, deleteNotification, pruneOld, toasts, dismissToast }
 }

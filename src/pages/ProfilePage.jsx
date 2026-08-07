@@ -9,6 +9,7 @@ import DailyWinBadge from '../daily/DailyWinBadge'
 import { getDailyWinCount } from '../daily/dailyWinsApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
+import LogrosStrip from '../logros/LogrosStrip'
 import './ProfilePage.css'
 
 const SEARCH_PAGE_SIZE = 8
@@ -453,6 +454,11 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="profile-section">
+        <h2 className="profile-section-title">Logros</h2>
+        <LogrosStrip profileId={profile.id} />
       </section>
 
       <section className="profile-section">

@@ -5,6 +5,7 @@ import { listMyDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
+import LogrosStrip from '../logros/LogrosStrip'
 import './ProfilePage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -128,6 +129,11 @@ export default function PublicProfilePage() {
               </h1>
             </div>
           </header>
+
+          <section className="profile-section">
+            <h2 className="profile-section-title">Logros</h2>
+            <LogrosStrip profileId={profile.id} />
+          </section>
 
           <section className="profile-section">
             <h2 className="profile-section-title">Estadísticas</h2>

@@ -1,11 +1,26 @@
 import { supabase } from '../supabaseClient'
 
+// Human-readable text for a notification row — shared between the sidebar's
+// panel and the toast popup so the two never drift out of sync.
+export function notificationText(n) {
+  if (n.type === 'friend_request') return `${n.data?.from_username || 'Alguien'} te envió una solicitud de amistad`
+  if (n.type === 'duel_completed') return 'Tu duelo terminó — ver resultado'
+  if (n.type === 'duel_matched') return `${n.data?.opponent_username || 'Alguien'} respondió tu duelo`
+  if (n.type === 'logro_earned') return `¡Nuevo logro desbloqueado! ${n.data?.title || ''}`
+  return 'Notificación'
+}
+
 // Notifications don't stick around: deleted on click (see deleteNotification)
 // or, failing that, once they're a day old. There's no scheduled job for the
-// latter, so it's pruned opportunistically here, every time the list loads.
-export async function listNotifications(profileId) {
+// latter, so it's pruned opportunistically instead — on every list load, and
+// also whenever the notifications panel closes (see useNotifications).
+export async function pruneOldNotifications(profileId) {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   await supabase.from('notifications').delete().eq('profile_id', profileId).lt('created_at', oneDayAgo)
+}
+
+export async function listNotifications(profileId) {
+  await pruneOldNotifications(profileId)
 
   const { data, error } = await supabase
     .from('notifications')
