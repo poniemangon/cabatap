@@ -19,7 +19,7 @@ function LogroItem({ logro }) {
     const rect = itemRef.current?.getBoundingClientRect()
     if (!rect) return
     setPos({
-      top: rect.top - 8,
+      top: rect.bottom + 8,
       left: Math.min(Math.max(rect.left + rect.width / 2, POPUP_WIDTH / 2 + 8), window.innerWidth - POPUP_WIDTH / 2 - 8),
     })
     setOpen(true)
