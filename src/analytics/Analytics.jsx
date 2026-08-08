@@ -4,7 +4,20 @@ import { supabase } from '../supabaseClient'
 
 const SESSION_KEY = 'ubicaba-analytics-session'
 const REFERRAL_RECORDED_KEY = 'ubicaba-referral-recorded'
+const REFERRED_BY_KEY = 'ubicaba-referred-by'
 const HEARTBEAT_MS = 45000
+
+// Read by useProfile.js's ensureProfile() at signup time, to flag the new
+// profile as is_referred (0045) if this browser session ever landed on a
+// referral link. Session-scoped by design — a referral only counts toward
+// signups that happen in the same session as the visit.
+export function getReferredBy() {
+  try {
+    return sessionStorage.getItem(REFERRED_BY_KEY)
+  } catch {
+    return null
+  }
+}
 
 // Stable per-browser id, signed-in or not — same trust model as any
 // tracking-pixel analytics (no auth binding, see 0031_analytics.sql).
@@ -46,6 +59,7 @@ function recordReferralVisit(search) {
   const referrer = new URLSearchParams(search).get('referral')
   if (!referrer) return
   try {
+    sessionStorage.setItem(REFERRED_BY_KEY, referrer)
     if (sessionStorage.getItem(REFERRAL_RECORDED_KEY) === referrer) return
     sessionStorage.setItem(REFERRAL_RECORDED_KEY, referrer)
   } catch {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import useAuth from './useAuth'
+import { getReferredBy } from '../analytics/Analytics'
 
 const DIACRITICS_RE = new RegExp('[̀-ͯ]', 'g')
 
@@ -62,12 +63,13 @@ async function ensureProfile(user) {
     return updated
   }
 
+  const isReferred = !!getReferredBy()
   const base = slugifyUsername(meta.full_name || meta.name || meta.user_name || user.email)
   for (let attempt = 0; attempt < 5; attempt++) {
     const candidate = attempt === 0 ? base : `${base}${Math.floor(1000 + Math.random() * 9000)}`
     const { data, error } = await supabase
       .from('profiles')
-      .insert({ clerk_user_id: user.id, username: candidate, avatar_url: avatarUrl })
+      .insert({ clerk_user_id: user.id, username: candidate, avatar_url: avatarUrl, is_referred: isReferred })
       .select()
       .single()
     if (!error) return data
