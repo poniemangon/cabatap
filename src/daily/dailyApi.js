@@ -20,6 +20,21 @@ export async function submitDailyResult({ profileId, dayNumber, results, totalSc
   if (error) throw error
 }
 
+// Signed-out completion — profile_id and results both stay null (0043):
+// there's no player to ever look a guest's round-by-round replay back up
+// for, only the score is worth keeping, purely for admin-side tracking.
+export async function submitGuestDailyResult({ dayNumber, totalScore, timed = false }) {
+  const { error } = await supabase.from('daily_stats').insert({
+    profile_id: null,
+    day_number: dayNumber,
+    results: null,
+    total_score: totalScore,
+    timed,
+    completed_at: new Date().toISOString(),
+  })
+  if (error) throw error
+}
+
 // Today's competitivo leaderboard — everyone's timed attempt for this
 // day_number, best score first. Used both to show a rank on the gameOver
 // screen and could back a dedicated leaderboard view later.

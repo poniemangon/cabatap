@@ -34,7 +34,13 @@ import {
   deletePrivateDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted, notifyDuelMatched } from './notifications/notificationsApi'
-import { submitDailyResult, getDailyLeaderboard, getMyDailyStat, submitDailyResultBeacon } from './daily/dailyApi'
+import {
+  submitDailyResult,
+  submitGuestDailyResult,
+  getDailyLeaderboard,
+  getMyDailyStat,
+  submitDailyResultBeacon,
+} from './daily/dailyApi'
 import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
@@ -1415,8 +1421,11 @@ function App() {
     if (!profile) {
       // Signed-out guests can only play tranqui — persisted locally for this
       // browser session (see loadGuestResult) so re-entering "Mapa del día"
-      // shows this result instead of allowing a fresh replay.
+      // shows this result instead of allowing a fresh replay. Also logged
+      // to daily_stats (0043) as a profile_id-null, results-null row, purely
+      // so the admin panel's counts reflect actual guest play.
       saveGuestResult(GUEST_DAILY_SESSION_KEY, dayNumber, results, totalScore)
+      submitGuestDailyResult({ dayNumber, totalScore, timed: dailyTimed }).catch(console.error)
       return
     }
 
