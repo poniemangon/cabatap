@@ -2177,9 +2177,7 @@ function App() {
                       >
                         {duelResultsLoading ? 'Actualizando...' : 'Actualizar'}
                       </button>
-                      {activeDuel.group_duel ? (
-                        <p className="duel-result-waiting">Cierra solo cuando jugó todo el grupo.</p>
-                      ) : (
+                      {!activeDuel.group_duel && (
                         <button
                           type="button"
                           className="primary-btn secondary-btn"
