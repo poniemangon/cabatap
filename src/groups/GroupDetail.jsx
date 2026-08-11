@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getActiveGroupDuel, getGroup, getGroupRanking, leaveGroup, updateGroup } from './groupsApi'
+import { getActiveGroupDuel, getGroup, getGroupDailyLeaderboard, getGroupRanking, leaveGroup, updateGroup } from './groupsApi'
 import Avatar from '../Avatar'
 import DailyWinBadge from '../daily/DailyWinBadge'
 import './Groups.css'
@@ -52,6 +52,7 @@ function EditGroupForm({ group, onSaved, onCancel }) {
 export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onStartDuel, referralAppend }) {
   const [group, setGroup] = useState(null)
   const [ranking, setRanking] = useState([])
+  const [dailyLeaderboard, setDailyLeaderboard] = useState([])
   const [activeDuel, setActiveDuel] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -63,14 +64,15 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
-    Promise.all([getGroup(groupId), getGroupRanking(groupId), getActiveGroupDuel(groupId)])
-      .then(([g, r, d]) => {
+    Promise.all([getGroup(groupId), getGroupRanking(groupId), getGroupDailyLeaderboard(groupId), getActiveGroupDuel(groupId)])
+      .then(([g, r, dl, d]) => {
         if (!g) {
           setError('No encontramos ese grupo.')
           return
         }
         setGroup(g)
         setRanking(r)
+        setDailyLeaderboard(dl)
         setActiveDuel(d)
       })
       .catch((e) => setError(e.message))
@@ -183,6 +185,25 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           </li>
         ))}
       </ul>
+
+      <h2 className="group-detail-ranking-title">Mapa del día de hoy</h2>
+      {dailyLeaderboard.length === 0 ? (
+        <p className="groups-empty">Todavía nadie del grupo jugó el mapa del día de hoy.</p>
+      ) : (
+        <ul className="group-ranking-list">
+          {dailyLeaderboard.map((r, i) => (
+            <li
+              key={r.profile_id}
+              className={`group-ranking-row${r.profile_id === profile?.id ? ' group-ranking-row-me' : ''}`}
+            >
+              <span className="group-ranking-rank">#{i + 1}</span>
+              <Avatar src={r.profile?.avatar_url} baseClass="group-ranking-avatar" />
+              <span className="group-ranking-name">{r.profile_id === profile?.id ? 'Vos' : r.profile?.username}</span>
+              <span className="group-ranking-wins">{r.total_score} pts</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

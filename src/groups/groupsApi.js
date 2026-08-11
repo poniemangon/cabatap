@@ -1,5 +1,15 @@
 import { supabase } from '../supabaseClient'
 
+// Same epoch/AR-pinning App.jsx's dayNumberForDate()/nowInBuenosAires() use,
+// kept in sync — Argentina is fixed UTC-3 year-round (no DST).
+const DAY_MS = 24 * 60 * 60 * 1000
+const EPOCH_UTC = Date.UTC(2024, 0, 1)
+function todayDayNumberAR() {
+  const arInstant = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const utcMidnight = Date.UTC(arInstant.getUTCFullYear(), arInstant.getUTCMonth(), arInstant.getUTCDate())
+  return Math.floor((utcMidnight - EPOCH_UTC) / DAY_MS)
+}
+
 export async function createGroup({ name, imageUrl, creatorId }) {
   const { data: group, error } = await supabase
     .from('groups')
@@ -125,6 +135,25 @@ export async function getDailyGroupWinCounts(groupId) {
     counts.set(row.profile_id, (counts.get(row.profile_id) || 0) + 1)
   }
   return counts
+}
+
+// Today's competitivo (timed) daily map scores, scoped to this group's own
+// members — only who's actually played today shows up, ranked by score.
+// Same "today" boundary as the global leaderboard (Argentina calendar day).
+export async function getGroupDailyLeaderboard(groupId) {
+  const members = await getGroupMembers(groupId)
+  const memberIds = members.map((m) => m.id)
+  if (memberIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('daily_stats')
+    .select('profile_id, total_score, profile:profile_id(id, username, avatar_url)')
+    .in('profile_id', memberIds)
+    .eq('day_number', todayDayNumberAR())
+    .eq('timed', true)
+    .order('total_score', { ascending: false })
+  if (error) throw error
+  return data || []
 }
 
 // Ranking by group duels won — every current member appears, at 0 if they
