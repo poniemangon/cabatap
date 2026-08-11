@@ -8,6 +8,14 @@
   font-size: 22px;
   font-weight: 700;
   color: var(--text-h, #f5f5f5);
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.groups-subtitle {
+  text-align: center;
+  color: var(--text, #9ca3af);
+  font-size: 14px;
   margin: 0 0 18px;
 }
 
@@ -176,6 +184,47 @@
   padding: 4px 8px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.group-new-duel-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #333);
+  color: var(--text, #9ca3af);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group-info-icon:hover {
+  border-color: var(--accent-primary, #007aff);
+  color: var(--text-h, #f5f5f5);
+}
+
+.group-info-popup {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 99999999;
+  width: 240px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--neutral, #121212);
+  border: 1px solid var(--border, #333);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text, #9ca3af);
 }
 
 .edit-btn:hover {

@@ -1,8 +1,51 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getActiveGroupDuel, getGroup, getGroupDailyLeaderboard, getGroupRanking, leaveGroup, updateGroup } from './groupsApi'
 import Avatar from '../Avatar'
 import DailyWinBadge from '../daily/DailyWinBadge'
 import './Groups.css'
+
+const POPUP_WIDTH = 240
+
+function NewDuelInfoIcon() {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const iconRef = useRef(null)
+
+  const showPopup = () => {
+    const rect = iconRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPos({
+      top: rect.bottom + 8,
+      left: Math.min(Math.max(rect.left + rect.width / 2, POPUP_WIDTH / 2 + 8), window.innerWidth - POPUP_WIDTH / 2 - 8),
+    })
+    setOpen(true)
+  }
+
+  return (
+    <span
+      ref={iconRef}
+      className="group-info-icon"
+      tabIndex={0}
+      onMouseEnter={showPopup}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={showPopup}
+      onBlur={() => setOpen(false)}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (open) setOpen(false)
+        else showPopup()
+      }}
+    >
+      i
+      {open && (
+        <span className="group-info-popup" style={{ top: pos.top, left: pos.left }}>
+          Los duelos se cierran automáticamente en 6 horas y dan por ganador al primero. Si al pasar 6 horas solo
+          jugó una persona, el duelo se elimina.
+        </span>
+      )}
+    </span>
+  )
+}
 
 function EditGroupForm({ group, onSaved, onCancel }) {
   const [name, setName] = useState(group.name)
@@ -162,9 +205,12 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
             Jugar duelo activo
           </button>
         ) : (
-          <button type="button" className="primary-btn" onClick={handleStartDuel} disabled={starting}>
-            {starting ? 'Creando...' : 'Nuevo duelo'}
-          </button>
+          <span className="group-new-duel-wrap">
+            <button type="button" className="primary-btn" onClick={handleStartDuel} disabled={starting}>
+              {starting ? 'Creando...' : 'Nuevo duelo'}
+            </button>
+            <NewDuelInfoIcon />
+          </span>
         )}
         <button type="button" className="primary-btn secondary-btn group-leave-btn" onClick={handleLeave} disabled={leaving}>
           {leaving ? 'Saliendo...' : 'Salir del grupo'}

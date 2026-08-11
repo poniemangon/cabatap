@@ -130,6 +130,7 @@ export default function GroupsDashboard({ profile, onOpenGroup }) {
   return (
     <div className="groups-dashboard">
       <h1 className="groups-title">Grupos</h1>
+      <p className="groups-subtitle">Creá grupos con tus amigos para competir con ellos por duelos o el mapa del día.</p>
 
       {loading ? (
         <p className="loading-text">Cargando...</p>
