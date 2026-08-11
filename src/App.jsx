@@ -44,7 +44,6 @@ import {
   getMyDailyStat,
   submitDailyResultBeacon,
 } from './daily/dailyApi'
-import registerImg from './assets/messi-registrate.jpg'
 import './App.css'
 
 const TOTAL_ROUNDS = 5
@@ -320,6 +319,12 @@ function appendReferral(url, username) {
 
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
+// Signed-in variant of the same post-daily-map popup — persisted (not just
+// per-session) since it's a one-time feature announcement, not a nag that
+// should reappear every day.
+const GROUPS_ANNOUNCEMENT_SEEN_KEY = 'ubicaba-groups-announcement-seen'
+const POST_DAILY_POPUP_IMAGE =
+  'https://qlzpqnststodfqnuupax.supabase.co/storage/v1/object/public/admin-uploads/1786486024712-image.png'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
 // Single-round tutorial (the Obelisco, pool_index 4000) shown once per
 // browser session to signed-out first-time visitors, before they've ever
@@ -399,7 +404,7 @@ function App() {
   const [menuCopied, setMenuCopied] = useState(false)
   const [specialSuggestOpen, setSpecialSuggestOpen] = useState(false)
   const [socialsOpen, setSocialsOpen] = useState(false)
-  const [registerPopupOpen, setRegisterPopupOpen] = useState(false)
+  const [postDailyPopupOpen, setPostDailyPopupOpen] = useState(false)
   const [tutorialIntroOpen, setTutorialIntroOpen] = useState(false)
   const [playDailyPromptOpen, setPlayDailyPromptOpen] = useState(false)
   const [scoreOverlayOpen, setScoreOverlayOpen] = useState(true)
@@ -666,19 +671,25 @@ function App() {
 
   const isReady = !!pool && !!barrios && initialized
 
-  // Fires as soon as a signed-out visitor finishes a real "Mapa del día"
-  // attempt — whether they got there straight from the dashboard or via the
-  // one-round tutorial (see the mount effect above and playDailyPromptOpen
-  // below). Capped at once per session via REGISTER_POPUP_SESSION_KEY.
+  // Fires as soon as a player finishes a real "Mapa del día" attempt —
+  // whether they got there straight from the dashboard or via the one-round
+  // tutorial (see the mount effect above and playDailyPromptOpen below).
+  // Signed-out: the register pitch, capped once per SESSION
+  // (REGISTER_POPUP_SESSION_KEY) since it's worth re-showing next visit.
+  // Signed-in: the Grupos feature announcement, capped once EVER
+  // (GROUPS_ANNOUNCEMENT_SEEN_KEY, localStorage not sessionStorage) since
+  // it's a one-time "here's what's new," not something to repeat daily.
   useEffect(() => {
-    if (phase !== 'gameOver' || gameMode !== 'daily' || isSignedIn) return
+    if (phase !== 'gameOver' || gameMode !== 'daily') return
     try {
-      if (!sessionStorage.getItem(REGISTER_POPUP_SESSION_KEY)) {
-        sessionStorage.setItem(REGISTER_POPUP_SESSION_KEY, '1')
-        setRegisterPopupOpen(true)
+      const store = isSignedIn ? localStorage : sessionStorage
+      const key = isSignedIn ? GROUPS_ANNOUNCEMENT_SEEN_KEY : REGISTER_POPUP_SESSION_KEY
+      if (!store.getItem(key)) {
+        store.setItem(key, '1')
+        setPostDailyPopupOpen(true)
       }
     } catch {
-      // sessionStorage unavailable (private browsing, etc.); just skip the popup
+      // storage unavailable (private browsing, etc.); just skip the popup
     }
   }, [phase, gameMode, isSignedIn])
 
@@ -1693,27 +1704,40 @@ function App() {
     </div>
   )
 
-  const registerPopup = registerPopupOpen && (
-    <div className="modal-backdrop" onClick={() => setRegisterPopupOpen(false)}>
+  const postDailyPopup = postDailyPopupOpen && (
+    <div className="modal-backdrop" onClick={() => setPostDailyPopupOpen(false)}>
       <div className="socials-modal register-popup-modal" onClick={(e) => e.stopPropagation()}>
         <div className="calendar-modal-header">
-          <span>Registrate</span>
-          <button type="button" className="calendar-close" onClick={() => setRegisterPopupOpen(false)}>
+          <span>{isSignedIn ? 'Nota de autor' : 'Registrate y competí con tus amigos'}</span>
+          <button type="button" className="calendar-close" onClick={() => setPostDailyPopupOpen(false)}>
             ✕
           </button>
         </div>
-        <img src={registerImg} alt="" className="register-popup-image" />
-        <p className="special-suggest-text">Registrate para guardar tus puntajes y competir con otros jugadores.</p>
-        <button
-          type="button"
-          className="primary-btn"
-          onClick={() => {
-            setRegisterPopupOpen(false)
-            openSignUp()
-          }}
-        >
-          Registrarme
-        </button>
+        <img src={POST_DAILY_POPUP_IMAGE} alt="" className="register-popup-image" />
+        {isSignedIn ? (
+          <>
+            <p className="special-suggest-text">
+              Ahora podés crear grupos y competir con tus amigos en duelos o por el mapa del día.
+            </p>
+            <button type="button" className="primary-btn" onClick={() => setPostDailyPopupOpen(false)}>
+              Cerrar
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="special-suggest-text">Podés hacer duelos rankeados, privados o en grupo.</p>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => {
+                setPostDailyPopupOpen(false)
+                openSignUp()
+              }}
+            >
+              Registrate
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -2377,7 +2401,7 @@ function App() {
       {duelChoicePopup}
       {duelSetupPopup}
       {multiplayerSetupPopup}
-      {registerPopup}
+      {postDailyPopup}
       {practiceLimitPopup}
       {specialThanksPopup}
       {tutorialIntroPopup}
