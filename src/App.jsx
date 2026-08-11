@@ -782,22 +782,17 @@ function App() {
     [current],
   )
 
-  // Duels still submit on tap — no separate confirm step, since a two-tap
-  // flow eats into an already-tight head-to-head clock. Modo competitivo
-  // (daily, timed) uses the same tap-then-confirm flow as untimed modes: a
-  // tap just moves the pin, "Confirmar ubicación" locks it in, and running
-  // out of time submits whatever pin was last placed (see timeUp below) —
-  // only an unopened round (no tap at all) scores 0.
+  // Every mode — timed or not, duels included — uses the same
+  // tap-then-confirm flow: a tap just moves the pin, "Confirmar ubicación"
+  // locks it in, and running out of time (timed modes) submits whatever pin
+  // was last placed (see timeUp below) — only an unopened round (no tap at
+  // all) scores 0.
   const handleMapClick = useCallback(
     (pos) => {
       if (phase !== 'guessing') return
-      if (gameMode === 'duel' && timeLimit != null) {
-        submitGuess(pos)
-      } else {
-        setPendingGuess(pos)
-      }
+      setPendingGuess(pos)
     },
-    [phase, gameMode, timeLimit, submitGuess],
+    [phase],
   )
 
   const handleConfirmGuess = useCallback(() => {
@@ -850,11 +845,11 @@ function App() {
     const timeUp = () => {
       if (handled || roundSubmittedRef.current) return
       handled = true
-      // Modo competitivo's tap-then-confirm flow (handleMapClick above) can
-      // leave a pin placed but never confirmed when the clock hits zero —
-      // that pin is what counts, same as if "Confirmar ubicación" had been
-      // tapped. Only a round with no tap at all scores 0. Duels never reach
-      // here with a pending guess, since a duel tap submits immediately.
+      // The tap-then-confirm flow (handleMapClick above) can leave a pin
+      // placed but never confirmed when the clock hits zero, in any timed
+      // mode (duels included) — that pin is what counts, same as if
+      // "Confirmar ubicación" had been tapped. Only a round with no tap at
+      // all scores 0.
       const guess = pendingGuessRef.current
       if (guess) {
         submitGuess(guess)
