@@ -568,6 +568,7 @@
 }
 
 .register-popup-modal {
+  position: relative;
   max-width: 320px;
   align-items: center;
   text-align: center;
@@ -578,6 +579,29 @@
   width: 100%;
   max-width: 220px;
   border-radius: 10px;
+}
+
+.post-daily-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text, #9ca3af);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.post-daily-popup-close:hover {
+  color: var(--text-h, #f5f5f5);
+}
+
+.post-daily-popup-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-h, #f5f5f5);
+  margin: 0;
 }
 
 .round-result-modal {

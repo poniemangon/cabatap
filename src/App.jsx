@@ -1707,13 +1707,17 @@ function App() {
   const postDailyPopup = postDailyPopupOpen && (
     <div className="modal-backdrop" onClick={() => setPostDailyPopupOpen(false)}>
       <div className="socials-modal register-popup-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="calendar-modal-header">
-          <span>{isSignedIn ? 'Nota de autor' : 'Registrate y competí con tus amigos'}</span>
-          <button type="button" className="calendar-close" onClick={() => setPostDailyPopupOpen(false)}>
-            ✕
-          </button>
-        </div>
+        <button
+          type="button"
+          className="calendar-close post-daily-popup-close"
+          onClick={() => setPostDailyPopupOpen(false)}
+        >
+          ✕
+        </button>
         <img src={POST_DAILY_POPUP_IMAGE} alt="" className="register-popup-image" />
+        <h2 className="post-daily-popup-title">
+          {isSignedIn ? 'Nota de autor' : 'Registrate y competí con tus amigos'}
+        </h2>
         {isSignedIn ? (
           <>
             <p className="special-suggest-text">
