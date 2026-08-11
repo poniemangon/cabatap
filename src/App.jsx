@@ -1723,8 +1723,17 @@ function App() {
             <p className="special-suggest-text">
               Ahora podés crear grupos y competir con tus amigos en duelos o por el mapa del día.
             </p>
-            <button type="button" className="primary-btn" onClick={() => setPostDailyPopupOpen(false)}>
-              Cerrar
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => {
+                setPostDailyPopupOpen(false)
+                setSelectedGroupId(null)
+                setView('grupos')
+                navigate('/grupos')
+              }}
+            >
+              Ver grupos
             </button>
           </>
         ) : (

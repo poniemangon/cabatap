@@ -233,6 +233,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
       </ul>
 
       <h2 className="group-detail-ranking-title">Mapa del día de hoy</h2>
+      <p className="group-detail-hint">Jugá modo tranqui para competir por el mapa del día.</p>
       {dailyLeaderboard.length === 0 ? (
         <p className="groups-empty">Todavía nadie del grupo jugó el mapa del día de hoy.</p>
       ) : (

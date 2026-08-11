@@ -137,9 +137,11 @@ export async function getDailyGroupWinCounts(groupId) {
   return counts
 }
 
-// Today's competitivo (timed) daily map scores, scoped to this group's own
-// members — only who's actually played today shows up, ranked by score.
-// Same "today" boundary as the global leaderboard (Argentina calendar day).
+// Today's modo tranqui (untimed) daily map scores, scoped to this group's
+// own members — only who's actually played today shows up, ranked by
+// score. Groups deliberately use tranqui, not competitivo (unlike the
+// global daily leaderboard) — same "today" boundary either way (Argentina
+// calendar day).
 export async function getGroupDailyLeaderboard(groupId) {
   const members = await getGroupMembers(groupId)
   const memberIds = members.map((m) => m.id)
@@ -150,7 +152,7 @@ export async function getGroupDailyLeaderboard(groupId) {
     .select('profile_id, total_score, profile:profile_id(id, username, avatar_url)')
     .in('profile_id', memberIds)
     .eq('day_number', todayDayNumberAR())
-    .eq('timed', true)
+    .eq('timed', false)
     .order('total_score', { ascending: false })
   if (error) throw error
   return data || []
