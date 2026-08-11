@@ -169,10 +169,39 @@
   margin: 0;
 }
 
+.edit-btn {
+  border: 1px solid var(--border, #333);
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.edit-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.group-edit-form {
+  margin-bottom: 16px;
+  max-width: 320px;
+}
+
+.group-edit-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .group-detail-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 24px;
+}
+
+.group-leave-btn {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
 }
 
 .group-detail-ranking-title {
@@ -230,6 +259,9 @@
 
 .group-ranking-name {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
   color: var(--text-h, #f5f5f5);
   font-weight: 600;

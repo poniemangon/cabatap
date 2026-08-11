@@ -35,6 +35,29 @@ export async function getGroup(groupId) {
   return data
 }
 
+// Only removes the user_groups row — duels/duel_results are never touched,
+// so past wins reappear correctly (getGroupRanking counts historical
+// duels.winner_id regardless of current membership) if they rejoin later.
+// If this was the last member an active group duel was waiting on, the
+// server-side close_group_duels_on_member_leave trigger (0050) closes it
+// right away with whoever already played.
+export async function leaveGroup(groupId, profileId) {
+  const { error } = await supabase.from('user_groups').delete().eq('group_id', groupId).eq('user_id', profileId)
+  if (error) throw error
+}
+
+// Group creator only (enforced by RLS — 0050).
+export async function updateGroup(groupId, { name, imageUrl }) {
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ name, image_url: imageUrl || null })
+    .eq('id', groupId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function listMyGroups(profileId) {
   const { data, error } = await supabase
     .from('user_groups')
@@ -91,10 +114,24 @@ export async function getActiveGroupDuel(groupId) {
   return data
 }
 
+// Batch daily_group_wins count per member — same ⭐ DailyWinBadge as the
+// global daily win, just scoped to this group's own cron-awarded winners
+// (award_daily_group_wins, 0051).
+export async function getDailyGroupWinCounts(groupId) {
+  const { data, error } = await supabase.from('daily_group_wins').select('profile_id').eq('group_id', groupId)
+  if (error) throw error
+  const counts = new Map()
+  for (const row of data || []) {
+    counts.set(row.profile_id, (counts.get(row.profile_id) || 0) + 1)
+  }
+  return counts
+}
+
 // Ranking by group duels won — every current member appears, at 0 if they
-// never played or never won one.
+// never played or never won one. Also carries each member's daily_group_wins
+// count for the ⭐ badge next to their name.
 export async function getGroupRanking(groupId) {
-  const members = await getGroupMembers(groupId)
+  const [members, dailyWinCounts] = await Promise.all([getGroupMembers(groupId), getDailyGroupWinCounts(groupId)])
 
   const { data: closedDuels, error } = await supabase
     .from('duels')
@@ -109,5 +146,7 @@ export async function getGroupRanking(groupId) {
     wins.set(d.winner_id, (wins.get(d.winner_id) || 0) + 1)
   }
 
-  return members.map((m) => ({ ...m, wins: wins.get(m.id) || 0 })).sort((a, b) => b.wins - a.wins)
+  return members
+    .map((m) => ({ ...m, wins: wins.get(m.id) || 0, dailyWins: dailyWinCounts.get(m.id) || 0 }))
+    .sort((a, b) => b.wins - a.wins)
 }
