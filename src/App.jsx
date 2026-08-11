@@ -782,20 +782,22 @@ function App() {
     [current],
   )
 
-  // Timed modes (duels, modo competitivo) submit on tap — no separate
-  // confirm step, since a two-tap flow eats into an already-tight clock.
-  // Every untimed mode keeps the tap-then-confirm flow so a guess can be
-  // moved before committing to it.
+  // Duels still submit on tap — no separate confirm step, since a two-tap
+  // flow eats into an already-tight head-to-head clock. Modo competitivo
+  // (daily, timed) uses the same tap-then-confirm flow as untimed modes: a
+  // tap just moves the pin, "Confirmar ubicación" locks it in, and running
+  // out of time submits whatever pin was last placed (see timeUp below) —
+  // only an unopened round (no tap at all) scores 0.
   const handleMapClick = useCallback(
     (pos) => {
       if (phase !== 'guessing') return
-      if (timeLimit != null) {
+      if (gameMode === 'duel' && timeLimit != null) {
         submitGuess(pos)
       } else {
         setPendingGuess(pos)
       }
     },
-    [phase, timeLimit, submitGuess],
+    [phase, gameMode, timeLimit, submitGuess],
   )
 
   const handleConfirmGuess = useCallback(() => {
@@ -828,6 +830,14 @@ function App() {
   // play continues into the next one when you come back.
   const [timeLeft, setTimeLeft] = useState(duelTimeLimit)
 
+  // Mirrors pendingGuess for timeUp (below) to read without being a
+  // dependency of that effect — adding pendingGuess there would reset the
+  // countdown on every tap, since a new closure means a fresh effect run.
+  const pendingGuessRef = useRef(null)
+  useEffect(() => {
+    pendingGuessRef.current = pendingGuess
+  }, [pendingGuess])
+
   useEffect(() => {
     if (phase !== 'guessing' || timeLimit == null || !current) return
 
@@ -840,6 +850,16 @@ function App() {
     const timeUp = () => {
       if (handled || roundSubmittedRef.current) return
       handled = true
+      // Modo competitivo's tap-then-confirm flow (handleMapClick above) can
+      // leave a pin placed but never confirmed when the clock hits zero —
+      // that pin is what counts, same as if "Confirmar ubicación" had been
+      // tapped. Only a round with no tap at all scores 0. Duels never reach
+      // here with a pending guess, since a duel tap submits immediately.
+      const guess = pendingGuessRef.current
+      if (guess) {
+        submitGuess(guess)
+        return
+      }
       roundSubmittedRef.current = true
       setResults((prev) => [
         ...prev,
@@ -870,7 +890,7 @@ function App() {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [phase, roundIndex, timeLimit, current])
+  }, [phase, roundIndex, timeLimit, current, submitGuess])
 
   const startGame = (indices, mode, { copyInvite, barrioIds = [] } = {}) => {
     guestModeResultSubmittedRef.current = false
