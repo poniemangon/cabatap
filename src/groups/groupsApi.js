@@ -1,0 +1,113 @@
+import { supabase } from '../supabaseClient'
+
+export async function createGroup({ name, imageUrl, creatorId }) {
+  const { data: group, error } = await supabase
+    .from('groups')
+    .insert({ name, image_url: imageUrl || null, created_by: creatorId })
+    .select()
+    .single()
+  if (error) throw error
+
+  const { error: joinError } = await supabase.from('user_groups').insert({ user_id: creatorId, group_id: group.id })
+  if (joinError) throw joinError
+
+  return group
+}
+
+// Joining twice (e.g. clicking your own group's invite link, or a stale
+// ?group_id revisit) is a harmless no-op — ignoreDuplicates skips the
+// unique(user_id, group_id) conflict instead of erroring.
+export async function joinGroup(groupId, profileId) {
+  const group = await getGroup(groupId)
+  if (!group) throw new Error('No encontramos ese grupo.')
+
+  const { error } = await supabase
+    .from('user_groups')
+    .upsert({ user_id: profileId, group_id: groupId }, { onConflict: 'user_id,group_id', ignoreDuplicates: true })
+  if (error) throw error
+
+  return group
+}
+
+export async function getGroup(groupId) {
+  const { data, error } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function listMyGroups(profileId) {
+  const { data, error } = await supabase
+    .from('user_groups')
+    .select('joined_at, group:group_id(id, name, image_url, created_at)')
+    .eq('user_id', profileId)
+    .order('joined_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map((r) => r.group).filter(Boolean)
+}
+
+// Batch member lookup for the dashboard grid's participant avatars — one
+// query for every group's members instead of one per card.
+export async function getMembersForGroups(groupIds) {
+  if (groupIds.length === 0) return new Map()
+  const { data, error } = await supabase
+    .from('user_groups')
+    .select('group_id, profile:user_id(id, username, avatar_url)')
+    .in('group_id', groupIds)
+  if (error) throw error
+
+  const byGroup = new Map()
+  for (const row of data || []) {
+    if (!row.profile) continue
+    const list = byGroup.get(row.group_id) || []
+    list.push(row.profile)
+    byGroup.set(row.group_id, list)
+  }
+  return byGroup
+}
+
+export async function getGroupMembers(groupId) {
+  const { data, error } = await supabase
+    .from('user_groups')
+    .select('joined_at, profile:user_id(id, username, avatar_url)')
+    .eq('group_id', groupId)
+    .order('joined_at', { ascending: true })
+  if (error) throw error
+  return (data || []).map((r) => r.profile).filter(Boolean)
+}
+
+// At most one at a time in practice (a fresh group duel only ever gets
+// created once the previous one auto-closed), but ordered + limited
+// defensively in case that's ever not true.
+export async function getActiveGroupDuel(groupId) {
+  const { data, error } = await supabase
+    .from('duels')
+    .select('*')
+    .eq('group_duel', groupId)
+    .is('closed_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Ranking by group duels won — every current member appears, at 0 if they
+// never played or never won one.
+export async function getGroupRanking(groupId) {
+  const members = await getGroupMembers(groupId)
+
+  const { data: closedDuels, error } = await supabase
+    .from('duels')
+    .select('winner_id')
+    .eq('group_duel', groupId)
+    .not('closed_at', 'is', null)
+  if (error) throw error
+
+  const wins = new Map()
+  for (const d of closedDuels || []) {
+    if (!d.winner_id) continue
+    wins.set(d.winner_id, (wins.get(d.winner_id) || 0) + 1)
+  }
+
+  return members.map((m) => ({ ...m, wins: wins.get(m.id) || 0 })).sort((a, b) => b.wins - a.wins)
+}

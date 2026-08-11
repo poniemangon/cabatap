@@ -1,0 +1,241 @@
+.groups-dashboard {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.groups-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h, #f5f5f5);
+  margin: 0 0 18px;
+}
+
+.groups-empty {
+  color: var(--text, #9ca3af);
+  margin-bottom: 18px;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #262626);
+  background: var(--neutral, #121212);
+  color: var(--text-h, #f5f5f5);
+  text-align: center;
+  cursor: pointer;
+}
+
+.group-card:hover {
+  border-color: var(--accent-primary, #007aff);
+}
+
+.group-card-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.group-card-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text, #9ca3af);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.group-card-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.group-card-members {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text, #9ca3af);
+}
+
+.group-card-avatars {
+  display: flex;
+}
+
+.group-card-avatar,
+.group-card-avatar-fallback {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--neutral, #121212);
+  margin-left: -6px;
+}
+
+.group-card-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.group-card-avatars :first-child {
+  margin-left: 0;
+}
+
+.groups-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.groups-modal {
+  max-width: 360px;
+}
+
+.groups-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.groups-form input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #333);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-h, #f5f5f5);
+  font-size: 14px;
+}
+
+.groups-error {
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
+.group-detail {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.group-detail-back {
+  border: none;
+  background: transparent;
+  color: var(--text, #9ca3af);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 14px;
+}
+
+.group-detail-back:hover {
+  color: var(--text-h, #f5f5f5);
+}
+
+.group-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.group-detail-image {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.group-detail-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-h, #f5f5f5);
+  margin: 0;
+}
+
+.group-detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.group-detail-ranking-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h, #f5f5f5);
+  margin-bottom: 10px;
+}
+
+.group-ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #262626);
+  background: var(--neutral, #121212);
+}
+
+.group-ranking-row-me {
+  border-color: var(--accent-primary, #007aff);
+}
+
+.group-ranking-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #9ca3af);
+  width: 28px;
+}
+
+.group-ranking-avatar,
+.group-ranking-avatar-fallback {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.group-ranking-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.group-ranking-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-h, #f5f5f5);
+  font-weight: 600;
+}
+
+.group-ranking-wins {
+  font-size: 13px;
+  color: var(--text, #9ca3af);
+}

@@ -23,6 +23,7 @@ createRoot(document.getElementById('root')).render(
       <AppAnalytics />
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/grupos" element={<App />} />
         <Route path="/duelo/:code" element={<App />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/mapa-diario/:id" element={<DailyResultPage />} />

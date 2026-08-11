@@ -24,6 +24,7 @@ export default function Sidebar({
   onGoHome,
   onDuel,
   onMultiplayerDuel,
+  onGroups,
   duelInProgress,
   onOpenProfile,
   isSignedIn,
@@ -172,6 +173,12 @@ export default function Sidebar({
               onClick={withClose(onMultiplayerDuel)}
             >
               <span className="sidebar-nav-icon">🔒</span> Duelo privado
+            </button>
+          )}
+          {isSignedIn && (
+            <button type="button" className="sidebar-nav-item sidebar-nav-item-special" onClick={withClose(onGroups)}>
+              <span className="sidebar-nav-icon">👥</span> Grupos
+              <span className="menu-item-eyebrow">NUEVO</span>
             </button>
           )}
         </nav>

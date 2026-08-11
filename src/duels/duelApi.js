@@ -9,6 +9,7 @@ export async function createDuel({
   maxPlayers = null,
   matchmaking = false,
   timeLimitSeconds = 8,
+  groupDuel = null,
 }) {
   const { data, error } = await supabase
     .from('duels')
@@ -21,6 +22,7 @@ export async function createDuel({
       max_players: isMultiplayer ? maxPlayers : null,
       matchmaking,
       time_limit_seconds: timeLimitSeconds,
+      group_duel: groupDuel,
     })
     .select()
     .single()

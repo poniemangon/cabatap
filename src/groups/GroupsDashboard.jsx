@@ -1,0 +1,195 @@
+import { useEffect, useState } from 'react'
+import { createGroup, getMembersForGroups, joinGroup, listMyGroups } from './groupsApi'
+import Avatar from '../Avatar'
+import './Groups.css'
+
+function CreateGroupModal({ profile, onClose, onCreated }) {
+  const [name, setName] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) {
+      setError('Ponele un nombre al grupo')
+      return
+    }
+    setError(null)
+    setSaving(true)
+    try {
+      const group = await createGroup({ name: name.trim(), imageUrl: imageUrl.trim(), creatorId: profile.id })
+      onCreated(group)
+    } catch (err) {
+      setError(err.message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="custom-modal groups-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>Crear grupo</span>
+          <button type="button" className="calendar-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <form className="groups-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Nombre del grupo"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+          <input
+            type="text"
+            placeholder="URL de la foto (opcional)"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          {error && <p className="groups-error">{error}</p>}
+          <button type="submit" className="primary-btn" disabled={saving}>
+            {saving ? 'Creando...' : 'Crear grupo'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function JoinGroupModal({ profile, onClose, onJoined }) {
+  const [groupId, setGroupId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!groupId.trim()) {
+      setError('Poné el id del grupo')
+      return
+    }
+    setError(null)
+    setSaving(true)
+    try {
+      const group = await joinGroup(groupId.trim(), profile.id)
+      onJoined(group)
+    } catch (err) {
+      setError('No pudimos unirte a ese grupo — revisá el id.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="custom-modal groups-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>Unirse a grupo</span>
+          <button type="button" className="calendar-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <form className="groups-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Id del grupo"
+            value={groupId}
+            onChange={(e) => setGroupId(e.target.value)}
+            autoFocus
+          />
+          {error && <p className="groups-error">{error}</p>}
+          <button type="submit" className="primary-btn" disabled={saving}>
+            {saving ? 'Uniéndote...' : 'Unirme'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function GroupsDashboard({ profile, onOpenGroup }) {
+  const [groups, setGroups] = useState([])
+  const [membersByGroup, setMembersByGroup] = useState(new Map())
+  const [loading, setLoading] = useState(true)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [joinOpen, setJoinOpen] = useState(false)
+
+  useEffect(() => {
+    if (!profile?.id) return
+    listMyGroups(profile.id)
+      .then((rows) => {
+        setGroups(rows)
+        return getMembersForGroups(rows.map((g) => g.id))
+      })
+      .then(setMembersByGroup)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [profile?.id])
+
+  return (
+    <div className="groups-dashboard">
+      <h1 className="groups-title">Grupos</h1>
+
+      {loading ? (
+        <p className="loading-text">Cargando...</p>
+      ) : groups.length === 0 ? (
+        <p className="groups-empty">Todavía no estás en ningún grupo.</p>
+      ) : (
+        <div className="groups-grid">
+          {groups.map((g) => {
+            const members = membersByGroup.get(g.id) || []
+            return (
+              <button type="button" key={g.id} className="group-card" onClick={() => onOpenGroup(g.id)}>
+                {g.image_url ? (
+                  <img src={g.image_url} alt="" className="group-card-image" />
+                ) : (
+                  <span className="group-card-image group-card-image-fallback">Sin grupo</span>
+                )}
+                <span className="group-card-name">{g.name}</span>
+                <span className="group-card-members">
+                  <span className="group-card-avatars">
+                    {members.slice(0, 4).map((m) => (
+                      <Avatar key={m.id} src={m.avatar_url} baseClass="group-card-avatar" />
+                    ))}
+                  </span>
+                  {members.length} participante{members.length === 1 ? '' : 's'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="groups-actions">
+        <button type="button" className="primary-btn secondary-btn" onClick={() => setCreateOpen(true)}>
+          Crear grupo
+        </button>
+        <button type="button" className="primary-btn secondary-btn" onClick={() => setJoinOpen(true)}>
+          Unirse a grupo
+        </button>
+      </div>
+
+      {createOpen && (
+        <CreateGroupModal
+          profile={profile}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(group) => {
+            setCreateOpen(false)
+            onOpenGroup(group.id)
+          }}
+        />
+      )}
+      {joinOpen && (
+        <JoinGroupModal
+          profile={profile}
+          onClose={() => setJoinOpen(false)}
+          onJoined={(group) => {
+            setJoinOpen(false)
+            onOpenGroup(group.id)
+          }}
+        />
+      )}
+    </div>
+  )
+}

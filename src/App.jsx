@@ -16,6 +16,9 @@ import DuelChoiceModal from './duels/DuelChoiceModal'
 import RankedDuelModal from './duels/RankedDuelModal'
 import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
+import GroupsDashboard from './groups/GroupsDashboard'
+import GroupDetail from './groups/GroupDetail'
+import { joinGroup } from './groups/groupsApi'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -419,6 +422,7 @@ function App() {
   const guestModeResultSubmittedRef = useRef(false)
   const [practiceLimitOpen, setPracticeLimitOpen] = useState(false)
   const [specialThanksOpen, setSpecialThanksOpen] = useState(false)
+  const [selectedGroupId, setSelectedGroupId] = useState(null)
 
   const [authGateOpen, setAuthGateOpen] = useState(false)
 
@@ -447,6 +451,17 @@ function App() {
 
   useEffect(() => {
     if (!pool || !barrios || initialized || !authLoaded) return
+
+    if (location.pathname === '/grupos') {
+      if (!isSignedIn) {
+        navigate('/', { replace: true, state: { showAuthGate: true } })
+        setInitialized(true)
+        return
+      }
+      setView('grupos')
+      setInitialized(true)
+      return
+    }
 
     if (duelCode) {
       setView('duel-loading')
@@ -532,7 +547,7 @@ function App() {
       setSpecialSuggestOpen(true)
     }
     setInitialized(true)
-  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn, authUser?.id])
+  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn, authUser?.id, location.pathname])
 
   // Signing up from the share-gate screen via the magic-link email flow
   // doesn't reload the page, so isSignedIn just flips true — this picks that
@@ -626,6 +641,28 @@ function App() {
     setAuthGateOpen(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
+
+  // Invite-link auto-join: /grupos?group_id=<id> (from GroupDetail's
+  // "Invitar al grupo") joins that group the same as typing its id into
+  // "Unirse a grupo" manually, then drops straight into it. Signed-out
+  // visitors get the auth gate instead — this re-runs once profile shows up
+  // after they sign in, since it's a dependency below.
+  useEffect(() => {
+    if (view !== 'grupos') return
+    const groupIdParam = new URLSearchParams(location.search).get('group_id')
+    if (!groupIdParam) return
+    if (!profile) {
+      openSignUp()
+      return
+    }
+    joinGroup(groupIdParam, profile.id)
+      .then(() => {
+        setSelectedGroupId(groupIdParam)
+        setView('group-detail')
+        navigate('/grupos', { replace: true })
+      })
+      .catch(console.error)
+  }, [view, profile, location.search])
 
   const isReady = !!pool && !!barrios && initialized
 
@@ -1199,6 +1236,7 @@ function App() {
     isMultiplayer = false,
     maxPlayers = null,
     timeLimitSeconds = duelTimeLimit,
+    groupDuel = null,
   }) => {
     let indices
     if (barrioIds.length > 0) {
@@ -1219,6 +1257,7 @@ function App() {
       isMultiplayer,
       maxPlayers,
       timeLimitSeconds,
+      groupDuel,
     })
     duelResultSubmittedRef.current = false
     setDuelClaimError(null)
@@ -1254,6 +1293,16 @@ function App() {
     } catch (e) {
       console.error(e)
     }
+  }
+
+  // A fresh round for a group — otherwise a regular multiplayer duel
+  // (random barrios from the full pool, untimed), just tagged with
+  // group_duel so it auto-closes once every group member has played (see
+  // close_group_duel_if_complete in 0048) instead of needing a manual
+  // "Cerrar duelo".
+  const handleStartGroupDuel = async (groupId) => {
+    if (!requireAuthOrGate() || !profile) return
+    await createAndEnterDuel({ barrioIds: [], isMultiplayer: true, groupDuel: groupId, timeLimitSeconds: null })
   }
 
   // "Random" 1v1: join the oldest pending matchmaking entry instead of
@@ -1917,6 +1966,11 @@ function App() {
       onGoHome={handleGoHome}
       onDuel={openRankedDuel}
       onMultiplayerDuel={openDuelChoice}
+      onGroups={() => {
+        setSelectedGroupId(null)
+        setView('grupos')
+        navigate('/grupos')
+      }}
       duelInProgress={duelInProgress}
       onOpenProfile={() => navigate('/perfil')}
       isSignedIn={!!isSignedIn}
@@ -1994,6 +2048,31 @@ function App() {
           </button>
         </div>
       </div>
+    )
+  } else if (view === 'grupos') {
+    mainContent = (
+      <GroupsDashboard
+        profile={profile}
+        onOpenGroup={(id) => {
+          setSelectedGroupId(id)
+          setView('group-detail')
+        }}
+      />
+    )
+  } else if (view === 'group-detail') {
+    mainContent = (
+      <GroupDetail
+        groupId={selectedGroupId}
+        profile={profile}
+        onBack={() => setView('grupos')}
+        onPlayDuel={(code) => {
+          setDuelClaimError(null)
+          setView('duel-loading')
+          navigate(`/duelo/${code}`)
+        }}
+        onStartDuel={handleStartGroupDuel}
+        referralAppend={(url) => appendReferral(url, referralUsername)}
+      />
     )
   } else if (phase === 'gameOver') {
     mainContent = (
@@ -2098,22 +2177,26 @@ function App() {
                       >
                         {duelResultsLoading ? 'Actualizando...' : 'Actualizar'}
                       </button>
-                      <button
-                        type="button"
-                        className="primary-btn secondary-btn"
-                        onClick={() => {
-                          navigator.clipboard
-                            .writeText(appendReferral(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`, referralUsername))
-                            .then(() => {
-                              setMenuCopied(true)
-                              setTimeout(() => setMenuCopied(false), 2000)
-                            })
-                            .catch(() => {})
-                        }}
-                      >
-                        {menuCopied ? '¡Copiado!' : 'Invitar a más gente'}
-                      </button>
-                      {profile?.id === activeDuel.challenger_id && duelResults.length >= 2 && (
+                      {activeDuel.group_duel ? (
+                        <p className="duel-result-waiting">Cierra solo cuando jugó todo el grupo.</p>
+                      ) : (
+                        <button
+                          type="button"
+                          className="primary-btn secondary-btn"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(appendReferral(`${SHARE_DOMAIN}/duelo/${activeDuel.invite_code}`, referralUsername))
+                              .then(() => {
+                                setMenuCopied(true)
+                                setTimeout(() => setMenuCopied(false), 2000)
+                              })
+                              .catch(() => {})
+                          }}
+                        >
+                          {menuCopied ? '¡Copiado!' : 'Invitar a más gente'}
+                        </button>
+                      )}
+                      {!activeDuel.group_duel && profile?.id === activeDuel.challenger_id && duelResults.length >= 2 && (
                         <button type="button" className="primary-btn secondary-btn" onClick={handleCloseDuel}>
                           Cerrar duelo
                         </button>
