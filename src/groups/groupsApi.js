@@ -25,22 +25,44 @@ export async function createGroup({ name, imageUrl, creatorId }) {
 }
 
 // Joining twice (e.g. clicking your own group's invite link, or a stale
-// ?group_id revisit) is a harmless no-op — ignoreDuplicates skips the
+// ?invite_id revisit) is a harmless no-op — ignoreDuplicates skips the
 // unique(user_id, group_id) conflict instead of erroring.
-export async function joinGroup(groupId, profileId) {
-  const group = await getGroup(groupId)
-  if (!group) throw new Error('No encontramos ese grupo.')
-
+async function insertMembership(group, profileId) {
   const { error } = await supabase
     .from('user_groups')
-    .upsert({ user_id: profileId, group_id: groupId }, { onConflict: 'user_id,group_id', ignoreDuplicates: true })
+    .upsert({ user_id: profileId, group_id: group.id }, { onConflict: 'user_id,group_id', ignoreDuplicates: true })
   if (error) throw error
-
   return group
+}
+
+// Takes the short public invite_id (0057), not the real internal id —
+// resolved here, never exposed to the joining client directly.
+export async function joinGroup(inviteId, profileId) {
+  const group = await getGroupByInviteId(inviteId)
+  if (!group) throw new Error('No encontramos ese grupo.')
+  return insertMembership(group, profileId)
+}
+
+// Legacy support: invite links shared before invite_id (0057) existed
+// carried the raw internal id directly (?group_id=<uuid>) — kept working
+// so those old links don't silently break.
+export async function joinGroupByRawId(groupId, profileId) {
+  const group = await getGroup(groupId)
+  if (!group) throw new Error('No encontramos ese grupo.')
+  return insertMembership(group, profileId)
 }
 
 export async function getGroup(groupId) {
   const { data, error } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Public-facing lookup for the "Unirse a grupo" flow and the ?invite_id=
+// link — resolves the short code to the real group row (including its
+// internal id, needed for every other query that follows).
+export async function getGroupByInviteId(inviteId) {
+  const { data, error } = await supabase.from('groups').select('*').eq('invite_id', inviteId).maybeSingle()
   if (error) throw error
   return data
 }

@@ -18,7 +18,7 @@ import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
 import GroupsDashboard from './groups/GroupsDashboard'
 import GroupDetail from './groups/GroupDetail'
-import { joinGroup } from './groups/groupsApi'
+import { joinGroup, joinGroupByRawId } from './groups/groupsApi'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -647,22 +647,32 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
 
-  // Invite-link auto-join: /grupos?group_id=<id> (from GroupDetail's
-  // "Invitar al grupo") joins that group the same as typing its id into
-  // "Unirse a grupo" manually, then drops straight into it. Signed-out
-  // visitors get the auth gate instead — this re-runs once profile shows up
-  // after they sign in, since it's a dependency below.
+  // Invite-link auto-join: /grupos?invite_id=<code> (from GroupDetail's
+  // "Invitar al grupo") joins that group the same as typing its code into
+  // "Unirse a grupo" manually, then drops straight into it. joinGroup
+  // resolves the short public invite_id to the group's real internal id
+  // (0057) — that resolved id, not the invite_id itself, is what
+  // GroupDetail's groupId prop needs for every query that follows.
+  // ?group_id=<uuid> is the older link shape (shared before invite_id
+  // existed) — still honored via joinGroupByRawId so those links don't
+  // break. Signed-out visitors get the auth gate instead — this re-runs
+  // once profile shows up after they sign in, since it's a dependency below.
   useEffect(() => {
     if (view !== 'grupos') return
-    const groupIdParam = new URLSearchParams(location.search).get('group_id')
-    if (!groupIdParam) return
+    const params = new URLSearchParams(location.search)
+    const inviteIdParam = params.get('invite_id')
+    const legacyGroupIdParam = params.get('group_id')
+    if (!inviteIdParam && !legacyGroupIdParam) return
     if (!profile) {
       openSignUp()
       return
     }
-    joinGroup(groupIdParam, profile.id)
-      .then(() => {
-        setSelectedGroupId(groupIdParam)
+    const join = inviteIdParam
+      ? joinGroup(inviteIdParam, profile.id)
+      : joinGroupByRawId(legacyGroupIdParam, profile.id)
+    join
+      .then((group) => {
+        setSelectedGroupId(group.id)
         setView('group-detail')
         navigate('/grupos', { replace: true })
       })

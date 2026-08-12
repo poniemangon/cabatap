@@ -185,7 +185,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
     }
   }
 
-  const inviteLink = referralAppend(`${window.location.origin}/grupos?group_id=${groupId}`)
+  const inviteLink = referralAppend(`${window.location.origin}/grupos?invite_id=${group?.invite_id}`)
 
   const handleLeave = async () => {
     if (!window.confirm('¿Salir de este grupo?')) return

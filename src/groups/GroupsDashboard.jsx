@@ -60,23 +60,23 @@ function CreateGroupModal({ profile, onClose, onCreated }) {
 }
 
 function JoinGroupModal({ profile, onClose, onJoined }) {
-  const [groupId, setGroupId] = useState('')
+  const [inviteId, setInviteId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!groupId.trim()) {
-      setError('Poné el id del grupo')
+    if (!inviteId.trim()) {
+      setError('Poné el código del grupo')
       return
     }
     setError(null)
     setSaving(true)
     try {
-      const group = await joinGroup(groupId.trim(), profile.id)
+      const group = await joinGroup(inviteId.trim(), profile.id)
       onJoined(group)
     } catch (err) {
-      setError('No pudimos unirte a ese grupo — revisá el id.')
+      setError('No pudimos unirte a ese grupo — revisá el código.')
       setSaving(false)
     }
   }
@@ -93,9 +93,9 @@ function JoinGroupModal({ profile, onClose, onJoined }) {
         <form className="groups-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Id del grupo"
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
+            placeholder="Código del grupo"
+            value={inviteId}
+            onChange={(e) => setInviteId(e.target.value)}
             autoFocus
           />
           {error && <p className="groups-error">{error}</p>}
