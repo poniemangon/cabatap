@@ -1021,11 +1021,44 @@ function App() {
     }
   }
 
-  // Every login barrier funnels through here: signed-in lets the caller
-  // proceed, signed-out bounces to the dashboard and pops the blurred
-  // "necesitás una cuenta" overlay instead of failing silently.
-  const requireAuthOrGate = useCallback(() => {
-    if (isSignedIn) return true
+  // Every login barrier funnels through here: signed-in (with a loaded
+  // profile) lets the caller proceed, truly signed-out bounces to the
+  // dashboard and pops the blurred "necesitás una cuenta" overlay instead of
+  // failing silently.
+  //
+  // isSignedIn flips true as soon as the auth session exists, but the
+  // profiles row is fetched separately by useProfile and can still be mid-
+  // flight (e.g. clicking "Modo competitivo" right after sign-up, before
+  // ensureProfile's insert resolves). Gating on isSignedIn alone let a timed
+  // run start with profile still null — and 5 rounds later, gameOver's
+  // submit effect treats a null profile as a signed-out guest, silently
+  // writing a profile_id-null "competitivo" daily_stats row. So: poll
+  // briefly for the profile to arrive instead of bouncing, and only fall
+  // back to the sign-in gate if there's truly no session, or the profile
+  // never shows up within the wait window.
+  const profileRef = useRef(profile)
+  const profileLoadingRef = useRef(profileLoading)
+  useEffect(() => {
+    profileRef.current = profile
+  }, [profile])
+  useEffect(() => {
+    profileLoadingRef.current = profileLoading
+  }, [profileLoading])
+
+  const requireAuthOrGate = useCallback(async () => {
+    if (!isSignedIn) {
+      setView('dashboard')
+      setAuthGateOpen(true)
+      return false
+    }
+    const deadline = Date.now() + 8000
+    while (!profileRef.current && profileLoadingRef.current && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    }
+    if (profileRef.current) return true
+    // Session exists but the profile never loaded (creation failed, RLS
+    // hiccup, etc.) — unusable without a profile, so send to the same gate
+    // rather than letting a profile-less timed run start.
     setView('dashboard')
     setAuthGateOpen(true)
     return false
@@ -1101,7 +1134,7 @@ function App() {
   // (and, for competitivo, potentially retry-farmed) attempt — signed-in via
   // daily_stats, signed-out via the session-scoped guest result above.
   const startDaily = async (timed) => {
-    if (timed && !requireAuthOrGate()) return
+    if (timed && !(await requireAuthOrGate())) return
     setDailyChoiceOpen(false)
     setDailyTimed(timed)
     setDailyRankInfo(null)
@@ -1205,20 +1238,20 @@ function App() {
 
   // "Duelo rankeado": instant random matchmaking, affects ELO — just an
   // informative popup with a "Jugar" button, no setup needed.
-  const openRankedDuel = () => {
-    if (!requireAuthOrGate() || duelInProgress) return
+  const openRankedDuel = async () => {
+    if (!(await requireAuthOrGate()) || duelInProgress) return
     setRankedDuelOpen(true)
   }
 
   // "Duelo privado": always private (never touches ELO) — chooser between
   // 1 vs 1 (friend/link + barrio picker) and multijugador (open room).
-  const openDuelChoice = () => {
-    if (!requireAuthOrGate() || duelInProgress) return
+  const openDuelChoice = async () => {
+    if (!(await requireAuthOrGate()) || duelInProgress) return
     setDuelChoiceOpen(true)
   }
 
   const openDuelSetup = async (preselectOpponentId = null) => {
-    if (!requireAuthOrGate() || !profile) return
+    if (!(await requireAuthOrGate()) || !profile) return
     try {
       const { accepted } = await listFriendships(profile.id)
       setDuelFriends(accepted.map((f) => f.friend))
@@ -1231,8 +1264,8 @@ function App() {
     setDuelSetupOpen(true)
   }
 
-  const openMultiplayerSetup = () => {
-    if (!requireAuthOrGate() || duelInProgress) return
+  const openMultiplayerSetup = async () => {
+    if (!(await requireAuthOrGate()) || duelInProgress) return
     setDuelChoiceOpen(false)
     setMultiplayerSetupOpen(true)
   }
@@ -1289,7 +1322,7 @@ function App() {
   }
 
   const handleStartPrivateDuel = async (selectedBarrioIds, opponentProfileId, timed) => {
-    if (!requireAuthOrGate() || !profile) return
+    if (!(await requireAuthOrGate()) || !profile) return
     try {
       await createAndEnterDuel({
         barrioIds: selectedBarrioIds,
@@ -1303,7 +1336,7 @@ function App() {
   }
 
   const handleStartMultiplayerDuel = async (selectedBarrioIds, timed) => {
-    if (!requireAuthOrGate() || !profile) return
+    if (!(await requireAuthOrGate()) || !profile) return
     try {
       await createAndEnterDuel({
         barrioIds: selectedBarrioIds,
@@ -1322,7 +1355,7 @@ function App() {
   // close_group_duel_if_complete in 0048) instead of needing a manual
   // "Cerrar duelo".
   const handleStartGroupDuel = async (groupId) => {
-    if (!requireAuthOrGate() || !profile) return
+    if (!(await requireAuthOrGate()) || !profile) return
     await createAndEnterDuel({ barrioIds: [], isMultiplayer: true, groupDuel: groupId, timeLimitSeconds: null })
   }
 
@@ -1334,7 +1367,7 @@ function App() {
   // once both sides have played (or via the forfeit-claim escape hatch if
   // nobody ever shows up).
   const handleStartRandomDuel = async () => {
-    if (!requireAuthOrGate() || !profile) return
+    if (!(await requireAuthOrGate()) || !profile) return
     setRankedDuelOpen(false)
     try {
       const candidate = await findOpenRandomDuel(profile.id)
