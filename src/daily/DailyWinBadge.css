@@ -21,10 +21,8 @@
 }
 
 .daily-win-badge-popup {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  transform: translate(-50%, -100%);
   z-index: 99999999;
   width: max-content;
   max-width: 200px;

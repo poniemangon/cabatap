@@ -47,6 +47,55 @@ function NewDuelInfoIcon() {
   )
 }
 
+function InviteModal({ link, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
+
+  const handleCopy = () => {
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+      .catch(() => {})
+  }
+
+  const handleShare = () => {
+    navigator.share({ title: 'Unite a mi grupo en UbiCABA', url: link }).catch(() => {})
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="custom-modal groups-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="custom-modal-header">
+          <span>Invitar al grupo</span>
+          <button type="button" className="calendar-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="group-invite-link-row">
+          <input
+            type="text"
+            className="group-invite-link-input"
+            value={link}
+            readOnly
+            onClick={(e) => e.target.select()}
+          />
+          <button type="button" className="primary-btn secondary-btn" onClick={handleCopy}>
+            {copied ? '¡Copiado!' : 'Copiar'}
+          </button>
+        </div>
+        {canShare && (
+          <button type="button" className="primary-btn" onClick={handleShare}>
+            Compartir
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function EditGroupForm({ group, onSaved, onCancel }) {
   const [name, setName] = useState(group.name)
   const [imageUrl, setImageUrl] = useState(group.image_url || '')
@@ -100,7 +149,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [starting, setStarting] = useState(false)
-  const [inviteCopied, setInviteCopied] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
@@ -136,16 +185,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
     }
   }
 
-  const handleInvite = () => {
-    const link = referralAppend(`${window.location.origin}/grupos?group_id=${groupId}`)
-    navigator.clipboard
-      .writeText(link)
-      .then(() => {
-        setInviteCopied(true)
-        setTimeout(() => setInviteCopied(false), 2000)
-      })
-      .catch(() => {})
-  }
+  const inviteLink = referralAppend(`${window.location.origin}/grupos?group_id=${groupId}`)
 
   const handleLeave = async () => {
     if (!window.confirm('¿Salir de este grupo?')) return
@@ -197,8 +237,8 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
       )}
 
       <div className="group-detail-actions">
-        <button type="button" className="primary-btn secondary-btn" onClick={handleInvite}>
-          {inviteCopied ? '¡Copiado!' : 'Invitar al grupo'}
+        <button type="button" className="primary-btn secondary-btn" onClick={() => setInviteOpen(true)}>
+          Invitar al grupo
         </button>
         {activeDuel ? (
           <button type="button" className="primary-btn" onClick={() => onPlayDuel(activeDuel.invite_code)}>
@@ -251,6 +291,8 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           ))}
         </ul>
       )}
+
+      {inviteOpen && <InviteModal link={inviteLink} onClose={() => setInviteOpen(false)} />}
     </div>
   )
 }
