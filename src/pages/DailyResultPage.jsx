@@ -85,22 +85,30 @@ export default function DailyResultPage() {
             </div>
           </header>
 
-          <div className="daily-result-map">
-            <ResultsMap results={stat.results} pendingGuess={null} clickEnabled={false} onPick={() => {}} />
-          </div>
+          {stat.results ? (
+            <>
+              <div className="daily-result-map">
+                <ResultsMap results={stat.results} pendingGuess={null} clickEnabled={false} onPick={() => {}} />
+              </div>
 
-          <ul className="daily-result-breakdown">
-            {stat.results.map((r, i) => (
-              <li key={i} className="daily-result-row">
-                <span className="daily-result-row-streets">
-                  R{i + 1}: {formatStreets(r.street1, r.street2)}
-                </span>
-                <span className="daily-result-row-detail">
-                  {r.distance == null ? 'Sin respuesta' : `${Math.round(r.distance)} m`} — {r.points} pts
-                </span>
-              </li>
-            ))}
-          </ul>
+              <ul className="daily-result-breakdown">
+                {stat.results.map((r, i) => (
+                  <li key={i} className="daily-result-row">
+                    <span className="daily-result-row-streets">
+                      R{i + 1}: {formatStreets(r.street1, r.street2)}
+                    </span>
+                    <span className="daily-result-row-detail">
+                      {r.distance == null ? 'Sin respuesta' : `${Math.round(r.distance)} m`} — {r.points} pts
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            // Signed-out guest attempt (0043) — only the score is saved, no
+            // round-by-round replay to show.
+            <p className="daily-result-meta">Esta partida se jugó sin cuenta — no hay detalle de ronda disponible.</p>
+          )}
         </>
       )}
     </div>

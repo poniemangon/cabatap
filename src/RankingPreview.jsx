@@ -25,23 +25,35 @@ const TOP_N = 5
 
 function PreviewRow({ rank, row, detail, to, badge, dailyWinCount }) {
   const [imgFailed, setImgFailed] = useState(false)
+  const content = (
+    <>
+      <span className="ranking-preview-rank">#{rank}</span>
+      {row.avatarUrl && !imgFailed ? (
+        <img src={row.avatarUrl} alt="" className="ranking-preview-avatar" onError={() => setImgFailed(true)} />
+      ) : (
+        <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
+      )}
+      <span className="ranking-preview-name-wrap">
+        <span className="ranking-preview-name">{row.username || 'Jugador'}</span>
+        <BadgeIcon badge={badge} />
+        <DailyWinBadge count={dailyWinCount} />
+        <EloBadge elo={row.elo} />
+      </span>
+      <span className="ranking-preview-score">{detail}</span>
+    </>
+  )
+  // Guest daily_stats rows (0043) have no profile at all — nothing to link
+  // to here. Plain, non-clickable row instead of a Link to a broken
+  // /jugador/undefined.
   return (
     <li>
-      <Link to={to} className="ranking-preview-row">
-        <span className="ranking-preview-rank">#{rank}</span>
-        {row.avatarUrl && !imgFailed ? (
-          <img src={row.avatarUrl} alt="" className="ranking-preview-avatar" onError={() => setImgFailed(true)} />
-        ) : (
-          <span className="ranking-preview-avatar ranking-preview-avatar-fallback">🙂</span>
-        )}
-        <span className="ranking-preview-name-wrap">
-          <span className="ranking-preview-name">{row.username || 'Jugador'}</span>
-          <BadgeIcon badge={badge} />
-          <DailyWinBadge count={dailyWinCount} />
-          <EloBadge elo={row.elo} />
-        </span>
-        <span className="ranking-preview-score">{detail}</span>
-      </Link>
+      {to ? (
+        <Link to={to} className="ranking-preview-row">
+          {content}
+        </Link>
+      ) : (
+        <span className="ranking-preview-row">{content}</span>
+      )}
     </li>
   )
 }
@@ -141,7 +153,7 @@ export default function RankingPreview() {
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."
           detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
-          to={(a) => `/jugador/${a.username}`}
+          to={(a) => (a.username ? `/jugador/${a.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
         />
@@ -162,7 +174,7 @@ export default function RankingPreview() {
           rows={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           detail={(r) => eloTier(r.elo).name}
-          to={(r) => `/jugador/${r.username}`}
+          to={(r) => (r.username ? `/jugador/${r.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
         />

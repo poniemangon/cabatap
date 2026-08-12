@@ -33,25 +33,28 @@ const MAX_SIZE = 100
 
 function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail, to }) {
   const [imgFailed, setImgFailed] = useState(false)
-  return (
-    <li>
-      <Link to={to} className="ranking-row">
-        <span className="ranking-row-rank">#{rank}</span>
-        {avatarUrl && !imgFailed ? (
-          <img src={avatarUrl} alt="" className="ranking-row-avatar" onError={() => setImgFailed(true)} />
-        ) : (
-          <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
-        )}
-        <span className="ranking-row-name">
-          <span className="ranking-row-username">{username || 'Jugador'}</span>
-          <BadgeIcon badge={badge} />
-          <DailyWinBadge count={dailyWinCount} />
-          <EloBadge elo={elo} />
-        </span>
-        <span className="ranking-row-detail">{detail}</span>
-      </Link>
-    </li>
+  const content = (
+    <>
+      <span className="ranking-row-rank">#{rank}</span>
+      {avatarUrl && !imgFailed ? (
+        <img src={avatarUrl} alt="" className="ranking-row-avatar" onError={() => setImgFailed(true)} />
+      ) : (
+        <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
+      )}
+      <span className="ranking-row-name">
+        <span className="ranking-row-username">{username || 'Jugador'}</span>
+        <BadgeIcon badge={badge} />
+        <DailyWinBadge count={dailyWinCount} />
+        <EloBadge elo={elo} />
+      </span>
+      <span className="ranking-row-detail">{detail}</span>
+    </>
   )
+  // Guest daily_stats rows (0043) have no profile at all — nothing to link
+  // to (their own read-only result page requires a real daily_stats id,
+  // which the histórico/ELO sections don't carry). Render as a plain,
+  // non-clickable row instead of a Link to a broken /jugador/undefined.
+  return <li>{to ? <Link to={to} className="ranking-row">{content}</Link> : <span className="ranking-row">{content}</span>}</li>
 }
 
 function RankSummaryItem({ label, rank, detail, emptyText }) {
@@ -203,7 +206,7 @@ export default function RankingBoard() {
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."
           renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
-          to={(a) => `/jugador/${a.profile?.username}`}
+          to={(a) => (a.profile?.username ? `/jugador/${a.profile.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
         />
@@ -229,7 +232,7 @@ export default function RankingBoard() {
           items={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           renderDetail={(r) => eloTier(r.elo).name}
-          to={(r) => `/jugador/${r.username}`}
+          to={(r) => (r.username ? `/jugador/${r.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
         />
