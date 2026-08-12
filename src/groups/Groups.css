@@ -60,10 +60,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   text-align: center;
-  color: var(--text, #9ca3af);
+  color: var(--accent-primary, #007aff);
   background: rgba(255, 255, 255, 0.06);
 }
 

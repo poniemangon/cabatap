@@ -145,7 +145,7 @@ export default function GroupsDashboard({ profile, onOpenGroup }) {
                 {g.image_url ? (
                   <img src={g.image_url} alt="" className="group-card-image" />
                 ) : (
-                  <span className="group-card-image group-card-image-fallback">Sin grupo</span>
+                  <span className="group-card-image group-card-image-fallback">{g.name.charAt(0).toUpperCase()}</span>
                 )}
                 <span className="group-card-name">{g.name}</span>
                 <span className="group-card-members">

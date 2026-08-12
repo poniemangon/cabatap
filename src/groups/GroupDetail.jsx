@@ -185,7 +185,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           {group.image_url ? (
             <img src={group.image_url} alt="" className="group-detail-image" />
           ) : (
-            <span className="group-detail-image group-card-image-fallback">Sin grupo</span>
+            <span className="group-detail-image group-card-image-fallback">{group.name.charAt(0).toUpperCase()}</span>
           )}
           <h1 className="group-detail-name">{group.name}</h1>
           {isCreator && (
