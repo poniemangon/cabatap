@@ -41,12 +41,13 @@ export async function submitGuestDailyResult({ dayNumber, totalScore, timed = fa
 export async function getDailyLeaderboard(dayNumber) {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('*, profile:profile_id(username, avatar_url, elo, ranked_games_played)')
+    .select('*, profile:profile_id(username, avatar_url, elo, ranked_games_played, is_banned)')
     .eq('day_number', dayNumber)
     .eq('timed', true)
     .order('total_score', { ascending: false })
   if (error) throw error
-  return data
+  // Guest rows (no profile) stay in — only banned accounts are hidden.
+  return (data || []).filter((r) => !r.profile?.is_banned)
 }
 
 // All-time best-average leaderboard — every competitivo (timed) row ever
@@ -56,12 +57,13 @@ export async function getDailyLeaderboard(dayNumber) {
 export async function getDailyAverageLeaderboard() {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('profile_id, total_score, profile:profile_id(username, avatar_url, elo, ranked_games_played)')
+    .select('profile_id, total_score, profile:profile_id(username, avatar_url, elo, ranked_games_played, is_banned)')
     .eq('timed', true)
   if (error) throw error
 
   const byProfile = new Map()
   for (const row of data) {
+    if (row.profile?.is_banned) continue
     const entry = byProfile.get(row.profile_id) || {
       profileId: row.profile_id,
       profile: row.profile,

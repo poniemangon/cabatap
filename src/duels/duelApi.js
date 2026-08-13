@@ -313,6 +313,7 @@ export async function getEloLeaderboard(limit = 100) {
     .from('profiles')
     .select('id, username, avatar_url, elo, ranked_games_played')
     .gt('ranked_games_played', 0)
+    .eq('is_banned', false)
     .order('elo', { ascending: false })
     .limit(limit)
   if (error) throw error

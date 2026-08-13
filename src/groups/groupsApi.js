@@ -123,7 +123,7 @@ export async function getMembersForGroups(groupIds) {
 export async function getGroupMembers(groupId) {
   const { data, error } = await supabase
     .from('user_groups')
-    .select('joined_at, profile:user_id(id, username, avatar_url)')
+    .select('joined_at, profile:user_id(id, username, avatar_url, is_banned)')
     .eq('group_id', groupId)
     .order('joined_at', { ascending: true })
   if (error) throw error
@@ -166,7 +166,7 @@ export async function getDailyGroupWinCounts(groupId) {
 // calendar day).
 export async function getGroupDailyLeaderboard(groupId) {
   const members = await getGroupMembers(groupId)
-  const memberIds = members.map((m) => m.id)
+  const memberIds = members.filter((m) => !m.is_banned).map((m) => m.id)
   if (memberIds.length === 0) return []
 
   const { data, error } = await supabase
@@ -200,6 +200,7 @@ export async function getGroupRanking(groupId) {
   }
 
   return members
+    .filter((m) => !m.is_banned)
     .map((m) => ({ ...m, wins: wins.get(m.id) || 0, dailyWins: dailyWinCounts.get(m.id) || 0 }))
     .sort((a, b) => b.wins - a.wins)
 }

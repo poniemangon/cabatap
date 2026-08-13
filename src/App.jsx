@@ -430,6 +430,7 @@ function App() {
   const [selectedGroupId, setSelectedGroupId] = useState(null)
 
   const [authGateOpen, setAuthGateOpen] = useState(false)
+  const [banGateOpen, setBanGateOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1135,6 +1136,11 @@ function App() {
   // daily_stats, signed-out via the session-scoped guest result above.
   const startDaily = async (timed) => {
     if (timed && !(await requireAuthOrGate())) return
+    if (timed && profileRef.current?.is_banned) {
+      setDailyChoiceOpen(false)
+      setBanGateOpen(true)
+      return
+    }
     setDailyChoiceOpen(false)
     setDailyTimed(timed)
     setDailyRankInfo(null)
@@ -1240,6 +1246,10 @@ function App() {
   // informative popup with a "Jugar" button, no setup needed.
   const openRankedDuel = async () => {
     if (!(await requireAuthOrGate()) || duelInProgress) return
+    if (profileRef.current?.is_banned) {
+      setBanGateOpen(true)
+      return
+    }
     setRankedDuelOpen(true)
   }
 
@@ -1974,6 +1984,23 @@ function App() {
     </div>
   )
 
+  const banGatePopup = banGateOpen && (
+    <div className="modal-backdrop auth-gate-backdrop">
+      <div className="socials-modal auth-gate-modal">
+        <div className="calendar-modal-header">
+          <span>Competitivo no disponible</span>
+          <button type="button" className="calendar-close" onClick={() => setBanGateOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <p className="special-suggest-text">Competitivo no disponible, contactar soporte.</p>
+        <button type="button" className="primary-btn" onClick={() => setBanGateOpen(false)}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  )
+
   const dailyChoicePopup = dailyChoiceOpen && (
     <div className="modal-backdrop" onClick={() => setDailyChoiceOpen(false)}>
       <div onClick={(e) => e.stopPropagation()}>
@@ -2442,7 +2469,7 @@ function App() {
   return (
     <div className="app-shell">
       {notificationToasts}
-      <div className={`app-shell-content${authGateOpen ? ' app-shell-blurred' : ''}`}>
+      <div className={`app-shell-content${authGateOpen || banGateOpen ? ' app-shell-blurred' : ''}`}>
         {sidebar}
         <div className="app-main">
           <TopBar onToggleSidebar={() => setSidebarOpen((o) => !o)} />
@@ -2463,6 +2490,7 @@ function App() {
       {tutorialIntroPopup}
       {playDailyPromptPopup}
       {authGatePopup}
+      {banGatePopup}
       {authModalPopup}
     </div>
   )
