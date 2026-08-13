@@ -32,6 +32,24 @@
   width: 100%;
 }
 
+.ban-gate-modal .calendar-modal-header {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+
+.ban-gate-modal .calendar-close {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.ban-gate-text {
+  text-align: center;
+  margin: 12px 0 22px;
+}
+
 .app-main {
   flex: 1;
   min-width: 0;

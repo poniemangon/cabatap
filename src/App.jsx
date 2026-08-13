@@ -533,6 +533,9 @@ function App() {
           // Older stored sessions (saved before "view" existed) were always
           // mid-game, so they default to 'game' rather than the dashboard.
           view: stored.view ?? 'game',
+          // Older stored sessions (saved before this field existed) default
+          // to tranqui — the pre-existing behavior when this was missing.
+          dailyTimed: stored.dailyTimed ?? false,
         }
       : {
           ...fresh,
@@ -540,6 +543,7 @@ function App() {
           phase: 'guessing',
           results: [],
           view: blockedByAuth ? 'share-gate' : fromShare || isTestMap ? 'game' : 'dashboard',
+          dailyTimed: false,
         }
 
     setRoundIndices(initial.roundIndices)
@@ -549,6 +553,7 @@ function App() {
     setPhase(initial.phase)
     setResults(initial.results)
     setView(initial.view)
+    setDailyTimed(initial.dailyTimed)
     if (!isResume && !blockedByAuth && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
       setSpecialSuggestOpen(true)
     }
@@ -738,6 +743,13 @@ function App() {
           view,
           // Only meaningful for 'daily' — see the mount effect's resume check.
           dayNumber: gameMode === 'daily' ? dayNumberForDate(nowInBuenosAires()) : undefined,
+          // Which of the two parallel "daily" modes this is (competitivo vs
+          // tranqui) — without this, reloading mid/post a competitivo run
+          // resumed with dailyTimed defaulting back to false (tranqui),
+          // mislabeling the resumed result and, worse, letting the gameOver
+          // submit effect re-fire and overwrite the real tranqui row (or
+          // create a bogus one) with the competitivo attempt's data.
+          dailyTimed: gameMode === 'daily' ? dailyTimed : undefined,
           // Whoever this session actually belongs to — a stale session from a
           // different signed-in account (or a guest) must never get resumed
           // into the account that's loading the page now, see the mount
@@ -748,7 +760,7 @@ function App() {
     } catch {
       // sessionStorage unavailable (private browsing, etc.); ignore
     }
-  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view, authUser?.id])
+  }, [isReady, roundIndices, gameMode, customBarrioIds, roundIndex, phase, results, view, dailyTimed, authUser?.id])
 
   const rounds = useMemo(() => (pool ? roundIndices.map((i) => pool[i]) : []), [pool, roundIndices])
   // Every copyable link in the app is tagged with this — 'unlogged' when
@@ -1986,14 +1998,14 @@ function App() {
 
   const banGatePopup = banGateOpen && (
     <div className="modal-backdrop auth-gate-backdrop">
-      <div className="socials-modal auth-gate-modal">
+      <div className="socials-modal auth-gate-modal ban-gate-modal">
         <div className="calendar-modal-header">
           <span>Competitivo no disponible</span>
           <button type="button" className="calendar-close" onClick={() => setBanGateOpen(false)}>
             ✕
           </button>
         </div>
-        <p className="special-suggest-text">Competitivo no disponible, contactar soporte.</p>
+        <p className="special-suggest-text ban-gate-text">Contactar soporte.</p>
         <button type="button" className="primary-btn" onClick={() => setBanGateOpen(false)}>
           Entendido
         </button>
