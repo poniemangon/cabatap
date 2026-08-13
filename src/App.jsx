@@ -424,6 +424,12 @@ function App() {
   const [duelResultsLoading, setDuelResultsLoading] = useState(false)
   const duelResultSubmittedRef = useRef(false)
   const dailyResultSubmittedRef = useRef(false)
+  // Set only when the mount effect resumes an already-finished 'daily'
+  // session straight from local storage (never for a game that just
+  // finished in this same session) — signals the reconciliation effect
+  // below to re-fetch that mode's real row from the database instead of
+  // trusting the resumed snapshot as-is. See the mount effect for why.
+  const resumedDailyGameOverRef = useRef(false)
   const guestModeResultSubmittedRef = useRef(false)
   const [practiceLimitOpen, setPracticeLimitOpen] = useState(false)
   const [specialThanksOpen, setSpecialThanksOpen] = useState(false)
@@ -554,6 +560,18 @@ function App() {
     setResults(initial.results)
     setView(initial.view)
     setDailyTimed(initial.dailyTimed)
+    // Resuming straight into an already-finished daily run: it was already
+    // submitted before this reload, so the submit effect below must never
+    // fire again for it (that effect only guards on this ref, which resets
+    // on every reload). Competitivo/tranqui are independent DB rows though,
+    // and this local snapshot only ever remembers whichever one was last
+    // played — so the reconciliation effect further down re-asks the
+    // database for the resumed mode's real row and syncs `results` to it,
+    // rather than trusting the snapshot as the final word.
+    if (isResume && initial.gameMode === 'daily' && initial.phase === 'gameOver') {
+      dailyResultSubmittedRef.current = true
+      resumedDailyGameOverRef.current = true
+    }
     if (!isResume && !blockedByAuth && initial.gameMode === 'custom' && isAllSpecialSelection(initial.customBarrioIds, barrios)) {
       setSpecialSuggestOpen(true)
     }
@@ -1582,6 +1600,24 @@ function App() {
         dailyResultSubmittedRef.current = false
       })
   }, [phase, gameMode, profile, results, totalScore, dailyTimed])
+
+  // Reconciles a resumed-from-storage daily gameOver screen (see the mount
+  // effect's resumedDailyGameOverRef) against the database, instead of just
+  // trusting the local snapshot. Competitivo and tranqui are independent
+  // rows for the same day_number — this re-fetches the specific one the
+  // resumed session claims to be (dailyTimed) and syncs `results` to
+  // whatever's actually on record, so a stale/incorrect local snapshot can
+  // never keep showing (or re-submitting) the wrong mode's data.
+  useEffect(() => {
+    if (!resumedDailyGameOverRef.current || !profile) return
+    resumedDailyGameOverRef.current = false
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
+    getMyDailyStat(profile.id, dayNumber, dailyTimed)
+      .then((row) => {
+        if (row) setResults(row.results)
+      })
+      .catch(console.error)
+  }, [profile, dailyTimed])
 
   // Same one-a-day guest cap as "Mapa del día", extended to practice/custom/
   // special — signed-in players are unaffected (no DB row, no limit, this
