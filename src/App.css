@@ -1492,6 +1492,17 @@
   text-decoration: underline;
 }
 
+.comment-hint-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .result {
   font-size: 15px;
   color: var(--text, #6b6375);

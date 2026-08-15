@@ -2268,7 +2268,15 @@ function App() {
         </div>
 
         <footer className="controls controls-gameover">
-          {gameMode === 'duel' && <p className="comment-hint">💬 Tocá un pin del mapa para reportar un problema en esa esquina.</p>}
+          {gameMode === 'duel' && (
+            <p className="comment-hint">
+              💬 Tocá un pin del mapa o{' '}
+              <button type="button" className="comment-hint-link" onClick={() => setPickIntersectionOpen(true)}>
+                click acá
+              </button>{' '}
+              para reportar un problema.
+            </p>
+          )}
           <ul className="breakdown">
             {results.map((r, i) => (
               <li key={i}>
