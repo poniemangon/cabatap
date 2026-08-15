@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getActiveGroupDuel, getGroup, getGroupDailyLeaderboard, getGroupRanking, leaveGroup, updateGroup } from './groupsApi'
+import {
+  closeGroupDuel,
+  deleteGroupDuel,
+  getActiveGroupDuel,
+  getGroup,
+  getGroupDailyLeaderboard,
+  getGroupRanking,
+  leaveGroup,
+  updateGroup,
+} from './groupsApi'
 import Avatar from '../Avatar'
 import DailyWinBadge from '../daily/DailyWinBadge'
 import './Groups.css'
@@ -152,6 +161,8 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const [inviteOpen, setInviteOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [closingDuel, setClosingDuel] = useState(false)
+  const [deletingDuel, setDeletingDuel] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -199,6 +210,32 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
     }
   }
 
+  const handleCloseDuel = async () => {
+    if (!window.confirm('¿Cerrar el duelo activo ahora? Se define el ganador con los resultados que haya hasta el momento.')) return
+    setClosingDuel(true)
+    try {
+      await closeGroupDuel(activeDuel.id)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setClosingDuel(false)
+    }
+  }
+
+  const handleDeleteDuel = async () => {
+    if (!window.confirm('¿Borrar el duelo activo? Esta acción no se puede deshacer.')) return
+    setDeletingDuel(true)
+    try {
+      await deleteGroupDuel(activeDuel.id)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDeletingDuel(false)
+    }
+  }
+
   if (loading) return <p className="loading-text">Cargando...</p>
   if (error) return <p className="groups-error">{error}</p>
   if (!group) return null
@@ -241,9 +278,26 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           Invitar al grupo
         </button>
         {activeDuel ? (
-          <button type="button" className="primary-btn" onClick={() => onPlayDuel(activeDuel.invite_code)}>
-            Jugar duelo activo
-          </button>
+          <>
+            <button type="button" className="primary-btn" onClick={() => onPlayDuel(activeDuel.invite_code)}>
+              Jugar duelo activo
+            </button>
+            {isCreator && (
+              <>
+                <button type="button" className="primary-btn secondary-btn" onClick={handleCloseDuel} disabled={closingDuel}>
+                  {closingDuel ? 'Cerrando...' : 'Cerrar duelo'}
+                </button>
+                <button
+                  type="button"
+                  className="primary-btn secondary-btn group-leave-btn"
+                  onClick={handleDeleteDuel}
+                  disabled={deletingDuel}
+                >
+                  {deletingDuel ? 'Borrando...' : 'Borrar duelo'}
+                </button>
+              </>
+            )}
+          </>
         ) : (
           <span className="group-new-duel-wrap">
             <button type="button" className="primary-btn" onClick={handleStartDuel} disabled={starting}>

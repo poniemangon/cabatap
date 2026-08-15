@@ -146,6 +146,20 @@ export async function getActiveGroupDuel(groupId) {
   return data
 }
 
+// Group admin only (enforced inside the function itself — see 0064): closes
+// the duel right now, picking a winner from whatever results already exist
+// instead of waiting for every member to have played.
+export async function closeGroupDuel(duelId) {
+  const { error } = await supabase.rpc('admin_close_group_duel', { target_duel_id: duelId })
+  if (error) throw error
+}
+
+// Group admin only (RLS, 0064) — duel_results cascades.
+export async function deleteGroupDuel(duelId) {
+  const { error } = await supabase.from('duels').delete().eq('id', duelId)
+  if (error) throw error
+}
+
 // Batch daily_group_wins count per member — same ⭐ DailyWinBadge as the
 // global daily win, just scoped to this group's own cron-awarded winners
 // (award_daily_group_wins, 0051).
