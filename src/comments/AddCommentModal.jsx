@@ -6,11 +6,16 @@ function formatStreets(street1, street2) {
   return street2 ? `${street1} y ${street2}` : street1
 }
 
+export const GENERAL_COMMENT = 'general'
+
 // Shared by both places a duel result map is shown (App.jsx's in-game
 // gameOver view, reached from notifications, and DuelResultPage.jsx,
 // reached from a profile's duel history) — round is whichever result entry
-// the clicked actual-location marker belongs to.
+// the clicked actual-location marker (or picker row) belongs to, or the
+// GENERAL_COMMENT sentinel for "quiero reportar otra cosa" (not tied to any
+// intersection — pool_index goes in as null).
 export default function AddCommentModal({ round, profile, onClose }) {
+  const isGeneral = round === GENERAL_COMMENT
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -22,13 +27,16 @@ export default function AddCommentModal({ round, profile, onClose }) {
     setSaving(true)
     setError(null)
     try {
-      const poolIndex = await findIntersectionPoolIndex({
-        street1: round.street1,
-        street2: round.street2,
-        lat: round.actual[0],
-        lng: round.actual[1],
-      })
-      if (poolIndex == null) throw new Error('No encontramos esta esquina en la base de datos.')
+      let poolIndex = null
+      if (!isGeneral) {
+        poolIndex = await findIntersectionPoolIndex({
+          street1: round.street1,
+          street2: round.street2,
+          lat: round.actual[0],
+          lng: round.actual[1],
+        })
+        if (poolIndex == null) throw new Error('No encontramos esta esquina en la base de datos.')
+      }
       await addComment({ poolIndex, profileId: profile.id, text: text.trim() })
       setSent(true)
     } catch (err) {
@@ -42,13 +50,13 @@ export default function AddCommentModal({ round, profile, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="custom-modal add-comment-modal" onClick={(e) => e.stopPropagation()}>
         <div className="custom-modal-header">
-          <span>Agregar comentario/sugerencia</span>
+          <span>Agregar comentario o sugerencia</span>
           <button type="button" className="calendar-close" onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <p className="add-comment-subtitle">{formatStreets(round.street1, round.street2)}</p>
+        <p className="add-comment-subtitle">{isGeneral ? 'General' : formatStreets(round.street1, round.street2)}</p>
 
         {sent ? (
           <>
@@ -63,7 +71,11 @@ export default function AddCommentModal({ round, profile, onClose }) {
           <form className="add-comment-form" onSubmit={handleSubmit}>
             <textarea
               className="add-comment-textarea"
-              placeholder="Contanos qué está mal o qué se puede mejorar de esta esquina..."
+              placeholder={
+                isGeneral
+                  ? 'Contanos qué sugerencia o comentario tenés...'
+                  : 'Contanos qué está mal o qué se puede mejorar de esta esquina...'
+              }
               value={text}
               onChange={(e) => setText(e.target.value)}
               autoFocus

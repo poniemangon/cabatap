@@ -42,3 +42,12 @@
 .pick-intersection-street {
   flex: 1;
 }
+
+.pick-intersection-other {
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #333);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h, #f5f5f5);
+}

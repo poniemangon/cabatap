@@ -1,3 +1,4 @@
+import { GENERAL_COMMENT } from './AddCommentModal'
 import './PickIntersectionModal.css'
 
 function formatStreets(street1, street2) {
@@ -28,6 +29,11 @@ export default function PickIntersectionModal({ rounds, onPick, onClose }) {
             </li>
           ))}
         </ul>
+
+        <p className="pick-intersection-other">¿Querés reportar otra cosa?</p>
+        <button type="button" className="pick-intersection-item" onClick={() => onPick(GENERAL_COMMENT)}>
+          <span className="pick-intersection-street">Click acá</span>
+        </button>
       </div>
     </div>
   )
