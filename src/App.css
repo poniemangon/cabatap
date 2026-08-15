@@ -1474,6 +1474,24 @@
   text-align: center;
 }
 
+.add-comment-link {
+  display: block;
+  width: 100%;
+  margin: 4px 0 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-primary, #007aff);
+  text-align: center;
+  cursor: pointer;
+}
+
+.add-comment-link:hover {
+  text-decoration: underline;
+}
+
 .result {
   font-size: 15px;
   color: var(--text, #6b6375);

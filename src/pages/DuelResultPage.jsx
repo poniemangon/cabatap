@@ -5,6 +5,7 @@ import EloBadge from '../EloBadge'
 import ResultsMap from '../ResultsMap'
 import useProfile from '../hooks/useProfile'
 import AddCommentModal from '../comments/AddCommentModal'
+import PickIntersectionModal from '../comments/PickIntersectionModal'
 import './DuelResultPage.css'
 
 function formatDate(iso) {
@@ -24,6 +25,7 @@ export default function DuelResultPage() {
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState(null)
   const [commentRound, setCommentRound] = useState(null)
+  const [pickIntersectionOpen, setPickIntersectionOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -78,13 +80,18 @@ export default function DuelResultPage() {
   // taken from whoever has that round) + each participant's distance/points
   // for it, colored to match their map dot and leaderboard entry.
   const roundCount = Math.max(0, ...ranked.map((p) => p.results?.length ?? 0))
-  const streetForRound = (roundIdx) => {
+  const roundForIndex = (roundIdx) => {
     for (const p of ranked) {
       const r = p.results?.[roundIdx]
-      if (r) return r.street2 ? `${r.street1} y ${r.street2}` : r.street1
+      if (r) return r
     }
-    return `Ronda ${roundIdx + 1}`
+    return null
   }
+  const streetForRound = (roundIdx) => {
+    const r = roundForIndex(roundIdx)
+    return r ? (r.street2 ? `${r.street1} y ${r.street2}` : r.street1) : `Ronda ${roundIdx + 1}`
+  }
+  const pickerRounds = Array.from({ length: roundCount }, (_, i) => roundForIndex(i)).filter(Boolean)
 
   return (
     <div className="duel-result-page">
@@ -178,6 +185,12 @@ export default function DuelResultPage() {
                   </li>
                 ))}
               </ul>
+
+              {pickerRounds.length > 0 && (
+                <button type="button" className="add-comment-link" onClick={() => setPickIntersectionOpen(true)}>
+                  💬 Agregar comentario o sugerencia
+                </button>
+              )}
             </>
           )}
 
@@ -191,6 +204,16 @@ export default function DuelResultPage() {
         </>
       )}
 
+      {pickIntersectionOpen && (
+        <PickIntersectionModal
+          rounds={pickerRounds}
+          onPick={(round) => {
+            setPickIntersectionOpen(false)
+            setCommentRound(round)
+          }}
+          onClose={() => setPickIntersectionOpen(false)}
+        />
+      )}
       {commentRound && <AddCommentModal round={commentRound} profile={profile} onClose={() => setCommentRound(null)} />}
     </div>
   )

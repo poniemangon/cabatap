@@ -20,6 +20,7 @@ import GroupsDashboard from './groups/GroupsDashboard'
 import GroupDetail from './groups/GroupDetail'
 import { joinGroup, joinGroupByRawId } from './groups/groupsApi'
 import AddCommentModal from './comments/AddCommentModal'
+import PickIntersectionModal from './comments/PickIntersectionModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -439,6 +440,7 @@ function App() {
   const [authGateOpen, setAuthGateOpen] = useState(false)
   const [banGateOpen, setBanGateOpen] = useState(false)
   const [commentRound, setCommentRound] = useState(null)
+  const [pickIntersectionOpen, setPickIntersectionOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -2430,6 +2432,12 @@ function App() {
             </div>
           )}
 
+          {gameMode === 'duel' && (
+            <button type="button" className="add-comment-link" onClick={() => setPickIntersectionOpen(true)}>
+              💬 Agregar comentario o sugerencia
+            </button>
+          )}
+
           <div className="gameover-actions">
             {gameMode === 'testmap' ? (
               <button className="primary-btn secondary-btn" onClick={handleDaily}>
@@ -2548,6 +2556,16 @@ function App() {
       {authGatePopup}
       {banGatePopup}
       {authModalPopup}
+      {pickIntersectionOpen && (
+        <PickIntersectionModal
+          rounds={results}
+          onPick={(round) => {
+            setPickIntersectionOpen(false)
+            setCommentRound(round)
+          }}
+          onClose={() => setPickIntersectionOpen(false)}
+        />
+      )}
       {commentRound && <AddCommentModal round={commentRound} profile={profile} onClose={() => setCommentRound(null)} />}
     </div>
   )
