@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { getDuelById, getDuelResults, computeWinnerId } from '../duels/duelApi'
 import EloBadge from '../EloBadge'
 import ResultsMap from '../ResultsMap'
+import useProfile from '../hooks/useProfile'
+import AddCommentModal from '../comments/AddCommentModal'
 import './DuelResultPage.css'
 
 function formatDate(iso) {
@@ -16,10 +18,12 @@ const PARTICIPANT_COLORS = ['#007aff', '#22c55e', '#a855f7', '#f59e0b', '#14b8a6
 
 export default function DuelResultPage() {
   const { id } = useParams()
+  const { profile } = useProfile()
   const [duel, setDuel] = useState(null)
   const [results, setResults] = useState([])
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState(null)
+  const [commentRound, setCommentRound] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -110,7 +114,13 @@ export default function DuelResultPage() {
             <>
               {mapEntries.length > 0 && (
                 <div className="duel-result-map">
-                  <ResultsMap results={mapEntries} pendingGuess={null} clickEnabled={false} onPick={() => {}} />
+                  <ResultsMap
+                    results={mapEntries}
+                    pendingGuess={null}
+                    clickEnabled={false}
+                    onPick={() => {}}
+                    onActualMarkerClick={setCommentRound}
+                  />
                 </div>
               )}
 
@@ -179,6 +189,8 @@ export default function DuelResultPage() {
           )}
         </>
       )}
+
+      {commentRound && <AddCommentModal round={commentRound} profile={profile} onClose={() => setCommentRound(null)} />}
     </div>
   )
 }

@@ -19,6 +19,7 @@ import AuthModal from './auth/AuthModal'
 import GroupsDashboard from './groups/GroupsDashboard'
 import GroupDetail from './groups/GroupDetail'
 import { joinGroup, joinGroupByRawId } from './groups/groupsApi'
+import AddCommentModal from './comments/AddCommentModal'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -437,6 +438,7 @@ function App() {
 
   const [authGateOpen, setAuthGateOpen] = useState(false)
   const [banGateOpen, setBanGateOpen] = useState(false)
+  const [commentRound, setCommentRound] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -2233,7 +2235,12 @@ function App() {
     mainContent = (
       <>
         <div className={`map-wrap${scoreOverlayOpen ? ' map-wrap-dimmed' : ''}`}>
-          <ResultsMap results={results} clickEnabled={false} onPick={() => {}} />
+          <ResultsMap
+            results={results}
+            clickEnabled={false}
+            onPick={() => {}}
+            onActualMarkerClick={gameMode === 'duel' ? setCommentRound : undefined}
+          />
           {scoreOverlayOpen ? (
             <div className="final-score-overlay">
               <button
@@ -2540,6 +2547,7 @@ function App() {
       {authGatePopup}
       {banGatePopup}
       {authModalPopup}
+      {commentRound && <AddCommentModal round={commentRound} profile={profile} onClose={() => setCommentRound(null)} />}
     </div>
   )
 }

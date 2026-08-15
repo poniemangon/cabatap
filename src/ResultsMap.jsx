@@ -18,32 +18,48 @@ function createDot(bg, border) {
   return el
 }
 
-function createActualMarkerEl(label) {
+function createActualMarkerEl(label, onMarkerClick) {
   const wrap = document.createElement('div')
   wrap.style.display = 'flex'
   wrap.style.flexDirection = 'column'
   wrap.style.alignItems = 'center'
   wrap.style.gap = '2px'
+  if (onMarkerClick) wrap.style.cursor = 'pointer'
 
   const tag = document.createElement('div')
   tag.textContent = label
   tag.className = 'round-tooltip'
   wrap.appendChild(tag)
   wrap.appendChild(createDot('#ef4444', '#b91c1c'))
+
+  if (onMarkerClick) {
+    wrap.addEventListener('click', (e) => {
+      e.stopPropagation()
+      onMarkerClick()
+    })
+  }
+
   return wrap
 }
 
-export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick }) {
+// onActualMarkerClick (optional): called with a round's result entry when
+// its actual-location marker is clicked — used by the duel result views to
+// open "Agregar comentario/sugerencia" for that intersection. Left
+// undefined everywhere else (daily/practice/custom results, the live
+// in-game map), so those markers stay non-interactive.
+export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick, onActualMarkerClick }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])
   const pendingMarkerRef = useRef(null)
   const clickEnabledRef = useRef(clickEnabled)
   const onPickRef = useRef(onPick)
+  const onActualMarkerClickRef = useRef(onActualMarkerClick)
   const [loaded, setLoaded] = useState(false)
 
   clickEnabledRef.current = clickEnabled
   onPickRef.current = onPick
+  onActualMarkerClickRef.current = onActualMarkerClick
 
   useEffect(() => {
     let cancelled = false
@@ -150,7 +166,10 @@ export default function ResultsMap({ results, pendingGuess, clickEnabled, onPick
     results.forEach((r, i) => {
       if (!r.skipActualMarker) {
         const actualMarker = new maplibregl.Marker({
-          element: createActualMarkerEl(r.actualLabel ?? `R${i + 1}`),
+          element: createActualMarkerEl(
+            r.actualLabel ?? `R${i + 1}`,
+            onActualMarkerClickRef.current ? () => onActualMarkerClickRef.current(r) : null,
+          ),
           anchor: 'bottom',
         })
           .setLngLat([r.actual[1], r.actual[0]])
