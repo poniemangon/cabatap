@@ -1467,6 +1467,13 @@
   color: var(--text, #6b6375);
 }
 
+.comment-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text, #9ca3af);
+  text-align: center;
+}
+
 .result {
   font-size: 15px;
   color: var(--text, #6b6375);

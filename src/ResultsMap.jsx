@@ -24,19 +24,36 @@ function createActualMarkerEl(label, onMarkerClick) {
   wrap.style.flexDirection = 'column'
   wrap.style.alignItems = 'center'
   wrap.style.gap = '2px'
-  if (onMarkerClick) wrap.style.cursor = 'pointer'
 
   const tag = document.createElement('div')
   tag.textContent = label
   tag.className = 'round-tooltip'
   wrap.appendChild(tag)
-  wrap.appendChild(createDot('#ef4444', '#b91c1c'))
 
   if (onMarkerClick) {
+    // Visible affordance that this pin does something — a plain colored dot
+    // gives no hint it's tappable, especially on touch where :hover never
+    // shows the cursor change.
+    wrap.style.cursor = 'pointer'
+    const dotWrap = document.createElement('div')
+    dotWrap.style.position = 'relative'
+    dotWrap.appendChild(createDot('#ef4444', '#b91c1c'))
+    const badge = document.createElement('div')
+    badge.textContent = '💬'
+    badge.style.position = 'absolute'
+    badge.style.top = '-8px'
+    badge.style.right = '-10px'
+    badge.style.fontSize = '13px'
+    badge.style.lineHeight = '1'
+    badge.style.filter = 'drop-shadow(0 1px 1px rgba(0,0,0,0.6))'
+    dotWrap.appendChild(badge)
+    wrap.appendChild(dotWrap)
     wrap.addEventListener('click', (e) => {
       e.stopPropagation()
       onMarkerClick()
     })
+  } else {
+    wrap.appendChild(createDot('#ef4444', '#b91c1c'))
   }
 
   return wrap

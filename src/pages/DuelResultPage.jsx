@@ -121,6 +121,7 @@ export default function DuelResultPage() {
                     onPick={() => {}}
                     onActualMarkerClick={setCommentRound}
                   />
+                  <p className="comment-hint">💬 Tocá un pin del mapa para reportar un problema en esa esquina.</p>
                 </div>
               )}
 

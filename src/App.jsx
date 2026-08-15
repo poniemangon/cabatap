@@ -2266,6 +2266,7 @@ function App() {
         </div>
 
         <footer className="controls controls-gameover">
+          {gameMode === 'duel' && <p className="comment-hint">💬 Tocá un pin del mapa para reportar un problema en esa esquina.</p>}
           <ul className="breakdown">
             {results.map((r, i) => (
               <li key={i}>

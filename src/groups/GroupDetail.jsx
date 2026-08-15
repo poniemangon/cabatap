@@ -9,6 +9,7 @@ import {
   leaveGroup,
   updateGroup,
 } from './groupsApi'
+import { getDuelResults } from '../duels/duelApi'
 import Avatar from '../Avatar'
 import DailyWinBadge from '../daily/DailyWinBadge'
 import './Groups.css'
@@ -105,6 +106,57 @@ function InviteModal({ link, onClose }) {
   )
 }
 
+// Every current group member, with that duel's score if they've already
+// played (from duel_results) or "Sin jugar" otherwise — gives the admin
+// enough context (who's in, who's holding it up) to decide whether to
+// close or delete it.
+function ActiveDuelPill({ results, members, isCreator, onPlay, onClose, onDelete, closing, deleting }) {
+  const resultByProfile = new Map(results.map((r) => [r.profile_id, r]))
+  const participants = [...members].sort((a, b) => {
+    const scoreA = resultByProfile.get(a.id)?.total_score
+    const scoreB = resultByProfile.get(b.id)?.total_score
+    if (scoreA == null && scoreB == null) return 0
+    if (scoreA == null) return 1
+    if (scoreB == null) return -1
+    return scoreB - scoreA
+  })
+
+  return (
+    <div className="active-duel-pill">
+      <span className="active-duel-pill-title">⚔️ Duelo activo</span>
+      <ul className="active-duel-pill-participants">
+        {participants.map((m) => {
+          const result = resultByProfile.get(m.id)
+          return (
+            <li key={m.id} className="active-duel-pill-row">
+              <Avatar src={m.avatar_url} baseClass="active-duel-pill-avatar" />
+              <span className="active-duel-pill-name">{m.username}</span>
+              <span className={`active-duel-pill-score${result ? '' : ' active-duel-pill-score-pending'}`}>
+                {result ? `${result.total_score} pts` : 'Sin jugar'}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="active-duel-pill-actions">
+        <button type="button" className="primary-btn" onClick={onPlay}>
+          Jugar
+        </button>
+        {isCreator && (
+          <>
+            <button type="button" className="primary-btn secondary-btn" onClick={onClose} disabled={closing}>
+              {closing ? 'Cerrando...' : 'Cerrar'}
+            </button>
+            <button type="button" className="primary-btn secondary-btn group-leave-btn" onClick={onDelete} disabled={deleting}>
+              {deleting ? 'Borrando...' : 'Borrar'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function EditGroupForm({ group, onSaved, onCancel }) {
   const [name, setName] = useState(group.name)
   const [imageUrl, setImageUrl] = useState(group.image_url || '')
@@ -155,6 +207,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const [ranking, setRanking] = useState([])
   const [dailyLeaderboard, setDailyLeaderboard] = useState([])
   const [activeDuel, setActiveDuel] = useState(null)
+  const [activeDuelResults, setActiveDuelResults] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [starting, setStarting] = useState(false)
@@ -177,7 +230,9 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
         setRanking(r)
         setDailyLeaderboard(dl)
         setActiveDuel(d)
+        return d ? getDuelResults(d.id) : []
       })
+      .then((results) => setActiveDuelResults(results || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [groupId])
@@ -277,28 +332,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
         <button type="button" className="primary-btn secondary-btn" onClick={() => setInviteOpen(true)}>
           Invitar al grupo
         </button>
-        {activeDuel ? (
-          <>
-            <button type="button" className="primary-btn" onClick={() => onPlayDuel(activeDuel.invite_code)}>
-              Jugar duelo activo
-            </button>
-            {isCreator && (
-              <>
-                <button type="button" className="primary-btn secondary-btn" onClick={handleCloseDuel} disabled={closingDuel}>
-                  {closingDuel ? 'Cerrando...' : 'Cerrar duelo'}
-                </button>
-                <button
-                  type="button"
-                  className="primary-btn secondary-btn group-leave-btn"
-                  onClick={handleDeleteDuel}
-                  disabled={deletingDuel}
-                >
-                  {deletingDuel ? 'Borrando...' : 'Borrar duelo'}
-                </button>
-              </>
-            )}
-          </>
-        ) : (
+        {!activeDuel && (
           <span className="group-new-duel-wrap">
             <button type="button" className="primary-btn" onClick={handleStartDuel} disabled={starting}>
               {starting ? 'Creando...' : 'Nuevo duelo'}
@@ -310,6 +344,19 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           {leaving ? 'Saliendo...' : 'Salir del grupo'}
         </button>
       </div>
+
+      {activeDuel && (
+        <ActiveDuelPill
+          results={activeDuelResults}
+          members={ranking}
+          isCreator={isCreator}
+          onPlay={() => onPlayDuel(activeDuel.invite_code)}
+          onClose={handleCloseDuel}
+          onDelete={handleDeleteDuel}
+          closing={closingDuel}
+          deleting={deletingDuel}
+        />
+      )}
 
       <h2 className="group-detail-ranking-title">Ranking — duelos ganados</h2>
       <ul className="group-ranking-list">
