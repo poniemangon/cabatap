@@ -13,7 +13,7 @@
 
 .daily-popup-ad-close {
   position: absolute;
-  top: -20px;
+  top: -60px;
   right: -10px;
   z-index: 1;
   background: var(--neutral, #121212);
