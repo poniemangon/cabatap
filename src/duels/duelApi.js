@@ -340,13 +340,14 @@ export async function listMyPendingDuels(profileId) {
 // viewerId: a ghost sees themselves on the leaderboard, nobody else does
 // (see 0066) — .eq('id', null) would blow up with a uuid-cast error, so the
 // self-exception clause is only added when there's an actual viewer.
-export async function getEloLeaderboard(limit = 100, viewerId = null) {
+// viewerIsGhost: ghosts can see the fake bot opponents too (0068).
+export async function getEloLeaderboard(limit = 100, viewerId = null, viewerIsGhost = false) {
   let query = supabase
     .from('profiles')
     .select('id, username, avatar_url, elo, ranked_games_played')
     .gt('ranked_games_played', 0)
     .eq('is_banned', false)
-    .eq('is_bot', false)
+  if (!viewerIsGhost) query = query.eq('is_bot', false)
   query = viewerId ? query.or(`ghost_mode.eq.false,id.eq.${viewerId}`) : query.eq('ghost_mode', false)
   const { data, error } = await query.order('elo', { ascending: false }).limit(limit)
   if (error) throw error

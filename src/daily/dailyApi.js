@@ -39,8 +39,9 @@ export async function submitGuestDailyResult({ dayNumber, totalScore, timed = fa
 // day_number, best score first. Used both to show a rank on the gameOver
 // screen and could back a dedicated leaderboard view later.
 // viewerId: a ghost's own attempt still shows for themselves, just hidden
-// from everyone else — see 0066.
-export async function getDailyLeaderboard(dayNumber, viewerId = null) {
+// from everyone else. viewerIsGhost: ghosts can see the fake bot opponents
+// too (everyone else still has bots hidden) — see 0066/0068.
+export async function getDailyLeaderboard(dayNumber, viewerId = null, viewerIsGhost = false) {
   const { data, error } = await supabase
     .from('daily_stats')
     .select('*, profile:profile_id(id, username, avatar_url, elo, ranked_games_played, is_banned, ghost_mode, is_bot)')
@@ -48,10 +49,14 @@ export async function getDailyLeaderboard(dayNumber, viewerId = null) {
     .eq('timed', true)
     .order('total_score', { ascending: false })
   if (error) throw error
-  // Guest rows (no profile) stay in — only banned/bot accounts are hidden,
-  // and ghosts unless it's their own attempt.
+  // Guest rows (no profile) stay in — only banned accounts are hidden,
+  // ghosts unless it's their own attempt, and bots unless the viewer is
+  // themselves a ghost.
   return (data || []).filter(
-    (r) => !r.profile?.is_banned && !r.profile?.is_bot && (!r.profile?.ghost_mode || r.profile_id === viewerId),
+    (r) =>
+      !r.profile?.is_banned &&
+      (!r.profile?.is_bot || viewerIsGhost) &&
+      (!r.profile?.ghost_mode || r.profile_id === viewerId),
   )
 }
 
@@ -59,7 +64,7 @@ export async function getDailyLeaderboard(dayNumber, viewerId = null) {
 // played, aggregated per player. Tranqui never counts here since it never
 // ranks. Small-scale aggregation done client-side, same style as the rest
 // of this app's stats (see duelApi.js's getDuelStats).
-export async function getDailyAverageLeaderboard(viewerId = null) {
+export async function getDailyAverageLeaderboard(viewerId = null, viewerIsGhost = false) {
   const { data, error } = await supabase
     .from('daily_stats')
     .select(
@@ -70,7 +75,8 @@ export async function getDailyAverageLeaderboard(viewerId = null) {
 
   const byProfile = new Map()
   for (const row of data) {
-    if (row.profile?.is_banned || row.profile?.is_bot) continue
+    if (row.profile?.is_banned) continue
+    if (row.profile?.is_bot && !viewerIsGhost) continue
     if (row.profile?.ghost_mode && row.profile_id !== viewerId) continue
     const entry = byProfile.get(row.profile_id) || {
       profileId: row.profile_id,

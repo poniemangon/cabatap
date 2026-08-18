@@ -93,16 +93,16 @@ export default function RankingPreview() {
   const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
   useEffect(() => {
-    getDailyLeaderboard(todayDayNumber(), profile?.id)
+    getDailyLeaderboard(todayDayNumber(), profile?.id, profile?.ghost_mode)
       .then((data) => setDayRows(data.slice(0, TOP_N)))
       .catch(console.error)
-    getDailyAverageLeaderboard(profile?.id)
+    getDailyAverageLeaderboard(profile?.id, profile?.ghost_mode)
       .then((data) => setAvgRows(data.slice(0, TOP_N)))
       .catch(console.error)
-    getEloLeaderboard(TOP_N, profile?.id)
+    getEloLeaderboard(TOP_N, profile?.id, profile?.ghost_mode)
       .then(setEloRows)
       .catch(console.error)
-  }, [profile?.id])
+  }, [profile?.id, profile?.ghost_mode])
 
   useEffect(() => {
     const ids = [

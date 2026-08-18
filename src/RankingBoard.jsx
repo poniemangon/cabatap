@@ -118,16 +118,16 @@ export default function RankingBoard() {
   const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
   useEffect(() => {
-    getDailyAverageLeaderboard(profile?.id).then(setAverages).catch(console.error)
-  }, [profile?.id])
+    getDailyAverageLeaderboard(profile?.id, profile?.ghost_mode).then(setAverages).catch(console.error)
+  }, [profile?.id, profile?.ghost_mode])
 
   useEffect(() => {
-    getDailyLeaderboard(dayNumber, profile?.id).then(setDayResults).catch(console.error)
-  }, [dayNumber, profile?.id])
+    getDailyLeaderboard(dayNumber, profile?.id, profile?.ghost_mode).then(setDayResults).catch(console.error)
+  }, [dayNumber, profile?.id, profile?.ghost_mode])
 
   useEffect(() => {
-    getEloLeaderboard(100, profile?.id).then(setEloRows).catch(console.error)
-  }, [profile?.id])
+    getEloLeaderboard(100, profile?.id, profile?.ghost_mode).then(setEloRows).catch(console.error)
+  }, [profile?.id, profile?.ghost_mode])
 
   useEffect(() => {
     const ids = [

@@ -21,6 +21,8 @@ import GroupDetail from './groups/GroupDetail'
 import { joinGroup } from './groups/groupsApi'
 import AddCommentModal from './comments/AddCommentModal'
 import PickIntersectionModal from './comments/PickIntersectionModal'
+import DailyPopupAd from './daily/DailyPopupAd'
+import { getActiveDailyPopup } from './daily/dailyPopupApi'
 import { supabase, fetchAllRows } from './supabaseClient'
 import useProfile from './hooks/useProfile'
 import useAuth from './hooks/useAuth'
@@ -442,6 +444,12 @@ function App() {
   const [banGateOpen, setBanGateOpen] = useState(false)
   const [commentRound, setCommentRound] = useState(null)
   const [pickIntersectionOpen, setPickIntersectionOpen] = useState(false)
+  const [dailyPopupAd, setDailyPopupAd] = useState(null)
+  const [dailyPopupAdOpen, setDailyPopupAdOpen] = useState(false)
+
+  useEffect(() => {
+    getActiveDailyPopup().then(setDailyPopupAd).catch(console.error)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -1170,7 +1178,7 @@ function App() {
     }
   }, [dailyChoiceOpen, profile])
 
-  const handleDaily = () => {
+  const proceedToDaily = () => {
     // Signed-out visitors can only ever play tranqui (competitivo needs an
     // account to rank), so the choice popup would just be a dead option —
     // skip straight to tranqui instead of showing it.
@@ -1179,6 +1187,26 @@ function App() {
       return
     }
     setDailyChoiceOpen(true)
+  }
+
+  // Admin-configured promo popup (0068) — shown once per Buenos-Aires
+  // calendar day per browser session, right before the tranqui/competitivo
+  // choice (or straight into tranqui for a signed-out visitor).
+  const handleDaily = () => {
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
+    const seenKey = `ubicaba-daily-popup-seen-${dayNumber}`
+    let alreadySeen = false
+    try {
+      alreadySeen = !!sessionStorage.getItem(seenKey)
+      if (!alreadySeen) sessionStorage.setItem(seenKey, '1')
+    } catch {
+      // sessionStorage unavailable — just skip the once-a-day cap
+    }
+    if (dailyPopupAd && !alreadySeen) {
+      setDailyPopupAdOpen(true)
+      return
+    }
+    proceedToDaily()
   }
 
   // Tranqui stays open to signed-out visitors, same as the daily challenge
@@ -1220,7 +1248,7 @@ function App() {
         setView('game')
         window.history.replaceState(null, '', '/')
         if (timed) {
-          getDailyLeaderboard(dayNumber, profile.id)
+          getDailyLeaderboard(dayNumber, profile.id, profile.ghost_mode)
             .then((rows) => {
               const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
               setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
@@ -1628,7 +1656,7 @@ function App() {
     submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore, timed: dailyTimed })
       .then(() => {
         if (!dailyTimed) return
-        return getDailyLeaderboard(dayNumber, profile.id).then((rows) => {
+        return getDailyLeaderboard(dayNumber, profile.id, profile.ghost_mode).then((rows) => {
           const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
           setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
         })
@@ -2613,6 +2641,15 @@ function App() {
         />
       )}
       {commentRound && <AddCommentModal round={commentRound} profile={profile} onClose={() => setCommentRound(null)} />}
+      {dailyPopupAdOpen && dailyPopupAd && (
+        <DailyPopupAd
+          popup={dailyPopupAd}
+          onClose={() => {
+            setDailyPopupAdOpen(false)
+            proceedToDaily()
+          }}
+        />
+      )}
     </div>
   )
 }

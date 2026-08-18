@@ -1,0 +1,42 @@
+.daily-popup-ad {
+  position: relative;
+  max-width: 420px;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--neutral, #121212);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.daily-popup-ad-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+}
+
+.daily-popup-ad-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.daily-popup-ad-image-mobile {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .daily-popup-ad-image-desktop {
+    display: none;
+  }
+
+  .daily-popup-ad-image-mobile {
+    display: block;
+  }
+}
