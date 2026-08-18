@@ -2,6 +2,9 @@
   position: relative;
   max-width: 420px;
   width: 100%;
+}
+
+.daily-popup-ad-inner {
   border-radius: 14px;
   overflow: hidden;
   background: var(--neutral, #121212);
@@ -10,14 +13,16 @@
 
 .daily-popup-ad-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: -10px;
+  right: -10px;
   z-index: 1;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--neutral, #121212);
+  border: 1px solid var(--border, #333);
   border-radius: 50%;
   width: 28px;
   height: 28px;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .daily-popup-ad-image {
