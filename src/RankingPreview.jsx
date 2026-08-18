@@ -8,6 +8,7 @@ import DailyWinBadge from './daily/DailyWinBadge'
 import { getDailyWinCountsForProfiles } from './daily/dailyWinsApi'
 import EloBadge, { eloTier } from './EloBadge'
 import EloInfoIcon from './EloInfoIcon'
+import useProfile from './hooks/useProfile'
 import './RankingPreview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -84,6 +85,7 @@ function PreviewList({ title, rows, emptyText, detail, to, badges, dailyWinCount
 }
 
 export default function RankingPreview() {
+  const { profile } = useProfile()
   const [dayRows, setDayRows] = useState([])
   const [avgRows, setAvgRows] = useState([])
   const [eloRows, setEloRows] = useState([])
@@ -91,16 +93,16 @@ export default function RankingPreview() {
   const [dailyWinCounts, setDailyWinCounts] = useState(new Map())
 
   useEffect(() => {
-    getDailyLeaderboard(todayDayNumber())
+    getDailyLeaderboard(todayDayNumber(), profile?.id)
       .then((data) => setDayRows(data.slice(0, TOP_N)))
       .catch(console.error)
-    getDailyAverageLeaderboard()
+    getDailyAverageLeaderboard(profile?.id)
       .then((data) => setAvgRows(data.slice(0, TOP_N)))
       .catch(console.error)
-    getEloLeaderboard(TOP_N)
+    getEloLeaderboard(TOP_N, profile?.id)
       .then(setEloRows)
       .catch(console.error)
-  }, [])
+  }, [profile?.id])
 
   useEffect(() => {
     const ids = [

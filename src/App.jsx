@@ -37,6 +37,7 @@ import {
   closeDuel,
   findOpenRandomDuel,
   deletePrivateDuel,
+  createGhostRankedDuel,
 } from './duels/duelApi'
 import { notifyDuelCompleted, notifyDuelMatched } from './notifications/notificationsApi'
 import {
@@ -1219,7 +1220,7 @@ function App() {
         setView('game')
         window.history.replaceState(null, '', '/')
         if (timed) {
-          getDailyLeaderboard(dayNumber)
+          getDailyLeaderboard(dayNumber, profile.id)
             .then((rows) => {
               const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
               setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
@@ -1432,6 +1433,21 @@ function App() {
     if (!(await requireAuthOrGate()) || !profile) return
     setRankedDuelOpen(false)
     try {
+      // Ghosts never touch the real matchmaking queue — matched against a
+      // fake opponent instead, so a real player's own ranked queue is never
+      // affected by playing against one (see 0066).
+      if (profileRef.current?.ghost_mode) {
+        const indices = pickRandomIndices(pool.length, TOTAL_ROUNDS)
+        const duel = await createGhostRankedDuel({ challengerId: profile.id, roundIndices: indices })
+        duelResultSubmittedRef.current = false
+        setDuelClaimError(null)
+        setDuelResults([])
+        setActiveDuel(duel)
+        startGame(duel.round_indices, 'duel', { barrioIds: duel.barrio_ids || [] })
+        navigate(`/duelo/${duel.invite_code}`, { replace: true })
+        return
+      }
+
       const candidate = await findOpenRandomDuel(profile.id)
       const claimed = candidate ? await claimDuel(candidate.id, profile.id) : null
       if (claimed) {
@@ -1612,7 +1628,7 @@ function App() {
     submitDailyResult({ profileId: profile.id, dayNumber, results, totalScore, timed: dailyTimed })
       .then(() => {
         if (!dailyTimed) return
-        return getDailyLeaderboard(dayNumber).then((rows) => {
+        return getDailyLeaderboard(dayNumber, profile.id).then((rows) => {
           const rank = rows.findIndex((r) => r.profile_id === profile.id) + 1
           setDailyRankInfo({ rank: rank || rows.length, total: rows.length })
         })

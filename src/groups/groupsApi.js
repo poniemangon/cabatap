@@ -114,11 +114,17 @@ export async function getMembersForGroups(groupIds) {
 export async function getGroupMembers(groupId) {
   const { data, error } = await supabase
     .from('user_groups')
-    .select('joined_at, profile:user_id(id, username, avatar_url, is_banned)')
+    .select('joined_at, profile:user_id(id, username, avatar_url, is_banned, ghost_mode)')
     .eq('group_id', groupId)
     .order('joined_at', { ascending: true })
   if (error) throw error
   return (data || []).map((r) => r.profile).filter(Boolean)
+}
+
+// A ghost still shows up for themselves, hidden from everyone else — see
+// 0066. Shared by getGroupRanking/getGroupDailyLeaderboard below.
+function visibleToViewer(member, viewerId) {
+  return !member.is_banned && (!member.ghost_mode || member.id === viewerId)
 }
 
 // At most one at a time in practice (a fresh group duel only ever gets
@@ -169,9 +175,9 @@ export async function getDailyGroupWinCounts(groupId) {
 // score. Groups deliberately use tranqui, not competitivo (unlike the
 // global daily leaderboard) — same "today" boundary either way (Argentina
 // calendar day).
-export async function getGroupDailyLeaderboard(groupId) {
+export async function getGroupDailyLeaderboard(groupId, viewerId = null) {
   const members = await getGroupMembers(groupId)
-  const memberIds = members.filter((m) => !m.is_banned).map((m) => m.id)
+  const memberIds = members.filter((m) => visibleToViewer(m, viewerId)).map((m) => m.id)
   if (memberIds.length === 0) return []
 
   const { data, error } = await supabase
@@ -188,7 +194,7 @@ export async function getGroupDailyLeaderboard(groupId) {
 // Ranking by group duels won — every current member appears, at 0 if they
 // never played or never won one. Also carries each member's daily_group_wins
 // count for the ⭐ badge next to their name.
-export async function getGroupRanking(groupId) {
+export async function getGroupRanking(groupId, viewerId = null) {
   const [members, dailyWinCounts] = await Promise.all([getGroupMembers(groupId), getDailyGroupWinCounts(groupId)])
 
   const { data: closedDuels, error } = await supabase
@@ -205,7 +211,7 @@ export async function getGroupRanking(groupId) {
   }
 
   return members
-    .filter((m) => !m.is_banned)
+    .filter((m) => visibleToViewer(m, viewerId))
     .map((m) => ({ ...m, wins: wins.get(m.id) || 0, dailyWins: dailyWinCounts.get(m.id) || 0 }))
     .sort((a, b) => b.wins - a.wins)
 }

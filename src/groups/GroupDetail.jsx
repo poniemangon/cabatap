@@ -229,8 +229,8 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
     setError(null)
     Promise.all([
       getGroup(groupId),
-      getGroupRanking(groupId),
-      getGroupDailyLeaderboard(groupId),
+      getGroupRanking(groupId, profile?.id),
+      getGroupDailyLeaderboard(groupId, profile?.id),
       getActiveGroupDuel(groupId),
       getGroupDuelHistory(groupId),
     ])
@@ -249,7 +249,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
       .then((results) => setActiveDuelResults(results || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [groupId])
+  }, [groupId, profile?.id])
 
   useEffect(() => {
     load()

@@ -38,32 +38,40 @@ export async function submitGuestDailyResult({ dayNumber, totalScore, timed = fa
 // Today's competitivo leaderboard — everyone's timed attempt for this
 // day_number, best score first. Used both to show a rank on the gameOver
 // screen and could back a dedicated leaderboard view later.
-export async function getDailyLeaderboard(dayNumber) {
+// viewerId: a ghost's own attempt still shows for themselves, just hidden
+// from everyone else — see 0066.
+export async function getDailyLeaderboard(dayNumber, viewerId = null) {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('*, profile:profile_id(username, avatar_url, elo, ranked_games_played, is_banned)')
+    .select('*, profile:profile_id(id, username, avatar_url, elo, ranked_games_played, is_banned, ghost_mode, is_bot)')
     .eq('day_number', dayNumber)
     .eq('timed', true)
     .order('total_score', { ascending: false })
   if (error) throw error
-  // Guest rows (no profile) stay in — only banned accounts are hidden.
-  return (data || []).filter((r) => !r.profile?.is_banned)
+  // Guest rows (no profile) stay in — only banned/bot accounts are hidden,
+  // and ghosts unless it's their own attempt.
+  return (data || []).filter(
+    (r) => !r.profile?.is_banned && !r.profile?.is_bot && (!r.profile?.ghost_mode || r.profile_id === viewerId),
+  )
 }
 
 // All-time best-average leaderboard — every competitivo (timed) row ever
 // played, aggregated per player. Tranqui never counts here since it never
 // ranks. Small-scale aggregation done client-side, same style as the rest
 // of this app's stats (see duelApi.js's getDuelStats).
-export async function getDailyAverageLeaderboard() {
+export async function getDailyAverageLeaderboard(viewerId = null) {
   const { data, error } = await supabase
     .from('daily_stats')
-    .select('profile_id, total_score, profile:profile_id(username, avatar_url, elo, ranked_games_played, is_banned)')
+    .select(
+      'profile_id, total_score, profile:profile_id(username, avatar_url, elo, ranked_games_played, is_banned, ghost_mode, is_bot)',
+    )
     .eq('timed', true)
   if (error) throw error
 
   const byProfile = new Map()
   for (const row of data) {
-    if (row.profile?.is_banned) continue
+    if (row.profile?.is_banned || row.profile?.is_bot) continue
+    if (row.profile?.ghost_mode && row.profile_id !== viewerId) continue
     const entry = byProfile.get(row.profile_id) || {
       profileId: row.profile_id,
       profile: row.profile,

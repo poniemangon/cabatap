@@ -30,6 +30,35 @@ export async function createDuel({
   return data
 }
 
+// Ghost mode (0066): picks one of the pre-seeded fake opponents at random
+// for a ghost player's "Duelo rankeado" instead of the normal matchmaking
+// queue, so a ghost never actually occupies a real player's pending match.
+export async function getRandomBotProfile() {
+  const { data, error } = await supabase.from('profiles').select('id, username, elo').eq('is_bot', true)
+  if (error) throw error
+  if (!data || data.length === 0) return null
+  return data[Math.floor(Math.random() * data.length)]
+}
+
+// Creates the duel against that bot and immediately fabricates its result
+// server-side (submit_bot_duel_result, SECURITY DEFINER — a bot has no
+// session of its own to insert under RLS) so duel_results already has one
+// row before the ghost player even starts playing. Their own submission
+// brings it to 2 and the normal auto-close/ELO flow takes over unchanged.
+export async function createGhostRankedDuel({ challengerId, roundIndices }) {
+  const bot = await getRandomBotProfile()
+  if (!bot) throw new Error('No hay usuarios de práctica disponibles.')
+  const duel = await createDuel({
+    challengerId,
+    opponentId: bot.id,
+    roundIndices,
+    matchmaking: true,
+  })
+  const { error } = await supabase.rpc('submit_bot_duel_result', { target_duel_id: duel.id })
+  if (error) throw error
+  return duel
+}
+
 // A "Duelo random" you've already played but that nobody else has joined
 // yet — kept out of stats/lists below so it doesn't look like a resolved
 // (or even real) match until it's actually a two-player game or forfeited.
@@ -308,14 +337,18 @@ export async function listMyPendingDuels(profileId) {
 // first. Excludes anyone who's never actually closed a ranked duel: without
 // this, every profile sits at the default elo=1000 and the "leaderboard" is
 // just every registered user tied for first.
-export async function getEloLeaderboard(limit = 100) {
-  const { data, error } = await supabase
+// viewerId: a ghost sees themselves on the leaderboard, nobody else does
+// (see 0066) — .eq('id', null) would blow up with a uuid-cast error, so the
+// self-exception clause is only added when there's an actual viewer.
+export async function getEloLeaderboard(limit = 100, viewerId = null) {
+  let query = supabase
     .from('profiles')
     .select('id, username, avatar_url, elo, ranked_games_played')
     .gt('ranked_games_played', 0)
     .eq('is_banned', false)
-    .order('elo', { ascending: false })
-    .limit(limit)
+    .eq('is_bot', false)
+  query = viewerId ? query.or(`ghost_mode.eq.false,id.eq.${viewerId}`) : query.eq('ghost_mode', false)
+  const { data, error } = await query.order('elo', { ascending: false }).limit(limit)
   if (error) throw error
   return data
 }
