@@ -469,17 +469,10 @@ function App() {
     if (!pool || !barrios || initialized || !authLoaded) return
 
     if (location.pathname === '/grupos' || location.pathname.startsWith('/grupos/')) {
-      if (!isSignedIn) {
-        navigate('/', { replace: true, state: { showAuthGate: true } })
-        setInitialized(true)
-        return
-      }
-      if (groupIdParam) {
-        setSelectedGroupId(groupIdParam)
-        setView('group-detail')
-      } else {
-        setView('grupos')
-      }
+      // View/selectedGroupId for grupos routes are fully handled by the
+      // dedicated URL-reactive effect below (it also runs on this very
+      // first mount) — this branch just needs to stop the resume/share/
+      // testmap logic further down from running for these routes.
       setInitialized(true)
       return
     }
@@ -586,6 +579,31 @@ function App() {
     }
     setInitialized(true)
   }, [pool, barrios, initialized, duelCode, groupIdParam, authLoaded, isSignedIn, authUser?.id, location.pathname])
+
+  // Grupos view state is fully URL-driven and re-synced on every navigation
+  // (unlike the one-time mount effect above, gated by `initialized`) — so
+  // browser back/forward between /grupos and /grupos/:groupId (or landing
+  // directly on either) always resolves selectedGroupId from the URL
+  // itself, instead of trusting whatever view/selectedGroupId were last set
+  // to. Without this, going back from a group straight to /grupos left
+  // `view` stuck at 'group-detail' with selectedGroupId still null (its
+  // untouched initial value), and GroupDetail's queries would blow up with
+  // "invalid input syntax for type uuid: null".
+  useEffect(() => {
+    if (!authLoaded) return
+    if (location.pathname !== '/grupos' && !location.pathname.startsWith('/grupos/')) return
+    if (!isSignedIn) {
+      navigate('/', { replace: true, state: { showAuthGate: true } })
+      return
+    }
+    if (groupIdParam) {
+      setSelectedGroupId(groupIdParam)
+      setView('group-detail')
+    } else {
+      setSelectedGroupId(null)
+      setView('grupos')
+    }
+  }, [location.pathname, groupIdParam, authLoaded, isSignedIn, navigate])
 
   // Signing up from the share-gate screen via the magic-link email flow
   // doesn't reload the page, so isSignedIn just flips true — this picks that
