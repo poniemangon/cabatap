@@ -5,6 +5,7 @@ import {
   getActiveGroupDuel,
   getGroup,
   getGroupDailyLeaderboard,
+  getGroupDuelHistory,
   getGroupRanking,
   leaveGroup,
   updateGroup,
@@ -15,6 +16,10 @@ import DailyWinBadge from '../daily/DailyWinBadge'
 import './Groups.css'
 
 const POPUP_WIDTH = 240
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
 
 function NewDuelInfoIcon() {
   const [open, setOpen] = useState(false)
@@ -208,6 +213,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const [dailyLeaderboard, setDailyLeaderboard] = useState([])
   const [activeDuel, setActiveDuel] = useState(null)
   const [activeDuelResults, setActiveDuelResults] = useState([])
+  const [duelHistory, setDuelHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [starting, setStarting] = useState(false)
@@ -220,8 +226,14 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
-    Promise.all([getGroup(groupId), getGroupRanking(groupId), getGroupDailyLeaderboard(groupId), getActiveGroupDuel(groupId)])
-      .then(([g, r, dl, d]) => {
+    Promise.all([
+      getGroup(groupId),
+      getGroupRanking(groupId),
+      getGroupDailyLeaderboard(groupId),
+      getActiveGroupDuel(groupId),
+      getGroupDuelHistory(groupId),
+    ])
+      .then(([g, r, dl, d, h]) => {
         if (!g) {
           setError('No encontramos ese grupo.')
           return
@@ -230,6 +242,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
         setRanking(r)
         setDailyLeaderboard(dl)
         setActiveDuel(d)
+        setDuelHistory(h)
         return d ? getDuelResults(d.id) : []
       })
       .then((results) => setActiveDuelResults(results || []))
@@ -390,6 +403,37 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
               <span className="group-ranking-wins">{r.total_score} pts</span>
             </li>
           ))}
+        </ul>
+      )}
+
+      <h2 className="group-detail-ranking-title">Duelos jugados</h2>
+      {duelHistory.length === 0 ? (
+        <p className="groups-empty">Todavía no se jugó ningún duelo en este grupo.</p>
+      ) : (
+        <ul className="group-duel-history-list">
+          {duelHistory.map((d) => {
+            const players = [...d.duel_results].sort((a, b) => b.total_score - a.total_score)
+            return (
+              <li key={d.id} className="group-duel-history-row">
+                <span className="group-duel-history-date">{formatDate(d.closed_at)}</span>
+                <ul className="group-duel-history-players">
+                  {players.map((r) => (
+                    <li
+                      key={r.profile_id}
+                      className={`group-duel-history-player${r.profile_id === d.winner_id ? ' group-duel-history-winner' : ''}`}
+                    >
+                      <Avatar src={r.profile?.avatar_url} baseClass="group-duel-history-avatar" />
+                      <span className="group-duel-history-name">{r.profile_id === profile?.id ? 'Vos' : r.profile?.username}</span>
+                      <span className="group-duel-history-score">
+                        {r.total_score}
+                        {r.profile_id === d.winner_id ? ' 🏆' : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
         </ul>
       )}
 

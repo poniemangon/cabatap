@@ -218,3 +218,17 @@ export async function getGroupRanking(groupId) {
     .map((m) => ({ ...m, wins: wins.get(m.id) || 0, dailyWins: dailyWinCounts.get(m.id) || 0 }))
     .sort((a, b) => b.wins - a.wins)
 }
+
+// Newest first — every closed group duel with who played it and how much
+// they scored, for the group page's "Duelos jugados" history list.
+export async function getGroupDuelHistory(groupId, limit = 20) {
+  const { data, error } = await supabase
+    .from('duels')
+    .select('id, closed_at, winner_id, duel_results(profile_id, total_score, profile:profile_id(id, username, avatar_url))')
+    .eq('group_duel', groupId)
+    .not('closed_at', 'is', null)
+    .order('closed_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
