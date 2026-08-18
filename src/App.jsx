@@ -451,20 +451,12 @@ function App() {
     getActiveDailyPopup().then(setDailyPopupAd).catch(console.error)
   }, [])
 
-  // Fires once the daily map itself has actually loaded (mode already
+  // Fires every time the daily map itself has actually loaded (mode already
   // chosen, game view up) — not on the "Mapa del día" click or the
-  // tranqui/competitivo choice modal, both of which come before this.
-  // Capped at once per Buenos-Aires calendar day per browser session.
+  // tranqui/competitivo choice modal, both of which come before this. No
+  // once-a-day cap — shows on every daily map start, seen or not.
   useEffect(() => {
     if (gameMode !== 'daily' || phase !== 'guessing' || !dailyPopupAd) return
-    const dayNumber = dayNumberForDate(nowInBuenosAires())
-    const seenKey = `ubicaba-daily-popup-seen-${dayNumber}`
-    try {
-      if (sessionStorage.getItem(seenKey)) return
-      sessionStorage.setItem(seenKey, '1')
-    } catch {
-      // sessionStorage unavailable — show it anyway, worst case it repeats
-    }
     setDailyPopupAdOpen(true)
   }, [gameMode, phase, dailyPopupAd])
 
