@@ -451,6 +451,23 @@ function App() {
     getActiveDailyPopup().then(setDailyPopupAd).catch(console.error)
   }, [])
 
+  // Fires once the daily map itself has actually loaded (mode already
+  // chosen, game view up) — not on the "Mapa del día" click or the
+  // tranqui/competitivo choice modal, both of which come before this.
+  // Capped at once per Buenos-Aires calendar day per browser session.
+  useEffect(() => {
+    if (gameMode !== 'daily' || phase !== 'guessing' || !dailyPopupAd) return
+    const dayNumber = dayNumberForDate(nowInBuenosAires())
+    const seenKey = `ubicaba-daily-popup-seen-${dayNumber}`
+    try {
+      if (sessionStorage.getItem(seenKey)) return
+      sessionStorage.setItem(seenKey, '1')
+    } catch {
+      // sessionStorage unavailable — show it anyway, worst case it repeats
+    }
+    setDailyPopupAdOpen(true)
+  }, [gameMode, phase, dailyPopupAd])
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -1178,7 +1195,7 @@ function App() {
     }
   }, [dailyChoiceOpen, profile])
 
-  const proceedToDaily = () => {
+  const handleDaily = () => {
     // Signed-out visitors can only ever play tranqui (competitivo needs an
     // account to rank), so the choice popup would just be a dead option —
     // skip straight to tranqui instead of showing it.
@@ -1187,26 +1204,6 @@ function App() {
       return
     }
     setDailyChoiceOpen(true)
-  }
-
-  // Admin-configured promo popup (0068) — shown once per Buenos-Aires
-  // calendar day per browser session, right before the tranqui/competitivo
-  // choice (or straight into tranqui for a signed-out visitor).
-  const handleDaily = () => {
-    const dayNumber = dayNumberForDate(nowInBuenosAires())
-    const seenKey = `ubicaba-daily-popup-seen-${dayNumber}`
-    let alreadySeen = false
-    try {
-      alreadySeen = !!sessionStorage.getItem(seenKey)
-      if (!alreadySeen) sessionStorage.setItem(seenKey, '1')
-    } catch {
-      // sessionStorage unavailable — just skip the once-a-day cap
-    }
-    if (dailyPopupAd && !alreadySeen) {
-      setDailyPopupAdOpen(true)
-      return
-    }
-    proceedToDaily()
   }
 
   // Tranqui stays open to signed-out visitors, same as the daily challenge
@@ -2644,10 +2641,7 @@ function App() {
       {dailyPopupAdOpen && dailyPopupAd && (
         <DailyPopupAd
           popup={dailyPopupAd}
-          onClose={() => {
-            setDailyPopupAdOpen(false)
-            proceedToDaily()
-          }}
+          onClose={() => setDailyPopupAdOpen(false)}
         />
       )}
     </div>
