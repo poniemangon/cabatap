@@ -20,6 +20,7 @@ import GroupsDashboard from './groups/GroupsDashboard'
 import GroupDetail from './groups/GroupDetail'
 import { joinGroup } from './groups/groupsApi'
 import AddCommentModal from './comments/AddCommentModal'
+import { logGhostActivity } from './ghostActivityApi'
 import PickIntersectionModal from './comments/PickIntersectionModal'
 import DailyPopupAd from './daily/DailyPopupAd'
 import { getActiveDailyPopup } from './daily/dailyPopupApi'
@@ -388,6 +389,14 @@ function App() {
   const { notifications, unreadCount, openNotifications, deleteNotification, toasts, dismissToast } =
     useNotifications(profile)
 
+  // Ghost mode (0066) is otherwise invisible everywhere — this is the only
+  // trace an admin can pull up for one (0070). Safe to call regardless of
+  // ghost_mode: the RPC itself silently no-ops for anyone who isn't.
+  useEffect(() => {
+    if (!profile?.id) return
+    logGhostActivity()
+  }, [profile?.id])
+
   const [pool, setPool] = useState(null)
   const [barrios, setBarrios] = useState(null)
   const [duelTimeLimit, setDuelTimeLimit] = useState(DEFAULT_DUEL_TIME_LIMIT)
@@ -451,14 +460,21 @@ function App() {
     getActiveDailyPopup().then(setDailyPopupAd).catch(console.error)
   }, [])
 
-  // Fires every time the daily map itself has actually loaded (mode already
-  // chosen, game view up) — not on the "Mapa del día" click or the
-  // tranqui/competitivo choice modal, both of which come before this. No
-  // once-a-day cap — shows on every daily map start, seen or not.
+  // Fires once per daily map play — right when it's actually loaded (mode
+  // already chosen, game view up), not on the "Mapa del día" click or the
+  // tranqui/competitivo choice modal, both of which come before this.
+  // view === 'game' is required too: gameMode/phase/roundIndex's *default*
+  // state (before any real navigation) is 'daily'/'guessing'/0 — the exact
+  // same shape as "just started round 1" — so without checking view this
+  // fired on every fresh page load, dashboard included. roundIndex === 0
+  // then keeps it from re-firing on every later round: phase cycles back to
+  // 'guessing' at the start of each of the 5 rounds (handleNextRound), but
+  // only the very first one also has roundIndex 0. No once-a-day cap —
+  // shows on every daily map start (once per game), seen or not.
   useEffect(() => {
-    if (gameMode !== 'daily' || phase !== 'guessing' || !dailyPopupAd) return
+    if (view !== 'game' || gameMode !== 'daily' || phase !== 'guessing' || roundIndex !== 0 || !dailyPopupAd) return
     setDailyPopupAdOpen(true)
-  }, [gameMode, phase, dailyPopupAd])
+  }, [view, gameMode, phase, roundIndex, dailyPopupAd])
 
   useEffect(() => {
     let cancelled = false
