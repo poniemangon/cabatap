@@ -24,6 +24,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/grupos" element={<App />} />
+        <Route path="/grupos/:groupId" element={<App />} />
         <Route path="/duelo/:code" element={<App />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/mapa-diario/:id" element={<DailyResultPage />} />

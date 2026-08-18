@@ -43,15 +43,6 @@ export async function joinGroup(inviteId, profileId) {
   return insertMembership(group, profileId)
 }
 
-// Legacy support: invite links shared before invite_id (0057) existed
-// carried the raw internal id directly (?group_id=<uuid>) — kept working
-// so those old links don't silently break.
-export async function joinGroupByRawId(groupId, profileId) {
-  const group = await getGroup(groupId)
-  if (!group) throw new Error('No encontramos ese grupo.')
-  return insertMembership(group, profileId)
-}
-
 export async function getGroup(groupId) {
   const { data, error } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
   if (error) throw error

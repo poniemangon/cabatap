@@ -37,10 +37,17 @@
 }
 
 .group-duel-history-row {
+  display: block;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border, #262626);
   background: var(--neutral, #121212);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.group-duel-history-row:hover {
+  border-color: var(--accent-primary, #007aff);
 }
 
 .group-duel-history-date {

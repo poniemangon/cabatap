@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   closeGroupDuel,
   deleteGroupDuel,
@@ -414,23 +415,25 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
           {duelHistory.map((d) => {
             const players = [...d.duel_results].sort((a, b) => b.total_score - a.total_score)
             return (
-              <li key={d.id} className="group-duel-history-row">
-                <span className="group-duel-history-date">{formatDate(d.closed_at)}</span>
-                <ul className="group-duel-history-players">
-                  {players.map((r) => (
-                    <li
-                      key={r.profile_id}
-                      className={`group-duel-history-player${r.profile_id === d.winner_id ? ' group-duel-history-winner' : ''}`}
-                    >
-                      <Avatar src={r.profile?.avatar_url} baseClass="group-duel-history-avatar" />
-                      <span className="group-duel-history-name">{r.profile_id === profile?.id ? 'Vos' : r.profile?.username}</span>
-                      <span className="group-duel-history-score">
-                        {r.total_score}
-                        {r.profile_id === d.winner_id ? ' 🏆' : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              <li key={d.id}>
+                <Link to={`/duelo-resultado/${d.id}`} className="group-duel-history-row">
+                  <span className="group-duel-history-date">{formatDate(d.closed_at)}</span>
+                  <ul className="group-duel-history-players">
+                    {players.map((r) => (
+                      <li
+                        key={r.profile_id}
+                        className={`group-duel-history-player${r.profile_id === d.winner_id ? ' group-duel-history-winner' : ''}`}
+                      >
+                        <Avatar src={r.profile?.avatar_url} baseClass="group-duel-history-avatar" />
+                        <span className="group-duel-history-name">{r.profile_id === profile?.id ? 'Vos' : r.profile?.username}</span>
+                        <span className="group-duel-history-score">
+                          {r.total_score}
+                          {r.profile_id === d.winner_id ? ' 🏆' : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </Link>
               </li>
             )
           })}

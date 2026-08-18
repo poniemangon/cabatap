@@ -18,7 +18,7 @@ import DailyModeChoiceModal from './daily/DailyModeChoiceModal'
 import AuthModal from './auth/AuthModal'
 import GroupsDashboard from './groups/GroupsDashboard'
 import GroupDetail from './groups/GroupDetail'
-import { joinGroup, joinGroupByRawId } from './groups/groupsApi'
+import { joinGroup } from './groups/groupsApi'
 import AddCommentModal from './comments/AddCommentModal'
 import PickIntersectionModal from './comments/PickIntersectionModal'
 import { supabase, fetchAllRows } from './supabaseClient'
@@ -375,7 +375,7 @@ function requiresAuth(mode) {
 }
 
 function App() {
-  const { code: duelCode } = useParams()
+  const { code: duelCode, groupId: groupIdParam } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const { isLoaded: authLoaded, isSignedIn, user: authUser, signOut } = useAuth()
@@ -468,13 +468,18 @@ function App() {
   useEffect(() => {
     if (!pool || !barrios || initialized || !authLoaded) return
 
-    if (location.pathname === '/grupos') {
+    if (location.pathname === '/grupos' || location.pathname.startsWith('/grupos/')) {
       if (!isSignedIn) {
         navigate('/', { replace: true, state: { showAuthGate: true } })
         setInitialized(true)
         return
       }
-      setView('grupos')
+      if (groupIdParam) {
+        setSelectedGroupId(groupIdParam)
+        setView('group-detail')
+      } else {
+        setView('grupos')
+      }
       setInitialized(true)
       return
     }
@@ -580,7 +585,7 @@ function App() {
       setSpecialSuggestOpen(true)
     }
     setInitialized(true)
-  }, [pool, barrios, initialized, duelCode, authLoaded, isSignedIn, authUser?.id, location.pathname])
+  }, [pool, barrios, initialized, duelCode, groupIdParam, authLoaded, isSignedIn, authUser?.id, location.pathname])
 
   // Signing up from the share-gate screen via the magic-link email flow
   // doesn't reload the page, so isSignedIn just flips true — this picks that
@@ -680,29 +685,24 @@ function App() {
   // "Unirse a grupo" manually, then drops straight into it. joinGroup
   // resolves the short public invite_id to the group's real internal id
   // (0057) — that resolved id, not the invite_id itself, is what
-  // GroupDetail's groupId prop needs for every query that follows.
-  // ?group_id=<uuid> is the older link shape (shared before invite_id
-  // existed) — still honored via joinGroupByRawId so those links don't
-  // break. Signed-out visitors get the auth gate instead — this re-runs
-  // once profile shows up after they sign in, since it's a dependency below.
+  // GroupDetail's groupId prop needs for every query that follows, and what
+  // the URL gets rewritten to below. Signed-out visitors get the auth gate
+  // instead — this re-runs once profile shows up after they sign in, since
+  // it's a dependency below.
   useEffect(() => {
     if (view !== 'grupos') return
     const params = new URLSearchParams(location.search)
     const inviteIdParam = params.get('invite_id')
-    const legacyGroupIdParam = params.get('group_id')
-    if (!inviteIdParam && !legacyGroupIdParam) return
+    if (!inviteIdParam) return
     if (!profile) {
       openSignUp()
       return
     }
-    const join = inviteIdParam
-      ? joinGroup(inviteIdParam, profile.id)
-      : joinGroupByRawId(legacyGroupIdParam, profile.id)
-    join
+    joinGroup(inviteIdParam, profile.id)
       .then((group) => {
         setSelectedGroupId(group.id)
         setView('group-detail')
-        navigate('/grupos', { replace: true })
+        navigate(`/grupos/${group.id}`, { replace: true })
       })
       .catch(console.error)
   }, [view, profile, location.search])
@@ -2215,6 +2215,7 @@ function App() {
         onOpenGroup={(id) => {
           setSelectedGroupId(id)
           setView('group-detail')
+          navigate(`/grupos/${id}`)
         }}
       />
     )
@@ -2223,7 +2224,10 @@ function App() {
       <GroupDetail
         groupId={selectedGroupId}
         profile={profile}
-        onBack={() => setView('grupos')}
+        onBack={() => {
+          setView('grupos')
+          navigate('/grupos')
+        }}
         onPlayDuel={(code) => {
           setDuelClaimError(null)
           setView('duel-loading')
