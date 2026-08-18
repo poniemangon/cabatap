@@ -73,7 +73,20 @@ function DuelRow({ duel, myProfileId, onOpen }) {
 
 export default function ProfilePage() {
   const { isLoaded: authLoaded, isSignedIn } = useAuth()
-  const { profile, loading: profileLoading, updateUsername, updateAvatarUrl } = useProfile()
+  const { profile, loading: profileLoading, updateUsername, updateAvatarUrl, updateGhostMode } = useProfile()
+  const [ghostSaving, setGhostSaving] = useState(false)
+
+  const handleToggleGhostMode = async (e) => {
+    const next = e.target.checked
+    setGhostSaving(true)
+    try {
+      await updateGhostMode(next)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setGhostSaving(false)
+    }
+  }
   const navigate = useNavigate()
 
   const [editingUsername, setEditingUsername] = useState(false)
@@ -304,6 +317,12 @@ export default function ProfilePage() {
           )}
           {usernameStatus && (
             <p className={`profile-search-status profile-search-status-${usernameStatus.type}`}>{usernameStatus.text}</p>
+          )}
+          {profile && (
+            <label className="profile-ghost-mode-toggle">
+              <input type="checkbox" checked={!!profile.ghost_mode} onChange={handleToggleGhostMode} disabled={ghostSaving} />
+              👻 Modo fantasma
+            </label>
           )}
         </div>
       </header>
