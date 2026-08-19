@@ -139,25 +139,5 @@ export default function useProfile() {
     [profile],
   )
 
-  // Self-service — "profiles" already lets a user update their own row
-  // (0001), no extra RLS needed. Hides you from every ranking except your
-  // own view, and matches "Duelo rankeado" against a fake bot instead of a
-  // real player — see 0066.
-  const updateGhostMode = useCallback(
-    async (nextGhostMode) => {
-      if (!profile) throw new Error('No profile loaded')
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ ghost_mode: nextGhostMode })
-        .eq('id', profile.id)
-        .select()
-        .single()
-      if (error) throw error
-      setProfile(data)
-      return data
-    },
-    [profile],
-  )
-
-  return { profile, loading, updateUsername, updateAvatarUrl, updateGhostMode }
+  return { profile, loading, updateUsername, updateAvatarUrl }
 }

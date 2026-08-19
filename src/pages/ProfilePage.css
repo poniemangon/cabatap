@@ -219,16 +219,6 @@
   color: #ef4444;
 }
 
-.profile-ghost-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--text, #9ca3af);
-  cursor: pointer;
-}
-
 .profile-friend-group {
   margin-bottom: 18px;
 }
