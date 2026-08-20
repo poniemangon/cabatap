@@ -24,6 +24,18 @@ function todayDayNumber() {
 
 const TOP_N = 5
 
+// Competition ("1224") ranking: tied scores share the same rank, and the
+// next distinct score jumps past the skipped positions — so two players
+// tied for the top score both show #1, and whoever's next shows #3, not #2.
+// rows must already be sorted by getScore descending.
+function competitionRanks(rows, getScore) {
+  const ranks = []
+  for (let i = 0; i < rows.length; i++) {
+    ranks.push(i > 0 && getScore(rows[i]) === getScore(rows[i - 1]) ? ranks[i - 1] : i + 1)
+  }
+  return ranks
+}
+
 function PreviewRow({ rank, row, detail, to, badge, dailyWinCount }) {
   const [imgFailed, setImgFailed] = useState(false)
   const content = (
@@ -59,7 +71,8 @@ function PreviewRow({ rank, row, detail, to, badge, dailyWinCount }) {
   )
 }
 
-function PreviewList({ title, rows, emptyText, detail, to, badges, dailyWinCounts }) {
+function PreviewList({ title, rows, emptyText, detail, getScore, to, badges, dailyWinCounts }) {
+  const ranks = competitionRanks(rows, getScore)
   return (
     <div className="ranking-preview-section">
       <h3 className="ranking-preview-section-title">{title}</h3>
@@ -70,7 +83,7 @@ function PreviewList({ title, rows, emptyText, detail, to, badges, dailyWinCount
           {rows.map((r, i) => (
             <PreviewRow
               key={r.key}
-              rank={i + 1}
+              rank={ranks[i]}
               row={r}
               detail={detail(r)}
               to={to(r)}
@@ -138,6 +151,7 @@ export default function RankingPreview() {
           }))}
           emptyText="Nadie jugó en modo competitivo hoy todavía."
           detail={(r) => `${r.total_score} pts`}
+          getScore={(r) => r.total_score}
           to={(r) => `/mapa-diario/${r.id}`}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
@@ -155,6 +169,7 @@ export default function RankingPreview() {
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."
           detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
+          getScore={(a) => a.avgScore}
           to={(a) => (a.username ? `/jugador/${a.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
@@ -176,6 +191,7 @@ export default function RankingPreview() {
           rows={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           detail={(r) => eloTier(r.elo).name}
+          getScore={(r) => r.elo}
           to={(r) => (r.username ? `/jugador/${r.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}

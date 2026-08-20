@@ -31,6 +31,18 @@ function formatDailyDate(dayNumber) {
 
 const MAX_SIZE = 100
 
+// Competition ("1224") ranking: tied scores share the same rank, and the
+// next distinct score jumps past the skipped positions — so two players
+// tied for the top score both show #1, and whoever's next shows #3, not #2.
+// items must already be sorted by getScore descending.
+function competitionRanks(items, getScore) {
+  const ranks = []
+  for (let i = 0; i < items.length; i++) {
+    ranks.push(i > 0 && getScore(items[i]) === getScore(items[i - 1]) ? ranks[i - 1] : i + 1)
+  }
+  return ranks
+}
+
 function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail, to }) {
   const [imgFailed, setImgFailed] = useState(false)
   const content = (
@@ -73,7 +85,9 @@ function YourRankSummary({ profile, children }) {
   return <div className="ranking-your-summary">{children}</div>
 }
 
-function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, badges, dailyWinCounts }) {
+function LeaderboardSection({ title, extra, items, emptyText, renderDetail, getScore, to, badges, dailyWinCounts }) {
+  const shown = items.slice(0, MAX_SIZE)
+  const ranks = competitionRanks(shown, getScore)
   return (
     <section className="ranking-section">
       <div className="ranking-section-header">
@@ -86,10 +100,10 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, to, 
       ) : (
         <div className="ranking-list-scroll">
           <ul className="ranking-list">
-            {items.slice(0, MAX_SIZE).map((item, i) => (
+            {shown.map((item, i) => (
               <RankRow
                 key={item.key}
-                rank={i + 1}
+                rank={ranks[i]}
                 avatarUrl={item.avatarUrl}
                 username={item.username}
                 elo={item.elo}
@@ -189,6 +203,7 @@ export default function RankingBoard() {
           }))}
           emptyText="Nadie jugó en modo competitivo ese día."
           renderDetail={(r) => `${r.total_score} pts`}
+          getScore={(r) => r.total_score}
           to={(r) => `/mapa-diario/${r.id}`}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
@@ -206,6 +221,7 @@ export default function RankingBoard() {
           }))}
           emptyText="Todavía nadie jugó en modo competitivo."
           renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
+          getScore={(a) => a.avgScore}
           to={(a) => (a.profile?.username ? `/jugador/${a.profile.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
@@ -232,6 +248,7 @@ export default function RankingBoard() {
           items={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
           emptyText="Todavía nadie jugó un duelo rankeado."
           renderDetail={(r) => eloTier(r.elo).name}
+          getScore={(r) => r.elo}
           to={(r) => (r.username ? `/jugador/${r.username}` : null)}
           badges={badges}
           dailyWinCounts={dailyWinCounts}
