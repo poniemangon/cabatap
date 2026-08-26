@@ -1282,6 +1282,27 @@
   padding: 28px;
 }
 
+.dashboard-columns {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-main {
+  min-width: 0;
+}
+
+/* Wide desktop: the ranking widget moves beside the daily card/mode grid
+   instead of stacking below them. 1080px leaves enough room after the 220px
+   sidebar for a 380px ranking column without cramping the main content. */
+@media (min-width: 1080px) {
+  .dashboard-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+    gap: 28px;
+  }
+}
+
 .dashboard-daily-card {
   padding: 24px;
   border-radius: 16px;
