@@ -10,6 +10,51 @@
   overflow-y: auto;
 }
 
+.profile-columns {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Wide desktop: Amigos/Logros move into a side column next to the main
+   profile content instead of stacking below it. Mobile/tablet keep the
+   original single-column stacked order untouched. */
+@media (min-width: 1080px) {
+  .profile-page {
+    max-width: 1100px;
+  }
+
+  .profile-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas:
+      'header header'
+      'stats  amigos'
+      'duels  logros'
+      'daily  logros';
+    align-items: start;
+    gap: 24px;
+  }
+
+  .profile-area-header {
+    grid-area: header;
+  }
+  .profile-area-stats {
+    grid-area: stats;
+  }
+  .profile-area-duels {
+    grid-area: duels;
+  }
+  .profile-area-daily {
+    grid-area: daily;
+  }
+  .profile-area-amigos {
+    grid-area: amigos;
+  }
+  .profile-area-logros {
+    grid-area: logros;
+  }
+}
+
 .profile-page,
 .profile-duel-list {
   scrollbar-width: thin;

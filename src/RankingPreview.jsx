@@ -75,7 +75,7 @@ function PreviewList({ title, rows, emptyText, detail, getScore, to, badges, dai
   const ranks = competitionRanks(rows, getScore)
   return (
     <div className="ranking-preview-section">
-      <h3 className="ranking-preview-section-title">{title}</h3>
+      {title && <h3 className="ranking-preview-section-title">{title}</h3>}
       {rows.length === 0 ? (
         <p className="profile-empty-text">{emptyText}</p>
       ) : (
@@ -97,8 +97,15 @@ function PreviewList({ title, rows, emptyText, detail, getScore, to, badges, dai
   )
 }
 
+const TABS = [
+  { key: 'hoy', label: 'Mapa del día (hoy)' },
+  { key: 'promedio', label: 'Mapa del día (promedio histórico)' },
+  { key: 'elo', label: 'ELO' },
+]
+
 export default function RankingPreview() {
   const { profile } = useProfile()
+  const [activeTab, setActiveTab] = useState('hoy')
   const [dayRows, setDayRows] = useState([])
   const [avgRows, setAvgRows] = useState([])
   const [eloRows, setEloRows] = useState([])
@@ -132,70 +139,77 @@ export default function RankingPreview() {
     <div className="ranking-preview-cards">
       <div className="ranking-preview">
         <div className="ranking-preview-header">
-          <h2 className="ranking-preview-title">🏆 Ranking mapa del día</h2>
-          <Link to="/ranking" className="ranking-preview-link">
-            Ver ranking completo →
-          </Link>
-        </div>
-
-        <PreviewList
-          title="Top mapa del día de hoy"
-          rows={dayRows.map((r) => ({
-            key: r.id,
-            id: r.id,
-            profileId: r.profile_id,
-            avatarUrl: r.profile?.avatar_url,
-            username: r.profile?.username,
-            elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
-            total_score: r.total_score,
-          }))}
-          emptyText="Nadie jugó en modo competitivo hoy todavía."
-          detail={(r) => `${r.total_score} pts`}
-          getScore={(r) => r.total_score}
-          to={(r) => `/mapa-diario/${r.id}`}
-          badges={badges}
-          dailyWinCounts={dailyWinCounts}
-        />
-
-        <PreviewList
-          title="Top mapa del día promedio histórico"
-          rows={avgRows.map((a) => ({
-            key: a.profileId,
-            profileId: a.profileId,
-            avatarUrl: a.profile?.avatar_url,
-            username: a.profile?.username,
-            elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
-            avgScore: a.avgScore,
-          }))}
-          emptyText="Todavía nadie jugó en modo competitivo."
-          detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
-          getScore={(a) => a.avgScore}
-          to={(a) => (a.username ? `/jugador/${a.username}` : null)}
-          badges={badges}
-          dailyWinCounts={dailyWinCounts}
-        />
-      </div>
-
-      <div className="ranking-preview">
-        <div className="ranking-preview-header">
           <h2 className="ranking-preview-title">
-            🏅 Ranking de jugadores por ELO <EloInfoIcon />
+            🏆 Rankings {activeTab === 'elo' && <EloInfoIcon />}
           </h2>
           <Link to="/ranking" className="ranking-preview-link">
             Ver ranking completo →
           </Link>
         </div>
 
-        <PreviewList
-          title="Top ranking ELO"
-          rows={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
-          emptyText="Todavía nadie jugó un duelo rankeado."
-          detail={(r) => eloTier(r.elo).name}
-          getScore={(r) => r.elo}
-          to={(r) => (r.username ? `/jugador/${r.username}` : null)}
-          badges={badges}
-          dailyWinCounts={dailyWinCounts}
-        />
+        <div className="ranking-preview-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={`ranking-preview-tab${activeTab === t.key ? ' ranking-preview-tab-active' : ''}`}
+              onClick={() => setActiveTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'hoy' && (
+          <PreviewList
+            rows={dayRows.map((r) => ({
+              key: r.id,
+              id: r.id,
+              profileId: r.profile_id,
+              avatarUrl: r.profile?.avatar_url,
+              username: r.profile?.username,
+              elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
+              total_score: r.total_score,
+            }))}
+            emptyText="Nadie jugó en modo competitivo hoy todavía."
+            detail={(r) => `${r.total_score} pts`}
+            getScore={(r) => r.total_score}
+            to={(r) => `/mapa-diario/${r.id}`}
+            badges={badges}
+            dailyWinCounts={dailyWinCounts}
+          />
+        )}
+
+        {activeTab === 'promedio' && (
+          <PreviewList
+            rows={avgRows.map((a) => ({
+              key: a.profileId,
+              profileId: a.profileId,
+              avatarUrl: a.profile?.avatar_url,
+              username: a.profile?.username,
+              elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
+              avgScore: a.avgScore,
+            }))}
+            emptyText="Todavía nadie jugó en modo competitivo."
+            detail={(a) => `${Math.round(a.avgScore)} pts prom.`}
+            getScore={(a) => a.avgScore}
+            to={(a) => (a.username ? `/jugador/${a.username}` : null)}
+            badges={badges}
+            dailyWinCounts={dailyWinCounts}
+          />
+        )}
+
+        {activeTab === 'elo' && (
+          <PreviewList
+            rows={eloRows.map((r) => ({ key: r.id, profileId: r.id, avatarUrl: r.avatar_url, username: r.username, elo: r.elo }))}
+            emptyText="Todavía nadie jugó un duelo rankeado."
+            detail={(r) => eloTier(r.elo).name}
+            getScore={(r) => r.elo}
+            to={(r) => (r.username ? `/jugador/${r.username}` : null)}
+            badges={badges}
+            dailyWinCounts={dailyWinCounts}
+          />
+        )}
       </div>
     </div>
   )

@@ -41,6 +41,38 @@
   text-decoration: underline;
 }
 
+.ranking-preview-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ranking-preview-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text, #9ca3af);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 6px 4px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.ranking-preview-tab:hover {
+  color: var(--text-h, #f5f5f5);
+}
+
+.ranking-preview-tab-active,
+.ranking-preview-tab-active:hover {
+  background: rgba(250, 204, 21, 0.18);
+  color: var(--text-h, #f5f5f5);
+}
+
 .ranking-preview-section {
   margin-bottom: 16px;
 }

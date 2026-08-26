@@ -123,6 +123,7 @@ function LeaderboardSection({ title, extra, items, emptyText, renderDetail, getS
 export default function RankingBoard() {
   const { profile } = useProfile()
   const todayDayNumber = dayNumberForDate(nowInBuenosAires())
+  const [dailyTab, setDailyTab] = useState('hoy')
   const [averages, setAverages] = useState([])
   const [dayNumber, setDayNumber] = useState(todayDayNumber)
   const [dayResults, setDayResults] = useState([])
@@ -186,46 +187,67 @@ export default function RankingBoard() {
           />
         </YourRankSummary>
 
-        <LeaderboardSection
-          title={dayNumber === todayDayNumber ? 'Top mapa del día de hoy' : formatDailyDate(dayNumber)}
-          extra={
-            <button type="button" className="primary-btn secondary-btn ranking-day-label" onClick={() => setCalendarOpen(true)}>
-              Ver otro día
-            </button>
-          }
-          items={dayResults.map((r) => ({
-            key: r.id,
-            profileId: r.profile_id,
-            avatarUrl: r.profile?.avatar_url,
-            username: r.profile?.username,
-            elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
-            ...r,
-          }))}
-          emptyText="Nadie jugó en modo competitivo ese día."
-          renderDetail={(r) => `${r.total_score} pts`}
-          getScore={(r) => r.total_score}
-          to={(r) => `/mapa-diario/${r.id}`}
-          badges={badges}
-          dailyWinCounts={dailyWinCounts}
-        />
+        <div className="ranking-board-tabs">
+          <button
+            type="button"
+            className={`ranking-board-tab${dailyTab === 'hoy' ? ' ranking-board-tab-active' : ''}`}
+            onClick={() => setDailyTab('hoy')}
+          >
+            Mapa del día
+          </button>
+          <button
+            type="button"
+            className={`ranking-board-tab${dailyTab === 'promedio' ? ' ranking-board-tab-active' : ''}`}
+            onClick={() => setDailyTab('promedio')}
+          >
+            Promedio histórico
+          </button>
+        </div>
 
-        <LeaderboardSection
-          title="Top mapa del día promedio histórico"
-          items={averages.map((a) => ({
-            key: a.profileId,
-            profileId: a.profileId,
-            avatarUrl: a.profile?.avatar_url,
-            username: a.profile?.username,
-            elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
-            ...a,
-          }))}
-          emptyText="Todavía nadie jugó en modo competitivo."
-          renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
-          getScore={(a) => a.avgScore}
-          to={(a) => (a.profile?.username ? `/jugador/${a.profile.username}` : null)}
-          badges={badges}
-          dailyWinCounts={dailyWinCounts}
-        />
+        {dailyTab === 'hoy' && (
+          <LeaderboardSection
+            title={dayNumber === todayDayNumber ? 'Top mapa del día de hoy' : formatDailyDate(dayNumber)}
+            extra={
+              <button type="button" className="primary-btn secondary-btn ranking-day-label" onClick={() => setCalendarOpen(true)}>
+                Ver otro día
+              </button>
+            }
+            items={dayResults.map((r) => ({
+              key: r.id,
+              profileId: r.profile_id,
+              avatarUrl: r.profile?.avatar_url,
+              username: r.profile?.username,
+              elo: r.profile?.ranked_games_played > 0 ? r.profile?.elo : null,
+              ...r,
+            }))}
+            emptyText="Nadie jugó en modo competitivo ese día."
+            renderDetail={(r) => `${r.total_score} pts`}
+            getScore={(r) => r.total_score}
+            to={(r) => `/mapa-diario/${r.id}`}
+            badges={badges}
+            dailyWinCounts={dailyWinCounts}
+          />
+        )}
+
+        {dailyTab === 'promedio' && (
+          <LeaderboardSection
+            title="Top mapa del día promedio histórico"
+            items={averages.map((a) => ({
+              key: a.profileId,
+              profileId: a.profileId,
+              avatarUrl: a.profile?.avatar_url,
+              username: a.profile?.username,
+              elo: a.profile?.ranked_games_played > 0 ? a.profile?.elo : null,
+              ...a,
+            }))}
+            emptyText="Todavía nadie jugó en modo competitivo."
+            renderDetail={(a) => `${Math.round(a.avgScore)} pts prom. (${a.played} ${a.played === 1 ? 'partida' : 'partidas'})`}
+            getScore={(a) => a.avgScore}
+            to={(a) => (a.profile?.username ? `/jugador/${a.profile.username}` : null)}
+            badges={badges}
+            dailyWinCounts={dailyWinCounts}
+          />
+        )}
       </div>
 
       <div className="ranking-board">

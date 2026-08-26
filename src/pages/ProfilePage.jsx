@@ -263,7 +263,8 @@ export default function ProfilePage() {
         ← Volver
       </Link>
 
-      <header className="profile-header">
+      <div className="profile-columns">
+      <header className="profile-header profile-area-header">
         {profile && (
           <button type="button" className="profile-avatar-wrap" onClick={startEditAvatar}>
             <Avatar src={profile.avatar_url} baseClass="profile-avatar" />
@@ -308,7 +309,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <section className="profile-section">
+      <section className="profile-section profile-area-amigos">
         <h2 className="profile-section-title">Amigos</h2>
         <form className="profile-friend-search" onSubmit={handleSearch}>
           <input
@@ -456,12 +457,12 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="profile-section">
+      <section className="profile-section profile-area-logros">
         <h2 className="profile-section-title">Logros</h2>
         <LogrosStrip profileId={profile?.id} />
       </section>
 
-      <section className="profile-section">
+      <section className="profile-section profile-area-stats">
         <h2 className="profile-section-title">Estadísticas</h2>
         <div className="profile-stats-grid">
           <div className="profile-stat-card">
@@ -491,7 +492,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="profile-section">
+      <section className="profile-section profile-area-duels">
         <h2 className="profile-section-title">Duelos jugados</h2>
         {duels.length === 0 ? (
           <p className="profile-empty-text">Todavía no jugaste ningún duelo.</p>
@@ -541,7 +542,7 @@ export default function ProfilePage() {
         )}
       </section>
 
-      <section className="profile-section">
+      <section className="profile-section profile-area-daily">
         <h2 className="profile-section-title">Mapas diarios jugados</h2>
         {sortedDailyStats.length === 0 ? (
           <p className="profile-empty-text">Todavía no jugaste ningún mapa diario.</p>
@@ -565,6 +566,7 @@ export default function ProfilePage() {
           </ul>
         )}
       </section>
+      </div>
 
       {editingAvatar && (
         <div className="modal-backdrop" onClick={() => setEditingAvatar(false)}>
