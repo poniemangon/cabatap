@@ -1287,19 +1287,35 @@
   flex-direction: column;
 }
 
-.dashboard-main {
-  min-width: 0;
-}
-
 /* Wide desktop: the ranking widget moves beside the daily card/mode grid
-   instead of stacking below them. 1080px leaves enough room after the 220px
-   sidebar for a 380px ranking column without cramping the main content. */
+   instead of stacking between them. 1080px leaves enough room after the
+   220px sidebar for a 380px ranking column without cramping the main
+   content. Named areas (rather than DOM order) place the daily card and
+   mode grid in the left column while the ranking widget spans both rows on
+   the right — DOM order stays daily-card, ranking, mode-grid, so mobile
+   (no grid, plain stacking) shows the ranking widget between them instead
+   of below everything. */
 @media (min-width: 1080px) {
   .dashboard-columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-areas: 'hero ranking' 'grid ranking';
     align-items: start;
     gap: 28px;
+  }
+
+  .dashboard-daily-card {
+    grid-area: hero;
+    margin-bottom: 0;
+  }
+
+  .dashboard-grid {
+    grid-area: grid;
+    margin-bottom: 0;
+  }
+
+  .ranking-preview-cards {
+    grid-area: ranking;
   }
 }
 

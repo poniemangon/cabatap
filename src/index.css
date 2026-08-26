@@ -1,13 +1,13 @@
 :root {
-  --text: #9ca3af;
-  --text-h: #f5f5f5;
-  --bg: #000;
-  --border: #262626;
+  --text: #8d9daf;
+  --text-h: #e7ecf3;
+  --bg: #0d131d;
+  --border: #253244;
 
   --accent-primary: #007aff;
   --accent-secondary: #ffd60a;
   --accent-tertiary: #d75800;
-  --neutral: #121212;
+  --neutral: #17202e;
 
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
 
@@ -30,7 +30,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--bg);
 }
 
 #root {
