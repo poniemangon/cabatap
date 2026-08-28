@@ -2288,21 +2288,32 @@ function App() {
     )
   } else if (view === 'group-detail') {
     mainContent = (
-      <GroupDetail
-        groupId={selectedGroupId}
-        profile={profile}
-        onBack={() => {
-          setView('grupos')
-          navigate('/grupos')
-        }}
-        onPlayDuel={(code) => {
-          setDuelClaimError(null)
-          setView('duel-loading')
-          navigate(`/duelo/${code}`)
-        }}
-        onStartDuel={handleStartGroupDuel}
-        referralAppend={(url) => appendReferral(url, referralUsername)}
-      />
+      <div className="groups-layout">
+        <GroupsDashboard
+          profile={profile}
+          compact
+          selectedGroupId={selectedGroupId}
+          onOpenGroup={(id) => {
+            setSelectedGroupId(id)
+            navigate(`/grupos/${id}`)
+          }}
+        />
+        <GroupDetail
+          groupId={selectedGroupId}
+          profile={profile}
+          onBack={() => {
+            setView('grupos')
+            navigate('/grupos')
+          }}
+          onPlayDuel={(code) => {
+            setDuelClaimError(null)
+            setView('duel-loading')
+            navigate(`/duelo/${code}`)
+          }}
+          onStartDuel={handleStartGroupDuel}
+          referralAppend={(url) => appendReferral(url, referralUsername)}
+        />
+      </div>
     )
   } else if (phase === 'gameOver') {
     mainContent = (

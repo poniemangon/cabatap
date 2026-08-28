@@ -108,7 +108,11 @@ function JoinGroupModal({ profile, onClose, onJoined }) {
   )
 }
 
-export default function GroupsDashboard({ profile, onOpenGroup }) {
+// compact + selectedGroupId: used for the sidebar list beside GroupDetail on
+// wide desktop (see App.jsx's 'group-detail' view) — same data/create/join
+// flow as the full grid below, just a slimmer row-per-group rendering with
+// the currently-open group highlighted, instead of the big card grid.
+export default function GroupsDashboard({ profile, onOpenGroup, compact = false, selectedGroupId }) {
   const [groups, setGroups] = useState([])
   const [membersByGroup, setMembersByGroup] = useState(new Map())
   const [loading, setLoading] = useState(true)
@@ -126,6 +130,79 @@ export default function GroupsDashboard({ profile, onOpenGroup }) {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [profile?.id])
+
+  if (compact) {
+    return (
+      <div className="groups-sidebar-list">
+        <div className="groups-sidebar-header">
+          <h2 className="groups-sidebar-title">Tus grupos{groups.length > 0 ? ` · ${groups.length}` : ''}</h2>
+          <button type="button" className="groups-sidebar-add-btn" onClick={() => setCreateOpen(true)}>
+            + Crear
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="loading-text">Cargando...</p>
+        ) : groups.length === 0 ? (
+          <p className="groups-empty">Todavía no estás en ningún grupo.</p>
+        ) : (
+          <ul className="groups-sidebar-rows">
+            {groups.map((g) => {
+              const members = membersByGroup.get(g.id) || []
+              return (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    className={`groups-sidebar-row${g.id === selectedGroupId ? ' groups-sidebar-row-active' : ''}`}
+                    onClick={() => onOpenGroup(g.id)}
+                  >
+                    {g.image_url ? (
+                      <img src={g.image_url} alt="" className="groups-sidebar-row-image" />
+                    ) : (
+                      <span className="groups-sidebar-row-image groups-sidebar-row-image-fallback">
+                        {g.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="groups-sidebar-row-info">
+                      <span className="groups-sidebar-row-name">{g.name}</span>
+                      <span className="groups-sidebar-row-members">
+                        {members.length} participante{members.length === 1 ? '' : 's'}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        <button type="button" className="primary-btn secondary-btn groups-sidebar-join-btn" onClick={() => setJoinOpen(true)}>
+          Unirse a grupo
+        </button>
+
+        {createOpen && (
+          <CreateGroupModal
+            profile={profile}
+            onClose={() => setCreateOpen(false)}
+            onCreated={(group) => {
+              setCreateOpen(false)
+              onOpenGroup(group.id)
+            }}
+          />
+        )}
+        {joinOpen && (
+          <JoinGroupModal
+            profile={profile}
+            onClose={() => setJoinOpen(false)}
+            onJoined={(group) => {
+              setJoinOpen(false)
+              onOpenGroup(group.id)
+            }}
+          />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="groups-dashboard">
