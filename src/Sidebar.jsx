@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import BadgeIcon from './badges/BadgeIcon'
 import { getBadgeForProfile } from './badges/badgesApi'
 import DailyWinBadge from './daily/DailyWinBadge'
@@ -46,6 +46,11 @@ export default function Sidebar({
   const [dailyWinCount, setDailyWinCount] = useState(0)
   const bellRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const isHomeActive = location.pathname === '/'
+  // /ranking is its own standalone page outside <App/> (see main.jsx) — the
+  // sidebar never mounts there, so there's no "active" state to track for it.
+  const isGroupsActive = location.pathname === '/grupos' || location.pathname.startsWith('/grupos/')
 
   useEffect(() => {
     if (!profile?.id) {
@@ -149,7 +154,11 @@ export default function Sidebar({
         )}
 
         <nav className="sidebar-nav">
-          <button type="button" className="sidebar-nav-item" onClick={withClose(onGoHome)}>
+          <button
+            type="button"
+            className={`sidebar-nav-item${isHomeActive ? ' sidebar-nav-item-active' : ''}`}
+            onClick={withClose(onGoHome)}
+          >
             <span className="sidebar-nav-icon">🏠</span> Inicio
           </button>
           <button type="button" className="sidebar-nav-item" onClick={withClose(() => navigate('/ranking'))}>
@@ -176,7 +185,11 @@ export default function Sidebar({
             </button>
           )}
           {isSignedIn && (
-            <button type="button" className="sidebar-nav-item sidebar-nav-item-special" onClick={withClose(onGroups)}>
+            <button
+              type="button"
+              className={`sidebar-nav-item sidebar-nav-item-special${isGroupsActive ? ' sidebar-nav-item-active' : ''}`}
+              onClick={withClose(onGroups)}
+            >
               <span className="sidebar-nav-icon">👥</span> Grupos
               <span className="menu-item-eyebrow">NUEVO</span>
             </button>

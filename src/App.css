@@ -96,6 +96,12 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.sidebar-nav-item-active,
+.sidebar-nav-item-active:hover {
+  background: rgba(0, 122, 255, 0.14);
+  color: var(--accent-primary, #007aff);
+}
+
 .sidebar-nav-item:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -333,7 +339,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border, #333);
-  background: #1a1a1a;
+  background: var(--neutral, #1a1a1a);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   font-size: 12px;
   font-weight: 400;
@@ -388,7 +394,7 @@
   padding: 14px;
   border-radius: 10px;
   border: 1px solid var(--border, #333);
-  background: #1a1a1a;
+  background: var(--neutral, #1a1a1a);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   font-size: 12px;
   line-height: 1.4;
