@@ -191,10 +191,14 @@
      therefore clips overflow-x too) and positioned via inline style from
      the bell's actual on-screen rect, so it always renders fully visible
      instead of being cut off by the sidebar's own bounding box. Max
-     z-index so nothing else (modals, popups) can ever render on top of it. */
+     z-index so nothing else (modals, popups) can ever render on top of it.
+     max-width caps it on narrow viewports (same pattern as
+     .elo-info-icon-tooltip) instead of only shifting left, which still let
+     a 260px-wide panel overflow a viewport narrower than ~284px. */
   position: fixed;
   z-index: 99999999;
   width: 260px;
+  max-width: calc(100vw - 24px);
   max-height: 320px;
   overflow-y: auto;
   background: var(--neutral, #1c1c1c);
@@ -240,6 +244,7 @@
 
 .sidebar-notif-text {
   font-size: 13px;
+  overflow-wrap: break-word;
 }
 
 .sidebar-notif-time {

@@ -11,7 +11,8 @@
   overflow-y: auto;
 }
 
-.profile-columns {
+.profile-columns,
+.public-profile-columns {
   display: flex;
   flex-direction: column;
 }
@@ -53,6 +54,20 @@
   }
   .profile-area-logros {
     grid-area: logros;
+  }
+
+  /* Public (third-party) profile has no Amigos section — Logros takes the
+     whole side column instead of just the bottom two-thirds of it. */
+  .public-profile-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas:
+      'header header'
+      'stats  logros'
+      'duels  logros'
+      'daily  logros';
+    align-items: start;
+    gap: 24px;
   }
 
   .profile-username {

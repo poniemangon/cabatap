@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
+import useProfile from '../hooks/useProfile'
+import useNotifications from '../hooks/useNotifications'
 import { getProfileByUsername } from '../friends/friendsApi'
 import { listMyDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
 import LogrosStrip from '../logros/LogrosStrip'
+import Sidebar from '../Sidebar'
+import TopBar from '../TopBar'
 import './ProfilePage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -66,6 +71,10 @@ function PublicDuelRow({ duel, profileId, navigate }) {
 export default function PublicProfilePage() {
   const { username } = useParams()
   const navigate = useNavigate()
+  const { isSignedIn, user: authUser, signOut } = useAuth()
+  const { profile: viewerProfile } = useProfile()
+  const { notifications, unreadCount, openNotifications, deleteNotification } = useNotifications(viewerProfile)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profile, setProfile] = useState(null)
   const [notFound, setNotFound] = useState(false)
   const [duels, setDuels] = useState([])
@@ -108,8 +117,52 @@ export default function PublicProfilePage() {
     return [...dailyStats].sort((a, b) => b.day_number - a.day_number || Number(b.timed) - Number(a.timed))
   }, [dailyStats])
 
+  // Same router-state handoff ProfilePage.jsx uses for its own Sidebar —
+  // these modals/flows live in App.jsx's game state, which this standalone
+  // page doesn't have.
+  const handleGoHome = () => navigate('/')
+  const handleDuelNav = () => navigate('/', { state: { openRankedDuel: true } })
+  const handleMultiplayerDuelNav = () => navigate('/', { state: { openDuelChoice: true } })
+  const handleGroupsNav = () => navigate('/grupos')
+  const handleOpenAuth = () => navigate('/', { state: { openAuth: true } })
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/')
+  }
+  const handleNotificationClick = (n) => {
+    if (n.type === 'duel_completed' || n.type === 'duel_matched') {
+      navigate(`/duelo/${n.data.invite_code}`)
+    } else if (n.type === 'friend_request' || n.type === 'logro_earned') {
+      navigate('/perfil')
+    }
+  }
+
   return (
-    <div className="profile-page">
+    <div className="app-shell">
+      <div className="app-shell-content">
+        <Sidebar
+          onGoHome={handleGoHome}
+          onDuel={handleDuelNav}
+          onMultiplayerDuel={handleMultiplayerDuelNav}
+          onGroups={handleGroupsNav}
+          duelInProgress={false}
+          onOpenProfile={() => navigate('/perfil')}
+          isSignedIn={!!isSignedIn}
+          profile={viewerProfile}
+          authUser={authUser}
+          onOpenAuth={handleOpenAuth}
+          onLogout={handleLogout}
+          mobileOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onOpenNotifications={openNotifications}
+          onDeleteNotification={deleteNotification}
+          onNotificationClick={handleNotificationClick}
+        />
+        <div className="app-main">
+          <TopBar onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+          <div className="profile-page">
       <Link to="/" className="profile-back-link">
         ← Volver
       </Link>
@@ -119,8 +172,8 @@ export default function PublicProfilePage() {
       ) : !profile ? (
         <p className="profile-empty-text">Cargando...</p>
       ) : (
-        <>
-          <header className="profile-header">
+        <div className="public-profile-columns">
+          <header className="profile-header profile-area-header">
             <Avatar src={profile.avatar_url} baseClass="profile-avatar" />
             <div className="profile-header-info">
               {!(profile.ranked_games_played > 0) && <p className="profile-rank-status">(Sin ranking)</p>}
@@ -130,12 +183,12 @@ export default function PublicProfilePage() {
             </div>
           </header>
 
-          <section className="profile-section">
+          <section className="profile-section profile-area-logros">
             <h2 className="profile-section-title">Logros</h2>
             <LogrosStrip profileId={profile.id} />
           </section>
 
-          <section className="profile-section">
+          <section className="profile-section profile-area-stats">
             <h2 className="profile-section-title">Estadísticas</h2>
             <div className="profile-stats-grid">
               <div className="profile-stat-card">
@@ -169,7 +222,7 @@ export default function PublicProfilePage() {
             </p>
           </section>
 
-          <section className="profile-section">
+          <section className="profile-section profile-area-duels">
             <h2 className="profile-section-title">Duelos jugados</h2>
             {duels.length === 0 ? (
               <p className="profile-empty-text">No hay duelos públicos para mostrar.</p>
@@ -182,7 +235,7 @@ export default function PublicProfilePage() {
             )}
           </section>
 
-          <section className="profile-section">
+          <section className="profile-section profile-area-daily">
             <h2 className="profile-section-title">Mapas diarios jugados</h2>
             {sortedDailyStats.length === 0 ? (
               <p className="profile-empty-text">Todavía no jugó ningún mapa diario.</p>
@@ -206,8 +259,11 @@ export default function PublicProfilePage() {
               </ul>
             )}
           </section>
-        </>
+        </div>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

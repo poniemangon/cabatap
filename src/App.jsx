@@ -1395,6 +1395,16 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, isSignedIn, profile])
 
+  // Same handoff, but for "Iniciar sesión" clicked from a standalone page's
+  // Sidebar (PublicProfilePage) — no isSignedIn/profile gate, since this is
+  // exactly for the signed-out case those other three require.
+  useEffect(() => {
+    if (!location.state?.openAuth) return
+    navigate(location.pathname, { replace: true, state: null })
+    openSignUp()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
+
   // Shared by every duel-creation path (private 1v1, multiplayer): builds
   // the round indices, creates the row, and enters the game/loading view.
   const createAndEnterDuel = async ({
