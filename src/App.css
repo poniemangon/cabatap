@@ -1413,6 +1413,57 @@
   min-height: 0;
 }
 
+/* Active-play screen only (phase 'guessing'/'revealed') — the hud/controls
+   float as translucent rounded boxes over a full-bleed map instead of
+   sitting in normal flow above/below it, matching the desktop mockup. The
+   game-over/results screen renders its own separate JSX branch that never
+   gets a .game-screen ancestor, so these rules can't reach it — no need to
+   fight .controls-gameover's own overrides. */
+.game-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.game-screen .map-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.game-screen .hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 5;
+  border-radius: 14px;
+  border: 1px solid var(--border, #262626);
+  background: rgba(13, 19, 29, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  /* Nothing inside the hud is interactive except the optional "Ver imagen"
+     button, which opts itself back in — everywhere else, a tap should
+     reach the map underneath to place a guess. */
+  pointer-events: none;
+}
+
+.game-screen .hud .special-image-reopen {
+  pointer-events: auto;
+}
+
+.game-screen .controls {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  border-radius: 999px;
+  border: 1px solid var(--border, #262626);
+  background: rgba(13, 19, 29, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 .map-wrap-dimmed .map {
   filter: blur(6px) brightness(0.45);
 }

@@ -2539,30 +2539,52 @@ function App() {
   } else {
     mainContent = (
       <>
-        <header className="hud">
-          <div className="hud-row">
-            <span className="round-label">Ronda {roundIndex + 1} / {roundIndices.length}</span>
-            {phase === 'guessing' && timeLimit != null && (
-              <span className={`duel-timer${timeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {timeLeft}s</span>
-            )}
-            <span className="score-label">Puntaje: {totalScore}</span>
+        <div className="game-screen">
+          <div className="map-wrap">
+            <ResultsMap
+              results={results}
+              pendingGuess={phase === 'guessing' ? pendingGuess : null}
+              clickEnabled={phase === 'guessing'}
+              onPick={handleMapClick}
+            />
           </div>
-          {isSpecial && <div className="eyebrow">Ubicación especial</div>}
-          <div className="prompt">
-            Encontrá: <strong className={isSpecial ? 'special' : ''}>{current.street1}</strong>
-            {current.street2 && (
-              <>
-                {' '}
-                y <strong className={isSpecial ? 'special' : ''}>{current.street2}</strong>
-              </>
+
+          <header className="hud">
+            <div className="hud-row">
+              <span className="round-label">Ronda {roundIndex + 1} / {roundIndices.length}</span>
+              {phase === 'guessing' && timeLimit != null && (
+                <span className={`duel-timer${timeLeft <= 3 ? ' duel-timer-urgent' : ''}`}>⏱ {timeLeft}s</span>
+              )}
+              <span className="score-label">Puntaje: {totalScore}</span>
+            </div>
+            {isSpecial && <div className="eyebrow">Ubicación especial</div>}
+            <div className="prompt">
+              Encontrá: <strong className={isSpecial ? 'special' : ''}>{current.street1}</strong>
+              {current.street2 && (
+                <>
+                  {' '}
+                  y <strong className={isSpecial ? 'special' : ''}>{current.street2}</strong>
+                </>
+              )}
+              {isSpecial && current.image_url && !specialImageOpen && (
+                <button type="button" className="special-image-reopen" onClick={() => setSpecialImageOpen(true)}>
+                  👁 Ver imagen
+                </button>
+              )}
+            </div>
+          </header>
+
+          <footer className="controls">
+            {phase === 'guessing' && !pendingGuess && (
+              <span className="hint">Tocá el mapa para marcar dónde creés que está la esquina</span>
             )}
-            {isSpecial && current.image_url && !specialImageOpen && (
-              <button type="button" className="special-image-reopen" onClick={() => setSpecialImageOpen(true)}>
-                👁 Ver imagen
+            {phase === 'guessing' && pendingGuess && (
+              <button type="button" className="primary-btn confirm-guess-btn" onClick={handleConfirmGuess}>
+                Confirmar ubicación
               </button>
             )}
-          </div>
-        </header>
+          </footer>
+        </div>
 
         {isSpecial && current.image_url && specialImageOpen && (
           <div className="modal-backdrop" onClick={() => setSpecialImageOpen(false)}>
@@ -2576,26 +2598,6 @@ function App() {
         )}
 
         {specialSuggestPopup}
-
-        <div className="map-wrap">
-          <ResultsMap
-            results={results}
-            pendingGuess={phase === 'guessing' ? pendingGuess : null}
-            clickEnabled={phase === 'guessing'}
-            onPick={handleMapClick}
-          />
-        </div>
-
-        <footer className="controls">
-          {phase === 'guessing' && !pendingGuess && (
-            <span className="hint">Tocá el mapa para marcar dónde creés que está la esquina</span>
-          )}
-          {phase === 'guessing' && pendingGuess && (
-            <button type="button" className="primary-btn confirm-guess-btn" onClick={handleConfirmGuess}>
-              Confirmar ubicación
-            </button>
-          )}
-        </footer>
 
         {phase === 'revealed' && (
           <RoundResultModal
