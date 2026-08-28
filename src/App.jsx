@@ -2307,6 +2307,7 @@ function App() {
   } else if (phase === 'gameOver') {
     mainContent = (
       <>
+        <div className="result-screen">
         <div className={`map-wrap${scoreOverlayOpen ? ' map-wrap-dimmed' : ''}`}>
           <ResultsMap
             results={results}
@@ -2534,6 +2535,7 @@ function App() {
             </button>
           </div>
         </footer>
+        </div>
       </>
     )
   } else {

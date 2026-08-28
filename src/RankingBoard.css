@@ -18,6 +18,7 @@
 .ranking-board-title {
   margin: 0 0 4px;
   font-size: 20px;
+  font-weight: 600;
   color: var(--text-h, #f5f5f5);
 }
 

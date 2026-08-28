@@ -53,6 +53,12 @@
   .profile-area-logros {
     grid-area: logros;
   }
+
+  .profile-username {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
 }
 
 .profile-page,
