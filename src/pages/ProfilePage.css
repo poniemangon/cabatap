@@ -59,6 +59,58 @@
     font-weight: 500;
     letter-spacing: -0.02em;
   }
+
+  /* "Tus amigos" as a compact row list (avatar | name+record | Retar
+     button) instead of the centered card grid, to fit the 360px sidebar
+     column — matches the mockup's Amigos list. Grid placement (not source
+     order) so the existing avatar/name/h2h/button JSX doesn't need to
+     change: name sits top-right of the avatar, h2h record right below it. */
+  .profile-area-amigos .friend-card-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .profile-area-amigos .friend-card {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .profile-area-amigos .friend-card-avatar,
+  .profile-area-amigos .friend-card-avatar-fallback {
+    grid-row: 1 / 3;
+    grid-column: 1;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .profile-area-amigos .friend-card-name {
+    grid-row: 1;
+    grid-column: 2;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  .profile-area-amigos .friend-card-h2h {
+    grid-row: 2;
+    grid-column: 2;
+    font-size: 11px;
+  }
+
+  .profile-area-amigos .friend-card-btn {
+    grid-row: 1 / 3;
+    grid-column: 3;
+    width: auto;
+    margin-top: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
 }
 
 .profile-page,
