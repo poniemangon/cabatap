@@ -5,8 +5,15 @@
   /* Now nested inside .app-main's flex column (Sidebar/TopBar shell) rather
      than sitting directly under #root — flex:1 + min-height:0 lets it take
      the remaining space below TopBar and scroll internally, same pattern
-     .dashboard/.ranking-board use for the same shell. */
+     .dashboard/.ranking-board use for the same shell. min-width:0 too: a
+     flex item's default min-width:auto lets its content's intrinsic width
+     (a long duel row's opponent name + ELO badges on one line, in
+     particular) push the whole item — and everything above it in this
+     flex chain — wider than the viewport instead of wrapping/scrolling
+     inside it, which is what actually caused the mobile overflow. */
   flex: 1;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
 }
