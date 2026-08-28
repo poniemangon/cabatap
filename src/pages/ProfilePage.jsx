@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
 import useProfile, { slugifyUsername } from '../hooks/useProfile'
+import useNotifications from '../hooks/useNotifications'
 import { listFriendships, respondFriendRequest, searchUsers, sendFriendRequest } from '../friends/friendsApi'
 import { listMyDuels, listMyPendingDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
@@ -10,6 +11,8 @@ import { getDailyWinCount } from '../daily/dailyWinsApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
 import LogrosStrip from '../logros/LogrosStrip'
+import Sidebar from '../Sidebar'
+import TopBar from '../TopBar'
 import './ProfilePage.css'
 
 const SEARCH_PAGE_SIZE = 8
@@ -72,9 +75,11 @@ function DuelRow({ duel, myProfileId, onOpen }) {
 }
 
 export default function ProfilePage() {
-  const { isLoaded: authLoaded, isSignedIn } = useAuth()
+  const { isLoaded: authLoaded, isSignedIn, user: authUser, signOut } = useAuth()
   const { profile, loading: profileLoading, updateUsername, updateAvatarUrl } = useProfile()
+  const { notifications, unreadCount, openNotifications, deleteNotification } = useNotifications(profile)
   const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
@@ -234,6 +239,27 @@ export default function ProfilePage() {
     navigate('/', { state: { challengeFriendId: friendId } })
   }
 
+  // Sidebar nav actions that open a game/modal flow (App.jsx) can't run
+  // that flow from here — this standalone page has none of that state.
+  // Same router-state handoff handleChallenge already uses above: navigate
+  // home with a flag, and a dedicated effect in App.jsx opens the modal
+  // once mounted there.
+  const handleGoHome = () => navigate('/')
+  const handleDuelNav = () => navigate('/', { state: { openRankedDuel: true } })
+  const handleMultiplayerDuelNav = () => navigate('/', { state: { openDuelChoice: true } })
+  const handleGroupsNav = () => navigate('/grupos')
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/')
+  }
+  const handleNotificationClick = (n) => {
+    if (n.type === 'duel_completed' || n.type === 'duel_matched') {
+      navigate(`/duelo/${n.data.invite_code}`)
+    } else if (n.type === 'friend_request' || n.type === 'logro_earned') {
+      navigate('/perfil')
+    }
+  }
+
   const startEditAvatar = () => {
     setAvatarUrlInput(profile.avatar_url || '')
     setAvatarStatus(null)
@@ -258,7 +284,31 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="profile-page">
+    <div className="app-shell">
+      <div className="app-shell-content">
+        <Sidebar
+          onGoHome={handleGoHome}
+          onDuel={handleDuelNav}
+          onMultiplayerDuel={handleMultiplayerDuelNav}
+          onGroups={handleGroupsNav}
+          duelInProgress={false}
+          onOpenProfile={() => {}}
+          isSignedIn={!!isSignedIn}
+          profile={profile}
+          authUser={authUser}
+          onOpenAuth={() => {}}
+          onLogout={handleLogout}
+          mobileOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onOpenNotifications={openNotifications}
+          onDeleteNotification={deleteNotification}
+          onNotificationClick={handleNotificationClick}
+        />
+        <div className="app-main">
+          <TopBar onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+          <div className="profile-page">
       <Link to="/" className="profile-back-link">
         ← Volver
       </Link>
@@ -567,6 +617,7 @@ export default function ProfilePage() {
         )}
       </section>
       </div>
+          </div>
 
       {editingAvatar && (
         <div className="modal-backdrop" onClick={() => setEditingAvatar(false)}>
@@ -601,6 +652,8 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -63,13 +63,18 @@ function NewDuelInfoIcon() {
   )
 }
 
-function InviteModal({ link, onClose }) {
+// The input/"Copiar" button target the bare invite code — that's what
+// "Unirse a grupo" (GroupsDashboard's JoinGroupModal) actually expects
+// pasted into its "Código del grupo" field. "Compartir" still sends the
+// full link, since a shared link is clickable and auto-joins via the
+// /grupos?invite_id=<code> flow (App.jsx) instead of needing manual entry.
+function InviteModal({ code, link, onClose }) {
   const [copied, setCopied] = useState(false)
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
 
   const handleCopy = () => {
     navigator.clipboard
-      .writeText(link)
+      .writeText(code)
       .then(() => {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
@@ -94,7 +99,7 @@ function InviteModal({ link, onClose }) {
           <input
             type="text"
             className="group-invite-link-input"
-            value={link}
+            value={code}
             readOnly
             onClick={(e) => e.target.select()}
           />
@@ -440,7 +445,7 @@ export default function GroupDetail({ groupId, profile, onBack, onPlayDuel, onSt
         </ul>
       )}
 
-      {inviteOpen && <InviteModal link={inviteLink} onClose={() => setInviteOpen(false)} />}
+      {inviteOpen && <InviteModal code={group.invite_id} link={inviteLink} onClose={() => setInviteOpen(false)} />}
     </div>
   )
 }

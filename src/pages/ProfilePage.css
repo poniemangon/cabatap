@@ -2,11 +2,12 @@
   max-width: 640px;
   margin: 0 auto;
   padding: 24px 20px 60px;
-  /* html/body/#root are all height:100%+overflow:hidden (see index.css) so
-     the page itself has to be the bounded scroll container — min-height
-     let it grow past the viewport with nowhere for the overflow to go but
-     clipped, instead of scrolling. */
-  height: 100svh;
+  /* Now nested inside .app-main's flex column (Sidebar/TopBar shell) rather
+     than sitting directly under #root — flex:1 + min-height:0 lets it take
+     the remaining space below TopBar and scroll internally, same pattern
+     .dashboard/.ranking-board use for the same shell. */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -58,6 +59,11 @@
     font-size: 30px;
     font-weight: 500;
     letter-spacing: -0.02em;
+  }
+
+  /* The sidebar's own "Inicio" nav item covers this now. */
+  .profile-back-link {
+    display: none;
   }
 
   /* "Tus amigos" as a compact row list (avatar | name+record | Retar

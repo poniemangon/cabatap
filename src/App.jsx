@@ -1378,6 +1378,23 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, isSignedIn, profile])
 
+  // Same router-state handoff as challengeFriendId above, for the sidebar's
+  // duel nav items when rendered from a standalone page (ProfilePage) that
+  // has no local game state of its own to open these modals directly.
+  useEffect(() => {
+    if (!location.state?.openRankedDuel || !isSignedIn || !profile) return
+    navigate(location.pathname, { replace: true, state: null })
+    openRankedDuel()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, isSignedIn, profile])
+
+  useEffect(() => {
+    if (!location.state?.openDuelChoice || !isSignedIn || !profile) return
+    navigate(location.pathname, { replace: true, state: null })
+    openDuelChoice()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, isSignedIn, profile])
+
   // Shared by every duel-creation path (private 1v1, multiplayer): builds
   // the round indices, creates the row, and enters the game/loading view.
   const createAndEnterDuel = async ({
