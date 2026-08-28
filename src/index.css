@@ -9,6 +9,10 @@
   --accent-tertiary: #d75800;
   --neutral: #17202e;
 
+  --win: #4da3ff;
+  --tie: #8d9daf;
+  --loss: #ff6b6b;
+
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   font: 16px/145% var(--sans);

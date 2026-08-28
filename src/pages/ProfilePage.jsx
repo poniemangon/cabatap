@@ -13,6 +13,7 @@ import Avatar from '../Avatar'
 import LogrosStrip from '../logros/LogrosStrip'
 import Sidebar from '../Sidebar'
 import TopBar from '../TopBar'
+import StatsBlock from '../StatsBlock'
 import './ProfilePage.css'
 
 const SEARCH_PAGE_SIZE = 8
@@ -512,35 +513,7 @@ export default function ProfilePage() {
         <LogrosStrip profileId={profile?.id} />
       </section>
 
-      <section className="profile-section profile-area-stats">
-        <h2 className="profile-section-title">Estadísticas</h2>
-        <div className="profile-stats-grid">
-          <div className="profile-stat-card">
-            <div className="profile-stat-title">1 vs 1 privado</div>
-            <div className="profile-stat-numbers">
-              <span>✅ {stats.oneVOnePrivate.won}</span>
-              <span>❌ {stats.oneVOnePrivate.played - stats.oneVOnePrivate.won - stats.oneVOnePrivate.tied}</span>
-              <span>🟰 {stats.oneVOnePrivate.tied}</span>
-            </div>
-          </div>
-          <div className="profile-stat-card">
-            <div className="profile-stat-title">1 vs 1 rankeado</div>
-            <div className="profile-stat-numbers">
-              <span>✅ {stats.oneVOneRanked.won}</span>
-              <span>❌ {stats.oneVOneRanked.played - stats.oneVOneRanked.won - stats.oneVOneRanked.tied}</span>
-              <span>🟰 {stats.oneVOneRanked.tied}</span>
-            </div>
-          </div>
-          <div className="profile-stat-card">
-            <div className="profile-stat-title">Multijugador</div>
-            <div className="profile-stat-numbers">
-              <span>✅ {stats.multi.won}</span>
-              <span>❌ {stats.multi.played - stats.multi.won - stats.multi.tied}</span>
-              <span>🟰 {stats.multi.tied}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+      <StatsBlock stats={stats} />
 
       <section className="profile-section profile-area-duels">
         <h2 className="profile-section-title">Duelos jugados</h2>
