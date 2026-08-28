@@ -86,8 +86,8 @@
   border-radius: 10px;
   background: transparent;
   color: var(--text-h, #f5f5f5);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
 }
@@ -277,7 +277,7 @@
 .sidebar-profile-name {
   color: var(--text-h, #f5f5f5);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -443,8 +443,8 @@
   border: 1px solid var(--border, #262626);
   background: transparent;
   color: var(--text, #9ca3af);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
 }
 

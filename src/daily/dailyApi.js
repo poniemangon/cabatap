@@ -89,7 +89,7 @@ export async function getDailyAverageLeaderboard(viewerId = null, viewerIsGhost 
     byProfile.set(row.profile_id, entry)
   }
   return [...byProfile.values()]
-    .filter((e) => e.played >= 2)
+    .filter((e) => e.played >= 3)
     .map((e) => ({ ...e, avgScore: e.totalScore / e.played }))
     .sort((a, b) => b.avgScore - a.avgScore)
 }

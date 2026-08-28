@@ -256,12 +256,6 @@
   }
 }
 
-@media (max-width: 1079px) {
-  .groups-sidebar-list {
-    display: none;
-  }
-}
-
 .groups-sidebar-list {
   width: 320px;
   flex-shrink: 0;
@@ -373,6 +367,16 @@
 
 .groups-sidebar-join-btn {
   flex-shrink: 0;
+}
+
+/* Must come after the unconditional .groups-sidebar-list rule above —
+   same class, same specificity, so source order decides the tie and this
+   needs to win on mobile/tablet regardless of where it's declared relative
+   to that rule. */
+@media (max-width: 1079px) {
+  .groups-sidebar-list {
+    display: none;
+  }
 }
 
 .group-detail-back {
