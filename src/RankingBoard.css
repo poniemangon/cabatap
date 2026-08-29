@@ -205,7 +205,7 @@
    into one row. */
 @media (max-width: 400px) {
   .ranking-row {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .ranking-row-detail {
