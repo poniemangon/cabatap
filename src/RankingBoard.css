@@ -191,6 +191,17 @@
   }
 }
 
+/* Very narrow phones: shrink the row text too, not just the stacking. */
+@media (max-width: 400px) {
+  .ranking-row {
+    font-size: 13px;
+  }
+
+  .ranking-row-detail {
+    font-size: 12px;
+  }
+}
+
 .ranking-list-scroll {
   max-height: 552px;
   overflow-y: auto;
