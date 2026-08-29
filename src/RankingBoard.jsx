@@ -47,19 +47,23 @@ function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail,
   const [imgFailed, setImgFailed] = useState(false)
   const content = (
     <>
-      <span className="ranking-row-rank">#{rank}</span>
-      {avatarUrl && !imgFailed ? (
-        <img src={avatarUrl} alt="" className="ranking-row-avatar" onError={() => setImgFailed(true)} />
-      ) : (
-        <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
-      )}
-      <span className="ranking-row-name">
-        <span className="ranking-row-username">{username || 'Jugador'}</span>
-        <BadgeIcon badge={badge} />
-        <DailyWinBadge count={dailyWinCount} />
-        <EloBadge elo={elo} />
+      <span className="ranking-row-lead">
+        <span className="ranking-row-rank">#{rank}</span>
+        {avatarUrl && !imgFailed ? (
+          <img src={avatarUrl} alt="" className="ranking-row-avatar" onError={() => setImgFailed(true)} />
+        ) : (
+          <span className="ranking-row-avatar ranking-row-avatar-fallback">🙂</span>
+        )}
       </span>
-      <span className="ranking-row-detail">{detail}</span>
+      <span className="ranking-row-info">
+        <span className="ranking-row-name">
+          <span className="ranking-row-username">{username || 'Jugador'}</span>
+          <BadgeIcon badge={badge} />
+          <DailyWinBadge count={dailyWinCount} />
+          <EloBadge elo={elo} />
+        </span>
+        <span className="ranking-row-detail">{detail}</span>
+      </span>
     </>
   )
   // Guest daily_stats rows (0043) have no profile at all — nothing to link
