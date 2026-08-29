@@ -160,6 +160,14 @@
   font-weight: 600;
 }
 
+.ranking-row-username-wrap,
+.ranking-row-badges-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .ranking-row-username {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -191,7 +199,10 @@
   }
 }
 
-/* Very narrow phones: shrink the row text too, not just the stacking. */
+/* Very narrow phones: shrink the row text, and split name from
+   badges/ELO onto their own line — username+★ daily-wins stay grouped on
+   line 1, BadgeIcon+EloBadge move to line 2, instead of all four squeezing
+   into one row. */
 @media (max-width: 400px) {
   .ranking-row {
     font-size: 13px;
@@ -199,6 +210,20 @@
 
   .ranking-row-detail {
     font-size: 12px;
+  }
+
+  .ranking-row-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-weight: 600;
+    flex-direction: column;
+  }
+
+  .ranking-row-username {
+    margin-right: 5px;
   }
 }
 

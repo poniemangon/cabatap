@@ -57,10 +57,14 @@ function RankRow({ rank, avatarUrl, username, elo, badge, dailyWinCount, detail,
       </span>
       <span className="ranking-row-info">
         <span className="ranking-row-name">
-          <span className="ranking-row-username">{username || 'Jugador'}</span>
-          <BadgeIcon badge={badge} />
-          <DailyWinBadge count={dailyWinCount} />
-          <EloBadge elo={elo} />
+          <span className="ranking-row-username-wrap">
+            <span className="ranking-row-username">{username || 'Jugador'}</span>
+            <DailyWinBadge count={dailyWinCount} />
+          </span>
+          <span className="ranking-row-badges-wrap">
+            <BadgeIcon badge={badge} />
+            <EloBadge elo={elo} />
+          </span>
         </span>
         <span className="ranking-row-detail">{detail}</span>
       </span>
