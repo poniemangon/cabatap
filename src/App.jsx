@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
 import ResultsMap from './ResultsMap'
+import ubicargPromoImage from './assets/ubicarg-promo.png'
 import Sidebar from './Sidebar'
 import NotificationToasts from './notifications/NotificationToasts'
 import TopBar from './TopBar'
@@ -326,11 +327,9 @@ function appendReferral(url, username) {
 const SESSION_STORAGE_KEY = 'ubicaba-game-session'
 const REGISTER_POPUP_SESSION_KEY = 'ubicaba-register-popup-shown'
 // Signed-in variant of the same post-daily-map popup — persisted (not just
-// per-session) since it's a one-time feature announcement, not a nag that
-// should reappear every day.
-const GROUPS_ANNOUNCEMENT_SEEN_KEY = 'ubicaba-groups-announcement-seen'
-const POST_DAILY_POPUP_IMAGE =
-  'https://qlzpqnststodfqnuupax.supabase.co/storage/v1/object/public/admin-uploads/1786486024712-image.png'
+// per-session) since it's a one-time cross-promo, not a nag that should
+// reappear every day.
+const UBICARG_PROMO_SEEN_KEY = 'ubicaba-ubicarg-promo-shown'
 const TEST_MAP_SESSION_KEY = 'ubicaba-test-map-shown'
 // Single-round tutorial (the Obelisco, pool_index 4000) shown once per
 // browser session to signed-out first-time visitors, before they've ever
@@ -763,17 +762,17 @@ function App() {
 
   // Fires as soon as a player finishes a real "Mapa del día" attempt —
   // whether they got there straight from the dashboard or via the one-round
-  // tutorial (see the mount effect above and playDailyPromptOpen below).
-  // Signed-out: the register pitch, capped once per SESSION
-  // (REGISTER_POPUP_SESSION_KEY) since it's worth re-showing next visit.
-  // Signed-in: the Grupos feature announcement, capped once EVER
-  // (GROUPS_ANNOUNCEMENT_SEEN_KEY, localStorage not sessionStorage) since
-  // it's a one-time "here's what's new," not something to repeat daily.
+  // tutorial (see the mount effect above and playDailyPromptOpen below). Same
+  // UbicaRG cross-promo either way, just capped differently: signed-out,
+  // once per SESSION (REGISTER_POPUP_SESSION_KEY) since it's worth
+  // re-showing next visit; signed-in, once EVER (UBICARG_PROMO_SEEN_KEY,
+  // localStorage not sessionStorage) since it's a one-time "hey, check this
+  // out," not something to repeat daily.
   useEffect(() => {
     if (phase !== 'gameOver' || gameMode !== 'daily') return
     try {
       const store = isSignedIn ? localStorage : sessionStorage
-      const key = isSignedIn ? GROUPS_ANNOUNCEMENT_SEEN_KEY : REGISTER_POPUP_SESSION_KEY
+      const key = isSignedIn ? UBICARG_PROMO_SEEN_KEY : REGISTER_POPUP_SESSION_KEY
       if (!store.getItem(key)) {
         store.setItem(key, '1')
         setPostDailyPopupOpen(true)
@@ -1913,43 +1912,18 @@ function App() {
         >
           ✕
         </button>
-        <img src={POST_DAILY_POPUP_IMAGE} alt="" className="register-popup-image" />
-        <h2 className="post-daily-popup-title">
-          {isSignedIn ? 'Nota de autor' : 'Registrate y competí con tus amigos'}
-        </h2>
-        {isSignedIn ? (
-          <>
-            <p className="special-suggest-text">
-              Ahora podés crear grupos y competir con tus amigos en duelos o por el mapa del día.
-            </p>
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={() => {
-                setPostDailyPopupOpen(false)
-                setSelectedGroupId(null)
-                setView('grupos')
-                navigate('/grupos')
-              }}
-            >
-              Ver grupos
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="special-suggest-text">Podés hacer duelos rankeados, privados o en grupo.</p>
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={() => {
-                setPostDailyPopupOpen(false)
-                openSignUp()
-              }}
-            >
-              Registrate
-            </button>
-          </>
-        )}
+        <img src={ubicargPromoImage} alt="UbicARG" className="register-popup-image" />
+        <h2 className="post-daily-popup-title">¿Querés jugar en todo el país?</h2>
+        <p className="special-suggest-text">Probá UbicARG — el mismo juego, pero con localidades de toda Argentina.</p>
+        <a
+          href="https://ubicarg.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="primary-btn"
+          onClick={() => setPostDailyPopupOpen(false)}
+        >
+          Probá UbicARG
+        </a>
       </div>
     </div>
   )
