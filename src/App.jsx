@@ -188,16 +188,38 @@ function dailyRoundIndicesForDay(dayNumber, pool, barrios) {
 // The first DAILY_CYCLE_POOL_SIZE rows are a fixed, pre-shuffled order
 // (baked in when the dataset was generated), so slicing consecutive
 // windows of TOTAL_ROUNDS gives a stable rotation with zero repeats until
-// that portion of the pool cycles back. Anything at index
-// DAILY_CYCLE_POOL_SIZE or beyond (special locations added later via the
-// admin panel) never participates in this rotation — still reachable via
-// practice, custom-barrio games, and direct share links.
+// that portion of the pool cycles back. Rows 4000-4031 are admin-added
+// "special locations" (comuna 0) and never participated in this rotation —
+// still reachable via practice, custom-barrio games, and direct share links.
 const DAILY_CYCLE_POOL_SIZE = 4000
+const SPECIALS_POOL_END = 4032 // exclusive — pool_index 4000-4031
+const EXPANDED_POOL_END = 4402 // exclusive — through the 0077 migration (370 new Floresta/Liniers/Lugano corners)
+
+// Rotation index lists: the original fixed block, and that block extended
+// with whatever regular (non-special) rows were appended after the
+// specials block. Kept as two separate lists (rather than just bumping
+// DAILY_CYCLE_POOL_SIZE) so old days can still rotate over exactly the
+// original set below.
+const OLD_REGULAR_INDICES = Array.from({ length: DAILY_CYCLE_POOL_SIZE }, (_, i) => i)
+const EXPANDED_REGULAR_INDICES = [
+  ...OLD_REGULAR_INDICES,
+  ...Array.from({ length: EXPANDED_POOL_END - SPECIALS_POOL_END }, (_, i) => SPECIALS_POOL_END + i),
+]
+
+// 2026-09-30 in Buenos Aires — the day the pool above was expanded. Any
+// dayNumber before this is pinned to OLD_REGULAR_INDICES so every
+// already-played/archived day keeps producing its original 5 corners;
+// only days from here on draw from the expanded list. Without this split,
+// adding new intersections would've shifted cycleLength and silently
+// rewritten every past day's map.
+const EXPANDED_POOL_CUTOVER_DAY = 1003
+
 function tranquiRoundIndicesForDay(dayNumber) {
-  const cycleLength = Math.floor(DAILY_CYCLE_POOL_SIZE / TOTAL_ROUNDS)
+  const indices = dayNumber < EXPANDED_POOL_CUTOVER_DAY ? OLD_REGULAR_INDICES : EXPANDED_REGULAR_INDICES
+  const cycleLength = Math.floor(indices.length / TOTAL_ROUNDS)
   const cyclePos = ((dayNumber % cycleLength) + cycleLength) % cycleLength
   const start = cyclePos * TOTAL_ROUNDS
-  return Array.from({ length: TOTAL_ROUNDS }, (_, i) => start + i)
+  return indices.slice(start, start + TOTAL_ROUNDS)
 }
 
 // Signed-out guests never get a profiles row, so per-mode results can't be
