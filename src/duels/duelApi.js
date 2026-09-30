@@ -45,7 +45,7 @@ export async function getRandomBotProfile() {
 // session of its own to insert under RLS) so duel_results already has one
 // row before the ghost player even starts playing. Their own submission
 // brings it to 2 and the normal auto-close/ELO flow takes over unchanged.
-export async function createGhostRankedDuel({ challengerId, roundIndices }) {
+export async function createGhostRankedDuel({ challengerId, roundIndices, timeLimitSeconds }) {
   const bot = await getRandomBotProfile()
   if (!bot) throw new Error('No hay usuarios de práctica disponibles.')
   const duel = await createDuel({
@@ -53,6 +53,7 @@ export async function createGhostRankedDuel({ challengerId, roundIndices }) {
     opponentId: bot.id,
     roundIndices,
     matchmaking: true,
+    timeLimitSeconds,
   })
   const { error } = await supabase.rpc('submit_bot_duel_result', { target_duel_id: duel.id })
   if (error) throw error

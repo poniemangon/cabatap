@@ -1519,7 +1519,7 @@ function App() {
       // affected by playing against one (see 0066).
       if (profileRef.current?.ghost_mode) {
         const indices = pickRandomIndices(pool.length, TOTAL_ROUNDS)
-        const duel = await createGhostRankedDuel({ challengerId: profile.id, roundIndices: indices })
+        const duel = await createGhostRankedDuel({ challengerId: profile.id, roundIndices: indices, timeLimitSeconds: duelTimeLimit })
         duelResultSubmittedRef.current = false
         setDuelClaimError(null)
         setDuelResults([])
@@ -1551,6 +1551,7 @@ function App() {
           barrioIds: null,
           isMultiplayer: false,
           matchmaking: true,
+          timeLimitSeconds: duelTimeLimit,
         })
         duelResultSubmittedRef.current = false
         setDuelClaimError(null)
