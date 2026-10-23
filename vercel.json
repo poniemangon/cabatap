@@ -9,6 +9,14 @@
       "destination": "/como-se-juega.html"
     },
     {
+      "source": "/terminos",
+      "destination": "/terminos.html"
+    },
+    {
+      "source": "/preguntas-frecuentes",
+      "destination": "/preguntas-frecuentes.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

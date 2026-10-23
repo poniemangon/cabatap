@@ -2061,6 +2061,21 @@ function App() {
       >
         en este link
       </a>
+      {/* Plain <a> (not <Link>): these are static HTML pages in public/, outside the SPA. */}
+      <nav className="credits-pages">
+        <a className="credits-link" href="/como-se-juega">
+          Cómo se juega
+        </a>
+        <a className="credits-link" href="/preguntas-frecuentes">
+          Preguntas frecuentes
+        </a>
+        <a className="credits-link" href="/terminos">
+          Términos
+        </a>
+        <a className="credits-link" href="/privacidad">
+          Privacidad
+        </a>
+      </nav>
       {socialsOpen && (
         <div className="modal-backdrop" onClick={() => setSocialsOpen(false)}>
           <div className="socials-modal" onClick={(e) => e.stopPropagation()}>

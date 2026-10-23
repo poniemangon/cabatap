@@ -579,6 +579,14 @@
   cursor: pointer;
 }
 
+.credits-pages {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 2px;
+}
+
 .social-option svg {
   margin-right: 6px;
 }
