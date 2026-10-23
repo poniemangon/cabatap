@@ -1,0 +1,14 @@
+.ad-slot {
+  margin: 32px 0 8px;
+  min-height: 100px;
+}
+
+.ad-slot-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text, #8d9daf);
+  opacity: 0.6;
+}

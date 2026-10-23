@@ -8,6 +8,7 @@ import { listMyDuels, getDuelStats } from '../duels/duelApi'
 import { listMyDailyStats } from '../daily/dailyApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
+import AdSlot from '../AdSlot'
 import LogrosStrip from '../logros/LogrosStrip'
 import Sidebar from '../Sidebar'
 import TopBar from '../TopBar'
@@ -236,6 +237,7 @@ export default function PublicProfilePage() {
           </section>
         </div>
       )}
+      {profile && !notFound && <AdSlot />}
           </div>
         </div>
       </div>
