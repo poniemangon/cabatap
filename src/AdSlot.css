@@ -3,6 +3,12 @@
   min-height: 100px;
 }
 
+/* AdSense sets data-ad-status="unfilled" when no ad is served — don't leave an
+   empty labeled box behind. */
+.ad-slot:has(ins[data-ad-status='unfilled']) {
+  display: none;
+}
+
 .ad-slot-label {
   display: block;
   margin-bottom: 4px;
