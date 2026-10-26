@@ -8,7 +8,6 @@ import BadgeIcon from '../badges/BadgeIcon'
 import { getBadgeForProfile } from '../badges/badgesApi'
 import EloBadge from '../EloBadge'
 import Avatar from '../Avatar'
-import AdSlot from '../AdSlot'
 import './DailyResultPage.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -105,7 +104,6 @@ export default function DailyResultPage() {
                 ))}
               </ul>
 
-              <AdSlot />
             </>
           ) : (
             // Signed-out guest attempt (0043) — only the score is saved, no

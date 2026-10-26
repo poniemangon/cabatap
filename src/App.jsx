@@ -2063,6 +2063,12 @@ function App() {
       </a>
       {/* Plain <a> (not <Link>): these are static HTML pages in public/, outside the SPA. */}
       <nav className="credits-pages">
+        <a className="credits-link" href="/guias">
+          Guías
+        </a>
+        <a className="credits-link" href="/barrios">
+          Barrios
+        </a>
         <a className="credits-link" href="/como-se-juega">
           Cómo se juega
         </a>

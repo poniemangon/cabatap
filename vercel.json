@@ -1,24 +1,94 @@
 {
   "rewrites": [
     {
-      "source": "/privacidad",
-      "destination": "/privacidad.html"
+      "source": "/:page(como-se-juega|preguntas-frecuentes|terminos|privacidad)",
+      "destination": "/:page.html"
     },
     {
-      "source": "/como-se-juega",
-      "destination": "/como-se-juega.html"
+      "source": "/:section(guias|barrios)",
+      "destination": "/:section/index.html"
     },
     {
-      "source": "/terminos",
-      "destination": "/terminos.html"
-    },
-    {
-      "source": "/preguntas-frecuentes",
-      "destination": "/preguntas-frecuentes.html"
+      "source": "/:section(guias|barrios)/:slug",
+      "destination": "/:section/:slug.html"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/perfil",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/reset-password",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/grupos",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/grupos/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/duelo/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/duelo-resultado/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/mapa-diario/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/jugador/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
     }
   ]
 }

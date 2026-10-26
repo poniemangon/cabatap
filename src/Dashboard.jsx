@@ -77,6 +77,22 @@ export default function Dashboard({
             </div>
           )}
         </div>
+
+        {/* Plain <a>: the guides are static HTML pages outside the SPA (scripts/build-content.mjs). */}
+        <section className="dashboard-guides">
+          <h2 className="dashboard-guides-title">Aprendé a ubicarte en la Ciudad</h2>
+          <p className="dashboard-guides-text">
+            Guías para conocer Buenos Aires y sumar más puntos: cómo funciona la numeración, las avenidas que te
+            ordenan el mapa, los lugares emblemáticos y una guía para cada uno de los 48 barrios.
+          </p>
+          <div className="dashboard-guides-links">
+            <a href="/guias/como-orientarse-en-buenos-aires">Cómo orientarse en Buenos Aires</a>
+            <a href="/guias/avenidas-de-buenos-aires">Las avenidas que te ubican</a>
+            <a href="/guias/lugares-emblematicos-de-buenos-aires">Lugares emblemáticos</a>
+            <a href="/guias/consejos-para-sumar-puntos">Consejos para sumar puntos</a>
+            <a href="/barrios">Los 48 barrios</a>
+          </div>
+        </section>
       </div>
     </div>
   )

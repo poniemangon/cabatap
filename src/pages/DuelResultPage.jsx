@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getDuelById, getDuelResults, computeWinnerId } from '../duels/duelApi'
 import EloBadge from '../EloBadge'
-import AdSlot from '../AdSlot'
 import ResultsMap from '../ResultsMap'
 import useProfile from '../hooks/useProfile'
 import AddCommentModal from '../comments/AddCommentModal'
@@ -199,7 +198,6 @@ export default function DuelResultPage() {
                 </button>
               )}
 
-              <AdSlot />
             </>
           )}
 
